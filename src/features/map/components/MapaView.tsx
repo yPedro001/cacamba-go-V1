@@ -13,7 +13,7 @@ export default function MapaView() {
   const clientes = useClientes();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-build-v2-4="true">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-3xl font-bold tracking-tight">Mapa de Operações</h2>
         <div className="flex gap-2 bg-background border border-border p-2 rounded-lg">

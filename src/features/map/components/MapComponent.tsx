@@ -7,10 +7,6 @@ import { MapContainer, useMap } from 'react-leaflet'
 import { MapInnerContent } from './MapInnerContent'
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '../constants'
 
-/**
- * VERSION v2.2 - Force Build & Resilient Sync
- * Build Time: ${new Date().toISOString()}
- */
 if (typeof window !== 'undefined') {
   // Fix for Leaflet default icon issues 
   delete L.Icon.Default.prototype._getIconUrl;
@@ -21,19 +17,44 @@ if (typeof window !== 'undefined') {
   });
 }
 
+/**
+ * VERSION v2.4 - ULTIMATE RESILIENCE BUILD
+ */
+function MapResilienceHelper() {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    
+    console.log('[MapComponent] v2.4 - ACTIVATING RESILIENCE HELPER');
+    
+    // Multiple invalidation passes to survive Next.js / Tailwind layout shifts
+    const passes = [100, 500, 1000, 2500, 5000];
+    const timers = passes.map(ms => setTimeout(() => {
+      map.invalidateSize();
+      console.log(`[MapComponent] v2.4 - invalidateSize pass (${ms}ms)`);
+      
+      // Force visibility of internal Leaflet panes
+      const panes = document.querySelectorAll('.leaflet-pane, .leaflet-tile-pane');
+      panes.forEach(p => {
+        p.style.opacity = '1';
+        p.style.visibility = 'visible';
+      });
+    }, ms));
+
+    return () => timers.forEach(clearTimeout);
+  }, [map]);
+  return null;
+}
+
 function MapInstanceSync({ controller }: { controller: any }) {
   const map = useMap();
   useEffect(() => {
     if (map) {
-      console.log('[MapComponent] v2.2 - INSTANCE SYNCED - ' + new Date().toLocaleTimeString());
+      console.log('[MapComponent] v2.4 - INSTANCE SYNCED - ' + new Date().toLocaleTimeString());
       controller.mapRef.current = map;
-      setTimeout(() => {
-        map.invalidateSize();
-        console.log('[MapComponent] v2.2 - invalidateSize() executed');
-      }, 500);
     }
     return () => {
-      console.log('[MapComponent] v2.2 - UNMOUNTING map instance');
+      console.log('[MapComponent] v2.4 - UNMOUNTING map instance');
       if (controller.mapRef) controller.mapRef.current = null;
     };
   }, [map, controller]);
@@ -42,11 +63,7 @@ function MapInstanceSync({ controller }: { controller: any }) {
 
 export const MapComponent = ({ controller }: { controller: any }) => {
   return (
-    <div className="relative h-[calc(100vh-180px)] min-h-[550px] lg:min-h-[650px] w-full z-0 overflow-hidden rounded-xl border border-border bg-slate-100 dark:bg-slate-900 shadow-inner">
-      {/* 
-         VERSION v2.3 - Emergency CSS Injection 
-         Injecting directly to ensure it bypasses any build-time purge issues
-      */}
+    <div id="map-root-container" className="relative h-[calc(100vh-180px)] min-h-[550px] lg:min-h-[650px] w-full z-0 overflow-hidden rounded-xl border border-border bg-slate-100 dark:bg-slate-900 shadow-inner">
       <link 
         rel="stylesheet" 
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
@@ -54,11 +71,16 @@ export const MapComponent = ({ controller }: { controller: any }) => {
         crossOrigin="" 
       />
       <style>{`
-        .leaflet-container { background: #f1f5f9 !important; }
-        .dark .leaflet-container { background: #0f172a !important; }
-        .leaflet-tile-container { opacity: 1 !important; visibility: visible !important; }
-        .leaflet-pane { z-index: 400 !important; }
-        .leaflet-top, .leaflet-bottom { z-index: 1000 !important; }
+        .leaflet-container { 
+          height: 100% !important; 
+          width: 100% !important; 
+          background: #f8fafc !important; 
+          z-index: 10 !important;
+        }
+        .dark .leaflet-container { background: #020617 !important; }
+        .leaflet-tile-container { opacity: 1 !important; visibility: visible !important; display: block !important; }
+        .leaflet-pane { z-index: 40 !important; }
+        .leaflet-top, .leaflet-bottom { z-index: 100 !important; }
       `}</style>
       
       <MapContainer
@@ -70,6 +92,7 @@ export const MapComponent = ({ controller }: { controller: any }) => {
         scrollWheelZoom={true}
       >
         <MapInstanceSync controller={controller} />
+        <MapResilienceHelper />
         <MapInnerContent controller={controller} />
       </MapContainer>
     </div>
