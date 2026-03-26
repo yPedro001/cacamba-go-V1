@@ -115,6 +115,7 @@ export default function GerenciamentoPage() {
         onSave={rentals.handleSave}
         clientes={rentals.clientes}
         perfil={perfil}
+        cacambas={inventory.cacambas}
       />
     </div>
   );
