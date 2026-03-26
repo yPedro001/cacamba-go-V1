@@ -18,26 +18,30 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * VERSION v2.4 - ULTIMATE RESILIENCE BUILD
+ * VERSION v2.5 - THERMAL STABILITY BUILD
  */
 function MapResilienceHelper() {
   const map = useMap();
   useEffect(() => {
     if (!map) return;
     
-    console.log('[MapComponent] v2.4 - ACTIVATING RESILIENCE HELPER');
+    console.log('[MapComponent] v2.5 - INITIALIZING RESILIENCE');
     
-    // Multiple invalidation passes to survive Next.js / Tailwind layout shifts
-    const passes = [100, 500, 1000, 2500, 5000];
+    const passes = [50, 250, 750, 2000, 4000];
     const timers = passes.map(ms => setTimeout(() => {
+      // Force Leaflet recalculation
       map.invalidateSize();
-      console.log(`[MapComponent] v2.4 - invalidateSize pass (${ms}ms)`);
       
-      // Force visibility of internal Leaflet panes
-      const panes = document.querySelectorAll('.leaflet-pane, .leaflet-tile-pane');
-      panes.forEach(p => {
-        p.style.opacity = '1';
-        p.style.visibility = 'visible';
+      // Force Global browser recalculation
+      window.dispatchEvent(new Event('resize'));
+      
+      console.log(`[MapComponent] v2.5 - Stability Pass (${ms}ms)`);
+      
+      // Force CSS visibility across all possible Leaflet elements
+      const elements = document.querySelectorAll('.leaflet-pane, .leaflet-tile-pane, .leaflet-layer, .leaflet-marker-icon');
+      elements.forEach(el => {
+        el.style.opacity = '1';
+        el.style.visibility = 'visible';
       });
     }, ms));
 
@@ -50,37 +54,33 @@ function MapInstanceSync({ controller }: { controller: any }) {
   const map = useMap();
   useEffect(() => {
     if (map) {
-      console.log('[MapComponent] v2.4 - INSTANCE SYNCED - ' + new Date().toLocaleTimeString());
+      console.log('[MapComponent] v2.5 - INSTANCE SYNCED - READY');
       controller.mapRef.current = map;
     }
-    return () => {
-      console.log('[MapComponent] v2.4 - UNMOUNTING map instance');
-      if (controller.mapRef) controller.mapRef.current = null;
-    };
   }, [map, controller]);
   return null;
 }
 
 export const MapComponent = ({ controller }: { controller: any }) => {
   return (
-    <div id="map-root-container" className="relative h-[calc(100vh-180px)] min-h-[550px] lg:min-h-[650px] w-full z-0 overflow-hidden rounded-xl border border-border bg-slate-100 dark:bg-slate-900 shadow-inner">
+    <div className="relative h-[calc(100vh-180px)] min-h-[550px] lg:min-h-[650px] w-full z-0 overflow-hidden rounded-xl border border-border bg-slate-100 dark:bg-slate-900 shadow-2xl">
       <link 
         rel="stylesheet" 
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-        crossOrigin="" 
       />
       <style>{`
         .leaflet-container { 
           height: 100% !important; 
+          min-height: 550px !important;
           width: 100% !important; 
           background: #f8fafc !important; 
-          z-index: 10 !important;
+          z-index: 1 !important;
         }
         .dark .leaflet-container { background: #020617 !important; }
-        .leaflet-tile-container { opacity: 1 !important; visibility: visible !important; display: block !important; }
-        .leaflet-pane { z-index: 40 !important; }
-        .leaflet-top, .leaflet-bottom { z-index: 100 !important; }
+        .leaflet-tile-pane { z-index: 10 !important; opacity: 1 !important; }
+        .leaflet-marker-pane { z-index: 600 !important; }
+        .leaflet-popup-pane { z-index: 700 !important; }
+        .leaflet-top, .leaflet-bottom { z-index: 1000 !important; }
       `}</style>
       
       <MapContainer
