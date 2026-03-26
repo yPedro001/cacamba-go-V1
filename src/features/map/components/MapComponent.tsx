@@ -2,8 +2,20 @@
 
 import React, { useLayoutEffect, useState, useRef } from 'react'
 import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { LeafletProvider, createLeafletContext } from '@react-leaflet/core'
+
+/**
+ * Fix for Leaflet default icon issues in Next.js/Webpack
+ */
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  });
+}
 import { MapInnerContent } from './MapInnerContent'
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from '../constants'
 
