@@ -43,12 +43,30 @@ function MapInstanceSync({ controller }: { controller: any }) {
 export const MapComponent = ({ controller }: { controller: any }) => {
   return (
     <div className="relative h-[calc(100vh-180px)] min-h-[550px] lg:min-h-[650px] w-full z-0 overflow-hidden rounded-xl border border-border bg-slate-100 dark:bg-slate-900 shadow-inner">
+      {/* 
+         VERSION v2.3 - Emergency CSS Injection 
+         Injecting directly to ensure it bypasses any build-time purge issues
+      */}
+      <link 
+        rel="stylesheet" 
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+        crossOrigin="" 
+      />
+      <style>{`
+        .leaflet-container { background: #f1f5f9 !important; }
+        .dark .leaflet-container { background: #0f172a !important; }
+        .leaflet-tile-container { opacity: 1 !important; visibility: visible !important; }
+        .leaflet-pane { z-index: 400 !important; }
+        .leaflet-top, .leaflet-bottom { z-index: 1000 !important; }
+      `}</style>
+      
       <MapContainer
         center={DEFAULT_CENTER}
         zoom={DEFAULT_ZOOM}
         zoomControl={false}
         attributionControl={true}
-        style={{ height: '100%', width: '100%', background: '#f8fafc' }}
+        style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
       >
         <MapInstanceSync controller={controller} />
