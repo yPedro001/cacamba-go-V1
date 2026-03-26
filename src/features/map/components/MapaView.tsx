@@ -75,21 +75,21 @@ export default function MapaView() {
               <CardContent className="space-y-6 pt-6 flex-1 flex flex-col justify-between">
                 
                 {/* LEGENDA DE STATUS */}
-                <div className="space-y-4">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <div className="space-y-6 flex-1 flex flex-col justify-center py-4">
+                  <p className="text-[12px] font-black uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-2 mb-2">
                     LEGENDA DE STATUS
                   </p>
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                  <div className="grid grid-cols-2 gap-x-12 gap-y-6">
                     {Object.entries(MAP_COLORS).map(([key, val]) => (
                       <div 
                         key={key} 
                         onClick={() => controller.setFilterColor(controller.filterColor === key ? 'todos' : key as any)} 
-                        className="flex items-start gap-3 cursor-pointer group/item"
+                        className="flex items-start gap-4 cursor-pointer group/item"
                       >
-                        <div className="mt-1 h-3 w-3 rounded-full flex-shrink-0 animate-pulse-subtle" style={{ backgroundColor: val.bg, border: `2px solid ${val.ring}` }} />
+                        <div className="mt-1 h-4 w-4 rounded-full flex-shrink-0 animate-pulse-subtle shadow-sm" style={{ backgroundColor: val.bg, border: `2.5px solid ${val.ring}` }} />
                         <div className="leading-tight">
-                          <p className="text-[11px] font-black text-foreground group-hover/item:text-primary transition-colors">{val.label}</p>
-                          <p className="text-[9px] text-muted-foreground/80 font-medium">{val.desc}</p>
+                          <p className="text-sm font-black text-foreground group-hover/item:text-primary transition-colors">{val.label}</p>
+                          <p className="text-[11px] text-muted-foreground/90 font-semibold mt-0.5">{val.desc}</p>
                         </div>
                       </div>
                     ))}
