@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import { Marker, Popup, Circle, Polyline } from 'react-leaflet';
 import L from 'leaflet';

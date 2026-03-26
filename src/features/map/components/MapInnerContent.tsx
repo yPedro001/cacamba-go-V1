@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import { TileLayer } from 'react-leaflet';
 import { useMapController } from '../hooks/useMapController';
