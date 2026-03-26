@@ -24,45 +24,45 @@ export default function MapaView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
-        {/* MAPA - OCUPA O CENTRO/ESQUERDA AMPLIADO */}
-        <div className="lg:col-span-8 xl:col-span-9 w-full">
+      <div className="flex flex-col lg:flex-row gap-6 items-start w-full min-h-[calc(100vh-200px)]">
+        {/* MAPA - OCUPA TODO O ESPAÇO DISPONÍVEL (CENTRALIZADO NO FLUXO PRINCIPAL) */}
+        <div className="flex-1 w-full h-full min-w-0 order-1">
           <MapComponent controller={controller} />
         </div>
         
-        {/* BARRA LATERAL - ITINERÁRIO E CONTROLES NO CANTO DIREITO */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-4 lg:sticky lg:top-6 w-full">
-          <Card className="shadow-highlight border-primary/10">
-            <CardHeader className="pb-3">
+        {/* BARRA LATERAL - PINADA À DIREITA */}
+        <div className="w-full lg:w-80 xl:w-[400px] flex-shrink-0 space-y-4 lg:sticky lg:top-6 order-2">
+          <Card className="shadow-highlight border-primary/10 overflow-hidden">
+            <CardHeader className="pb-3 bg-muted/20">
               <CardTitle className="text-lg font-black flex items-center gap-2">
                 <div className="w-1.5 h-6 bg-primary rounded-full" />
                 Itinerário do Dia
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               <div className="space-y-3">
                 <div className="p-3 border-l-4 border-l-blue-500 bg-blue-500/5 hover:bg-blue-500/10 transition-colors rounded-r-md">
                   <p className="font-bold text-sm text-blue-700 dark:text-blue-400">Entrega Urgente: C-008</p>
-                  <p className="text-xs text-muted-foreground">Pátio principal</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1">Pátio principal</p>
                   <p className="text-[11px] font-semibold mt-1 opacity-80">Levar para base de operações</p>
                 </div>
                 
                 <div className="p-3 border-l-4 border-l-yellow-500 bg-yellow-500/5 hover:bg-yellow-500/10 transition-colors rounded-r-md">
                   <p className="font-bold text-sm text-yellow-700 dark:text-yellow-400">Entrega: C-052</p>
-                  <p className="text-xs text-muted-foreground">Roberto Almeida</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1">Roberto Almeida</p>
                   <p className="text-[11px] font-semibold mt-1 opacity-80">Av. Brasil, 2500 - 10:00</p>
                 </div>
                 
                 <div className="p-3 border-l-4 border-l-red-500 bg-red-500/5 hover:bg-red-500/10 transition-colors rounded-r-md">
                   <p className="font-bold text-sm text-red-700 dark:text-red-400">Retirada: C-045</p>
-                  <p className="text-xs text-muted-foreground">Maria Souza</p>
+                  <p className="text-xs text-muted-foreground line-clamp-1">Maria Souza</p>
                   <p className="text-[11px] font-semibold mt-1 opacity-80">Rua Augusta, 400 - 14:00</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border shadow-2xl bg-card/50 backdrop-blur-sm">
+          <Card className="border-border shadow-2xl bg-card/80 backdrop-blur-xl">
             <CardHeader className="pb-2">
               <CardTitle className="text-md font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Controles do Mapa</CardTitle>
             </CardHeader>
