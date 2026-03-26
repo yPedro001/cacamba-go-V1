@@ -5,6 +5,8 @@ import { useDataActions } from '@/core/application/useDataActions';
 import { getMapColor } from '@/core/domain/business-logic';
 import { Cacamba, MapColor } from '@/core/domain/types';
 
+export type MapController = ReturnType<typeof useMapController>;
+
 export function useMapController() {
   const cacambas = useCacambas();
   const locacoes = useLocacoes();
