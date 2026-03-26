@@ -60,6 +60,18 @@ export function MapComponent({ controller }: { controller: any }) {
     };
   }, []); // Only run once on mount
 
+  React.useEffect(() => {
+    if (context) {
+      const timer = setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        if (controller.mapRef.current) {
+          controller.mapRef.current.invalidateSize();
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [context, controller.mapRef]);
+
   return (
     <div className="relative h-[calc(100vh-180px)] min-h-[550px] lg:min-h-[650px] w-full z-0 overflow-hidden rounded-xl border border-border bg-slate-100">
       <div ref={containerRef} className="h-full w-full" />
