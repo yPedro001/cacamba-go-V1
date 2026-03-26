@@ -12,7 +12,8 @@ import {
   LogOut,
   UserCircle
 } from "lucide-react"
-import { useAppStore, useUsuarioAtual } from "@/store/useAppStore"
+import { useUsuarioAtual } from "@/store/useAppStore"
+import { useAuthActions } from "@/core/application/useAuthActions"
 
 const links = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -27,7 +28,7 @@ const links = [
 export function Sidebar() {
   const pathname = usePathname()
   const usuarioAtual = useUsuarioAtual()
-  const logout = useAppStore(s => s.logout)
+  const { logout } = useAuthActions()
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-border transition-transform -translate-x-full md:translate-x-0">
