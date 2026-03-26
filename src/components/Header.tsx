@@ -1,12 +1,13 @@
 "use client"
 import { ModeToggle } from "./ModeToggle"
 import { LogOut } from "lucide-react"
-import { useAppStore, useUsuarioAtual } from "@/store/useAppStore"
+import { useUsuarioAtual } from "@/store/useAppStore"
+import { useAuthActions } from "@/core/application/useAuthActions"
 import { NotificationBell } from "./NotificationBell"
 
 export function Header() {
   const usuarioAtual = useUsuarioAtual()
-  const logout = useAppStore(s => s.logout)
+  const { logout } = useAuthActions()
   return (
     <header className="flex h-16 w-full items-center justify-between border-b border-border bg-background px-4">
       <div className="flex items-center">
