@@ -32,7 +32,7 @@ export const CacambaSchema = z.object({
 
 export const MetodoPagamentoSchema = z.enum(['pix', 'debito', 'credito', 'boleto']);
 
-export const LocacaoStatusSchema = z.enum(['entrega_pendente', 'em_uso', 'vencida', 'pago']);
+export const LocacaoStatusSchema = z.enum(['entrega_pendente', 'em_uso', 'vencida', 'pago', 'a_pagar', 'concluida']);
 
 export const LocacaoSchema = z.object({
   id: z.string().optional(),
