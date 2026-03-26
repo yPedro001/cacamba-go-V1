@@ -13,7 +13,7 @@ export default function MapaView() {
   const clientes = useClientes();
 
   return (
-    <div className="space-y-6" data-build-v2-4="true">
+    <div className="space-y-6 w-full max-w-none px-2" data-build-layout-fix="true">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-3xl font-bold tracking-tight">Mapa de Operações</h2>
         <div className="flex gap-2 bg-background border border-border p-2 rounded-lg">
@@ -24,40 +24,45 @@ export default function MapaView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-        <div className="lg:col-span-3">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        {/* MAPA - OCUPA O CENTRO/ESQUERDA AMPLIADO */}
+        <div className="lg:col-span-8 xl:col-span-9 w-full">
           <MapComponent controller={controller} />
         </div>
         
-        <div className="space-y-4 lg:sticky lg:top-6">
-          <Card>
+        {/* BARRA LATERAL - ITINERÁRIO E CONTROLES NO CANTO DIREITO */}
+        <div className="lg:col-span-4 xl:col-span-3 space-y-4 lg:sticky lg:top-6 w-full">
+          <Card className="shadow-highlight border-primary/10">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Itinerário do Dia</CardTitle>
+              <CardTitle className="text-lg font-black flex items-center gap-2">
+                <div className="w-1.5 h-6 bg-primary rounded-full" />
+                Itinerário do Dia
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="p-3 border-l-4 border-l-blue-500 bg-muted/30 rounded-r-md">
-                  <p className="font-semibold text-sm">Entrega Urgente: C-008</p>
+                <div className="p-3 border-l-4 border-l-blue-500 bg-blue-500/5 hover:bg-blue-500/10 transition-colors rounded-r-md">
+                  <p className="font-bold text-sm text-blue-700 dark:text-blue-400">Entrega Urgente: C-008</p>
                   <p className="text-xs text-muted-foreground">Pátio principal</p>
-                  <p className="text-xs font-medium mt-1">Levar para base de operações</p>
+                  <p className="text-[11px] font-semibold mt-1 opacity-80">Levar para base de operações</p>
                 </div>
                 
-                <div className="p-3 border-l-4 border-l-yellow-500 bg-muted/30 rounded-r-md">
-                  <p className="font-semibold text-sm">Entrega: C-052</p>
+                <div className="p-3 border-l-4 border-l-yellow-500 bg-yellow-500/5 hover:bg-yellow-500/10 transition-colors rounded-r-md">
+                  <p className="font-bold text-sm text-yellow-700 dark:text-yellow-400">Entrega: C-052</p>
                   <p className="text-xs text-muted-foreground">Roberto Almeida</p>
-                  <p className="text-xs font-medium mt-1">Av. Brasil, 2500 - 10:00</p>
+                  <p className="text-[11px] font-semibold mt-1 opacity-80">Av. Brasil, 2500 - 10:00</p>
                 </div>
                 
-                <div className="p-3 border-l-4 border-l-red-500 bg-muted/30 rounded-r-md">
-                  <p className="font-semibold text-sm">Retirada: C-045</p>
+                <div className="p-3 border-l-4 border-l-red-500 bg-red-500/5 hover:bg-red-500/10 transition-colors rounded-r-md">
+                  <p className="font-bold text-sm text-red-700 dark:text-red-400">Retirada: C-045</p>
                   <p className="text-xs text-muted-foreground">Maria Souza</p>
-                  <p className="text-xs font-medium mt-1">Rua Augusta, 400 - 14:00</p>
+                  <p className="text-[11px] font-semibold mt-1 opacity-80">Rua Augusta, 400 - 14:00</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-border shadow-md">
+          <Card className="border-border shadow-2xl bg-card/50 backdrop-blur-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-md font-bold text-muted-foreground uppercase tracking-widest text-[10px]">Controles do Mapa</CardTitle>
             </CardHeader>
