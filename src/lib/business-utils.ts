@@ -1,4 +1,4 @@
-import type { Cliente } from '@/store/useAppStore'
+import type { Cliente } from '@/core/domain/types'
 
 /**
  * Retorna o nome de um cliente pelo ID.

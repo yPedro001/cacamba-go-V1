@@ -33,7 +33,10 @@ export const createDataSlice: StateCreator<DataSlice> = (set) => ({
     padroes: {
       valorAluguel: 300,
       tamanhoCacamba: '5m',
-      prefixoCacamba: 'C-'
+      prefixoCacamba: 'C-',
+      taxaMaquininhaPadrao: 0,
+      jurosParcelamento: 0,
+      parcelasSemJuros: 1
     }
   },
   usersData: {},

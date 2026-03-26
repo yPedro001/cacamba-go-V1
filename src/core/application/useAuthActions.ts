@@ -30,7 +30,14 @@ export function useAuthActions() {
       nomeEmpresa: 'Minha Empresa de Caçambas',
       cnpj: '', telefone: '', email: '', endereco: '',
       lat: perfilLat, lng: perfilLng,
-      padroes: { valorAluguel: 300, tamanhoCacamba: '5m', prefixoCacamba: 'C-' }
+      padroes: { 
+        valorAluguel: 300, 
+        tamanhoCacamba: '5m', 
+        prefixoCacamba: 'C-',
+        taxaMaquininhaPadrao: 0,
+        jurosParcelamento: 0,
+        parcelasSemJuros: 1
+      }
     },
     notificacoes: [],
     configuracoes: { pularConfirmacaoExclusao: false }

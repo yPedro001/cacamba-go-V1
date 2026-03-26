@@ -53,7 +53,7 @@ export function useRentalsController() {
     const data = list.map(l => {
       const cliente = clientes.find(c => c.id === l.clienteId);
       return [
-        l.id.slice(-6).toUpperCase(),
+        l.id!.slice(-6).toUpperCase(),
         cliente?.nome || 'Desconhecido',
         new Date(l.dataRetirada).toLocaleDateString('pt-BR'),
         new Date(l.dataDevolucaoPrevista).toLocaleDateString('pt-BR'),
@@ -74,7 +74,7 @@ export function useRentalsController() {
     const data = list.map(l => {
       const cliente = clientes.find(c => c.id === l.clienteId);
       return [
-        l.id,
+        l.id!,
         cliente?.nome || 'Desconhecido',
         l.enderecoObra,
         l.dataRetirada,

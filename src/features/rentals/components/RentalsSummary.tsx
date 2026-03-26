@@ -79,7 +79,7 @@ export function RentalsSummary({
                 <p className="text-xs text-muted-foreground truncate w-full">{l.enderecoObra}</p>
               </div>
               <Button 
-                onClick={() => onMarkConcluida(l.id)} size="sm" variant="outline" 
+                onClick={() => onMarkConcluida(l.id!)} size="sm" variant="outline" 
                 className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white h-7 px-2 text-xs transition-all"
               >
                 <CheckCircle className="h-3 w-3 mr-1" /> Marcar
@@ -113,7 +113,7 @@ export function RentalsSummary({
                 <p className="text-xs text-muted-foreground truncate w-full">{l.enderecoObra}</p>
               </div>
               <Button 
-                onClick={() => onMarkPago(l.id)} size="sm" variant="outline" 
+                onClick={() => onMarkPago(l.id!)} size="sm" variant="outline" 
                 className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white h-7 px-2 text-xs transition-all"
               >
                 <CheckCircle className="h-3 w-3 mr-1" /> Entregue

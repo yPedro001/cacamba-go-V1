@@ -41,7 +41,7 @@ export const geocodeService = {
       if (data.erro) return null;
 
       // Try to get coordinates via our internal proxy
-      let coords = { lat: undefined, lng: undefined };
+      let coords: { lat?: number; lng?: number } = {};
       try {
         const geoRes = await fetch(`${NOMINATIM_BASE_URL}?q=${encodeURIComponent(`${data.logradouro}, ${data.localidade}, Brasil`)}`);
         if (geoRes.ok) {
