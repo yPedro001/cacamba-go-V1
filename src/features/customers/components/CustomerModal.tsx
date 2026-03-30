@@ -28,7 +28,7 @@ export function CustomerModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div className="bg-card text-card-foreground w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-border flex flex-col max-h-[90vh]">
-        <div className="flex justify-between items-center p-4 border-b border-border bg-muted/30">
+        <div className="flex justify-between items-center p-4 border-b border-border bg-muted/30 shrink-0">
           <h3 className="text-lg font-bold">{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</h3>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">
             <X className="h-5 w-5" />
@@ -118,7 +118,7 @@ export function CustomerModal({
           </div>
         </div>
 
-        <div className="flex justify-end p-4 border-t border-border bg-muted/30 gap-2">
+        <div className="flex justify-end p-4 border-t border-border bg-muted/30 gap-2 shrink-0">
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={onSave} className="bg-accent hover:bg-accent-dark text-white font-bold px-6">
             {isEditing ? 'Salvar Alterações' : 'Cadastrar Cliente'}
