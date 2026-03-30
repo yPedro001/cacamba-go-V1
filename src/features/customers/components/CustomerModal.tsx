@@ -27,7 +27,7 @@ export function CustomerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-card text-card-foreground w-full max-w-lg rounded-xl shadow-2xl overflow-hidden border border-border">
+      <div className="bg-card text-card-foreground w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-border flex flex-col max-h-[90vh]">
         <div className="flex justify-between items-center p-4 border-b border-border bg-muted/30">
           <h3 className="text-lg font-bold">{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</h3>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">
@@ -35,7 +35,7 @@ export function CustomerModal({
           </Button>
         </div>
         
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold text-muted-foreground">Nome da Empresa ou Pessoa *</label>

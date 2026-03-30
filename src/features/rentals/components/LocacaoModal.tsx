@@ -121,7 +121,7 @@ export function LocacaoModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <form 
         onSubmit={handleSubmit(onSave)}
-        className="bg-card text-card-foreground w-full max-w-lg rounded-xl shadow-2xl overflow-hidden border border-border"
+        className="bg-card text-card-foreground w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-border flex flex-col max-h-[90vh]"
       >
         <div className="flex justify-between items-center p-4 border-b border-border bg-muted/30">
           <h3 className="text-lg font-bold">{locacao?.id ? 'Editar Locação' : 'Nova Locação'}</h3>
@@ -130,7 +130,7 @@ export function LocacaoModal({
           </Button>
         </div>
 
-        <div className="p-6 space-y-4 max-h-[72vh] overflow-y-auto">
+        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
           {/* Cliente */}
           <div className="space-y-2">
             <label className="text-sm font-semibold text-muted-foreground">Cliente</label>
