@@ -118,150 +118,120 @@ export function LocacaoModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 py-12">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <form 
         onSubmit={handleSubmit(onSave)}
-        className="bg-card text-card-foreground w-full max-w-lg rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden border-2 border-border flex flex-col max-h-[70vh]"
+        className="bg-card text-card-foreground w-full max-w-[400px] rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.4)] overflow-hidden border border-border flex flex-col max-h-[60vh]"
       >
-        <div className="flex justify-between items-center p-4 border-b border-border bg-muted/30 shrink-0">
-          <h3 className="text-lg font-bold">{locacao?.id ? 'Editar Locação' : 'Nova Locação'}</h3>
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">
-            <X className="h-5 w-5" />
+        <div className="flex justify-between items-center p-3 border-b border-border bg-muted/30 shrink-0">
+          <h3 className="text-xs font-bold uppercase tracking-wider">{locacao?.id ? 'Editar Locação' : 'Nova Locação'}</h3>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6 rounded-full">
+            <X className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
+        <div className="p-4 space-y-3 flex-1 overflow-y-auto min-h-0 text-[13px]">
           {/* Cliente */}
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-muted-foreground">Cliente</label>
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-muted-foreground uppercase">Cliente</label>
             <select
               {...register('clienteId')}
-              className="w-full h-10 px-3 py-2 rounded-md border border-input bg-card text-card-foreground text-sm focus:ring-2 focus:ring-accent outline-none"
+              className="w-full h-8 px-2 py-1 rounded border border-input bg-card text-card-foreground text-xs outline-none"
             >
-              <option value="" className="bg-card text-card-foreground">Selecione o Cliente</option>
-              {clientes.map(c => <option key={c.id} value={c.id} className="bg-card text-card-foreground">{c.nome}</option>)}
+              <option value="">Selecione...</option>
+              {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
-            {errors.clienteId && <span className="text-xs text-red-500 font-medium">{errors.clienteId.message}</span>}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Qtd. Caçambas</label>
-              <Input type="number" {...register('quantidadeCacambas', { valueAsNumber: true })} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase">Qtd</label>
+              <Input className="h-8 text-xs" type="number" {...register('quantidadeCacambas', { valueAsNumber: true })} />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Status</label>
-              <select {...register('status')} className="w-full h-10 px-3 py-2 rounded-md border border-input bg-transparent text-sm">
-                <option value="entrega_pendente">Entrega Pendente</option>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase">Status</label>
+              <select {...register('status')} className="w-full h-8 px-2 py-1 rounded border border-input bg-transparent text-xs">
+                <option value="entrega_pendente">Pendente</option>
                 <option value="em_uso">Em Uso</option>
-                <option value="vencida">Vencida/Retirar</option>
+                <option value="vencida">Vencida</option>
                 <option value="pago">Pago</option>
               </select>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-muted-foreground">Caçamba (Opcional)</label>
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-muted-foreground uppercase">Caçamba (Opcional)</label>
             <select
               {...register('cacambaId')}
-              className="w-full h-10 px-3 py-2 rounded-md border border-input bg-card text-card-foreground text-sm focus:ring-2 focus:ring-accent outline-none"
+              className="w-full h-8 px-2 py-1 rounded border border-input bg-card text-xs outline-none"
             >
-              <option value="" className="bg-card text-card-foreground">Alocação Automática</option>
+              <option value="">Automática</option>
               {cacambas.filter(c => c.status === 'disponivel').map(c => (
-                <option key={c.id} value={c.id} className="bg-card text-card-foreground">
-                  {c.codigo} ({c.tamanho || '5m³'})
-                </option>
+                <option key={c.id} value={c.id}>{c.codigo}</option>
               ))}
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Data Retirada</label>
-              <Input type="date" {...register('dataRetirada')} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase">Retirada</label>
+              <Input className="h-8 text-xs" type="date" {...register('dataRetirada')} />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Prev. Devolução</label>
-              <Input type="date" {...register('dataDevolucaoPrevista')} />
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase">Devolução</label>
+              <Input className="h-8 text-xs" type="date" {...register('dataDevolucaoPrevista')} />
             </div>
           </div>
 
-          <div className="space-y-4 relative border p-4 rounded-xl border-border bg-muted/10">
-            <label className="text-sm font-semibold text-muted-foreground flex justify-between">
-              ENDEREÇO DA OBRA
-              {watchLat && <span className="text-green-500 text-xs flex items-center bg-green-500/10 px-2 py-0.5 rounded-full"><CheckCircle2 className="w-3 h-3 mr-1"/> Validado</span>}
-            </label>
+          <div className="space-y-2 p-3 border rounded border-border bg-muted/10">
+            <label className="text-[10px] font-black text-muted-foreground/60 uppercase">Endereço da Obra</label>
             <AddressAutocomplete 
               value={watchEndereco || ''} 
               onChange={(val, lat, lng) => {
                 setValue('enderecoObra', val);
                 if (lat && lng) { setValue('lat', lat); setValue('lng', lng); }
               }} 
-              placeholder="Digite a rua e cidade..." 
+              placeholder="Rua e cidade..." 
             />
-            <div className="space-y-2">
-                <label className="text-[11px] font-semibold text-muted-foreground uppercase">Ou Buscar por CEP</label>
-                <div className="relative">
-                  <Input placeholder="00000-000" onBlur={e => handleCepLookup(e.target.value)} />
-                  {isCepLoading && <div className="absolute right-2 top-2.5 h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>}
-                </div>
+            <div className="relative">
+              <Input className="h-8 text-xs" placeholder="CEP" onBlur={e => handleCepLookup(e.target.value)} />
+              {isCepLoading && <div className="absolute right-2 top-2 h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Valor Total (R$)</label>
-              <Input type="number" step="0.01" {...register('valor', { valueAsNumber: true })} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Pagamento</label>
-              <select {...register('metodoPagamento')} className="w-full h-10 px-3 py-2 rounded-md border border-input bg-card text-card-foreground text-sm outline-none">
-                <option value="pix" className="bg-card text-card-foreground">PIX</option>
-                <option value="debito" className="bg-card text-card-foreground">Débito</option>
-                <option value="credito" className="bg-card text-card-foreground">Crédito</option>
-                <option value="boleto" className="bg-card text-card-foreground">Boleto</option>
-              </select>
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+             <div className="space-y-1">
+               <label className="text-[11px] font-bold text-muted-foreground uppercase">Valor (R$)</label>
+               <Input className="h-8 text-xs" type="number" step="0.01" {...register('valor', { valueAsNumber: true })} />
+             </div>
+             <div className="space-y-1">
+               <label className="text-[11px] font-bold text-muted-foreground uppercase">Pagamento</label>
+               <select {...register('metodoPagamento')} className="w-full h-8 px-2 py-1 rounded border border-input bg-card text-xs outline-none">
+                 <option value="pix">PIX</option>
+                 <option value="debito">Débito</option>
+                 <option value="credito">Crédito</option>
+                 <option value="boleto">Boleto</option>
+               </select>
+             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Parcelas (Opcional)</label>
-              <select {...register('parcelas', { valueAsNumber: true })} className="w-full h-10 px-3 py-2 rounded-md border border-input bg-card text-card-foreground text-sm outline-none">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <option key={i+1} value={i+1}>{i+1}x</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Juros (%)</label>
-              <Input type="number" step="0.01" {...register('jurosPercent', { valueAsNumber: true })} />
-            </div>
-          </div>
-
-          {/* Resumo Financeiro */}
-          <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-1 text-sm">
+          {/* Resumo Financeiro Simplificado */}
+          <div className="rounded border border-border bg-muted/30 p-2 space-y-1 text-[11px]">
              <div className="flex justify-between font-bold">
-               <span>Total (com Juros):</span>
+               <span>Total:</span>
                <span className="text-accent">R$ {((watchValor || 0) * (1 + (watch('jurosPercent') || 0) / 100)).toFixed(2)}</span>
              </div>
-             {(watchMetodo === 'credito' || watchMetodo === 'debito') && (
-               <div className="flex justify-between text-red-500/80 text-xs italic">
-                 <span>Taxa p/ Empresa ({watchTaxaPercent}%):</span>
-                 <span>- R$ {(watch('valorTaxa') || 0).toFixed(2)}</span>
-               </div>
-             )}
-             <div className="flex justify-between font-bold text-green-600 pt-1 border-t border-border/50">
-               <span>Líquido p/ Empresa:</span>
+             <div className="flex justify-between text-green-600 font-bold border-t border-border/50 pt-1 mt-1">
+               <span>Líquido:</span>
                <span>R$ {(watch('valorLiquido') || 0).toFixed(2)}</span>
              </div>
           </div>
         </div>
 
-        <div className="flex justify-end p-4 border-t border-border bg-muted/30 gap-2 shrink-0">
-          <Button variant="outline" type="button" onClick={onClose}>Cancelar</Button>
-          <Button type="submit" className="bg-accent hover:bg-accent-dark text-white font-bold px-6">
-            {locacao?.id ? 'Salvar Alterações' : 'Cadastrar Locação'}
+        <div className="flex justify-end p-3 border-t border-border bg-muted/30 gap-2 shrink-0">
+          <button type="button" onClick={onClose} className="text-[11px] font-bold hover:underline">Cancelar</button>
+          <Button type="submit" size="sm" className="bg-accent hover:bg-accent-dark text-white font-bold px-4 text-xs h-8">
+            {locacao?.id ? 'Salvar' : 'Cadastrar'}
           </Button>
         </div>
       </form>

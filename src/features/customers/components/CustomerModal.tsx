@@ -26,28 +26,30 @@ export function CustomerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 py-12">
-      <div className="bg-card text-card-foreground w-full max-w-lg rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden border-2 border-border flex flex-col max-h-[70vh]">
-        <div className="flex justify-between items-center p-4 border-b border-border bg-muted/30 shrink-0">
-          <h3 className="text-lg font-bold">{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</h3>
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">
-            <X className="h-5 w-5" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div className="bg-card text-card-foreground w-full max-w-[420px] rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden border border-border flex flex-col max-h-[60vh]">
+        <div className="flex justify-between items-center p-3 border-b border-border bg-muted/30 shrink-0">
+          <h3 className="text-sm font-bold uppercase tracking-tight">{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</h3>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6 rounded-full">
+            <X className="h-4 w-4" />
           </Button>
         </div>
         
-        <div className="p-6 space-y-4 flex-1 overflow-y-auto min-h-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Nome da Empresa ou Pessoa *</label>
+        <div className="p-4 space-y-3 flex-1 overflow-y-auto min-h-0 text-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase">Nome *</label>
               <Input 
+                className="h-8 text-xs"
                 value={currentClient.nome || ''} 
                 onChange={e => setCurrentClient({...currentClient, nome: e.target.value})} 
                 placeholder="Ex: Construtora X" 
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">CPF / CNPJ</label>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase">CPF / CNPJ</label>
               <Input 
+                className="h-8 text-xs"
                 value={currentClient.cpfCnpj || ''} 
                 onChange={e => setCurrentClient({...currentClient, cpfCnpj: e.target.value})} 
                 placeholder="000.000.000-00" 
@@ -55,30 +57,31 @@ export function CustomerModal({
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Telefone principal *</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase">Telefone *</label>
               <Input 
+                className="h-8 text-xs"
                 value={currentClient.telefone || ''} 
                 onChange={e => setCurrentClient({...currentClient, telefone: e.target.value})} 
                 placeholder="(11) 99999-9999" 
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">E-mail</label>
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase">E-mail</label>
               <Input 
+                className="h-8 text-xs"
                 value={currentClient.email || ''} 
                 onChange={e => setCurrentClient({...currentClient, email: e.target.value})} 
-                placeholder="contato@empresa.com" 
+                placeholder="Ex: contato@..." 
               />
             </div>
           </div>
 
-          <div className="space-y-4 p-4 border rounded-xl bg-muted/10 border-border">
-            <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Endereço Principal</label>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="col-span-3 space-y-2">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">Rua</label>
+          <div className="space-y-3 p-3 border rounded-lg bg-muted/10 border-border">
+            <p className="text-[10px] font-black text-muted-foreground/50 uppercase tracking-tighter">Endereço</p>
+            <div className="grid grid-cols-4 gap-2">
+              <div className="col-span-3 space-y-1">
                 <AddressAutocomplete 
                   value={enderecoForm.rua} 
                   onChange={(val, lat, lng, address) => {
@@ -89,39 +92,24 @@ export function CustomerModal({
                       cep: address?.postcode || prev.cep
                     }));
                   }} 
-                  placeholder="Buscar rua..." 
+                  placeholder="Rua..." 
                 />
               </div>
-              <div className="col-span-1 space-y-2">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">Número</label>
-                <Input value={enderecoForm.numero} onChange={e => setEnderecoForm({...enderecoForm, numero: e.target.value})} placeholder="123" />
+              <div className="space-y-1">
+                <Input className="h-8 text-xs" value={enderecoForm.numero} onChange={e => setEnderecoForm({...enderecoForm, numero: e.target.value})} placeholder="Nº" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">Cidade</label>
-                <Input value={enderecoForm.cidade} onChange={e => setEnderecoForm({...enderecoForm, cidade: e.target.value})} placeholder="Ex: São Paulo" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold text-muted-foreground uppercase">CEP</label>
-                <div className="relative">
-                  <Input 
-                    value={enderecoForm.cep} 
-                    onChange={e => setEnderecoForm({...enderecoForm, cep: e.target.value})} 
-                    onBlur={e => handleCepLookup(e.target.value)}
-                    placeholder="00000-000" 
-                  />
-                  {isCepLoading && <div className="absolute right-2 top-2.5 h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />}
-                </div>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Input className="h-8 text-xs" value={enderecoForm.cidade} onChange={e => setEnderecoForm({...enderecoForm, cidade: e.target.value})} placeholder="Cidade" />
+              <Input className="h-8 text-xs" value={enderecoForm.cep} onChange={e => setEnderecoForm({...enderecoForm, cep: e.target.value})} onBlur={e => handleCepLookup(e.target.value)} placeholder="00000-000" />
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end p-4 border-t border-border bg-muted/30 gap-2 shrink-0">
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={onSave} className="bg-accent hover:bg-accent-dark text-white font-bold px-6">
-            {isEditing ? 'Salvar Alterações' : 'Cadastrar Cliente'}
+        <div className="flex justify-end p-3 border-t border-border bg-muted/30 gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={onClose} className="text-xs h-8">Cancelar</Button>
+          <Button onClick={onSave} size="sm" className="bg-accent hover:bg-accent-dark text-white font-bold px-4 text-xs h-8">
+            {isEditing ? 'Salvar' : 'Cadastrar'}
           </Button>
         </div>
       </div>
