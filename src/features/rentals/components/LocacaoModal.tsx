@@ -145,35 +145,34 @@ export function LocacaoModal({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-                <label className="text-sm font-semibold text-muted-foreground">Qtd. Caçambas</label>
-                <Input type="number" {...register('quantidadeCacambas', { valueAsNumber: true })} />
-             </div>
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-2">
-                <label className="text-sm font-semibold text-muted-foreground">Caçamba (Opcional)</label>
-                <select
-                  {...register('cacambaId')}
-                  className="w-full h-10 px-3 py-2 rounded-md border border-input bg-card text-card-foreground text-sm focus:ring-2 focus:ring-accent outline-none"
-                >
-                  <option value="" className="bg-card text-card-foreground">Alocação Automática</option>
-                  {cacambas.filter(c => c.status === 'disponivel').map(c => (
-                    <option key={c.id} value={c.id} className="bg-card text-card-foreground">
-                      {c.codigo} ({c.tamanho || '5m³'})
-                    </option>
-                  ))}
-                </select>
-             </div>
-             <div className="space-y-2">
-                <label className="text-sm font-semibold text-muted-foreground">Status</label>
-                <select {...register('status')} className="w-full h-10 px-3 py-2 rounded-md border border-input bg-transparent text-sm">
-                  <option value="entrega_pendente">Entrega Pendente</option>
-                  <option value="em_uso">Em Uso</option>
-                  <option value="vencida">Vencida/Retirar</option>
-                  <option value="pago">Pago</option>
-                </select>
-             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-muted-foreground">Qtd. Caçambas</label>
+              <Input type="number" {...register('quantidadeCacambas', { valueAsNumber: true })} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-muted-foreground">Status</label>
+              <select {...register('status')} className="w-full h-10 px-3 py-2 rounded-md border border-input bg-transparent text-sm">
+                <option value="entrega_pendente">Entrega Pendente</option>
+                <option value="em_uso">Em Uso</option>
+                <option value="vencida">Vencida/Retirar</option>
+                <option value="pago">Pago</option>
+              </select>
+            </div>
           </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-muted-foreground">Caçamba (Opcional)</label>
+            <select
+              {...register('cacambaId')}
+              className="w-full h-10 px-3 py-2 rounded-md border border-input bg-card text-card-foreground text-sm focus:ring-2 focus:ring-accent outline-none"
+            >
+              <option value="" className="bg-card text-card-foreground">Alocação Automática</option>
+              {cacambas.filter(c => c.status === 'disponivel').map(c => (
+                <option key={c.id} value={c.id} className="bg-card text-card-foreground">
+                  {c.codigo} ({c.tamanho || '5m³'})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
