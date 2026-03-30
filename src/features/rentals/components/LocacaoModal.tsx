@@ -118,10 +118,10 @@ export function LocacaoModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm pl-[260px] pr-4">
       <form 
         onSubmit={handleSubmit(onSave)}
-        className="bg-card text-card-foreground w-full max-w-[400px] rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.4)] overflow-hidden border border-border flex flex-col max-h-[60vh]"
+        className="bg-card text-card-foreground w-full max-w-[500px] rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden border border-border flex flex-col max-h-[75vh]"
       >
         <div className="flex justify-between items-center p-3 border-b border-border bg-muted/30 shrink-0">
           <h3 className="text-xs font-bold uppercase tracking-wider">{locacao?.id ? 'Editar Locação' : 'Nova Locação'}</h3>

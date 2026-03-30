@@ -26,8 +26,8 @@ export function CustomerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-card text-card-foreground w-full max-w-[420px] rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden border border-border flex flex-col max-h-[60vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm pl-[260px] pr-4">
+      <div className="bg-card text-card-foreground w-full max-w-[480px] rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden border border-border flex flex-col max-h-[75vh]">
         <div className="flex justify-between items-center p-3 border-b border-border bg-muted/30 shrink-0">
           <h3 className="text-sm font-bold uppercase tracking-tight">{isEditing ? 'Editar Cliente' : 'Novo Cliente'}</h3>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6 rounded-full">
