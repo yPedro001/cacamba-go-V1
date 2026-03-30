@@ -121,7 +121,7 @@ export function LocacaoModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 py-8">
       <form 
         onSubmit={handleSubmit(onSave)}
-        className="bg-card text-card-foreground w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden border border-border flex flex-col max-h-[92vh]"
+        className="bg-card text-card-foreground w-full max-w-xl rounded-xl shadow-2xl overflow-hidden border border-border flex flex-col max-h-[85vh]"
       >
         <div className="flex justify-between items-center p-4 border-b border-border bg-muted/30 shrink-0">
           <h3 className="text-lg font-bold">{locacao?.id ? 'Editar Locação' : 'Nova Locação'}</h3>
