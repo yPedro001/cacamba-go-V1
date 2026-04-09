@@ -53,7 +53,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <BackgroundSyncProvider>
-      <div className="min-h-screen bg-background text-foreground flex relative overflow-x-hidden">
+      {/* O uso de overflow-clip no lugar de overflow-hidden previne scroll horizontal sem quebrar o position: sticky do Header */}
+      <div className="min-h-screen bg-background text-foreground flex relative overflow-clip">
         {/* Mobile Overlay */}
         {sidebarOpen && (
           <div 

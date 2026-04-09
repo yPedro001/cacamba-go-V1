@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Locate, Filter, XCircle, RefreshCw } from 'lucide-react';
 
 interface MapControlsProps {
@@ -9,10 +8,15 @@ interface MapControlsProps {
   locate: () => void;
   clearFilters: () => void;
   setRoute: (v: any) => void;
-  mapRef: React.MutableRefObject<L.Map | null>;
+  mapRef: React.MutableRefObject<any>; // Tipado como `any` para evitar import direto do Leaflet
   filteredCacambas?: any[];
 }
 
+/**
+ * MapControls: Botões flutuantes no canto superior direito do mapa.
+ * Renderizado DENTRO do MapContainer (via MapInnerContent).
+ * Posicionado com `absolute` — funciona corretamente dentro do contexto do Leaflet.
+ */
 export function MapControls({
   userPos,
   showFilters,
@@ -21,48 +25,52 @@ export function MapControls({
   clearFilters,
   setRoute,
   mapRef,
-  filteredCacambas = []
 }: MapControlsProps) {
   return (
     <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 pointer-events-auto">
-      {/* Botão Atualizar (Opcional, mas mantido para utilidade) */}
-      <Button 
-        onClick={() => { setRoute(null); mapRef.current?.invalidateSize(); }} 
-        variant="secondary" size="sm" 
-        className="shadow-lg backdrop-blur bg-white/90 dark:bg-black/80 font-semibold border h-10 px-3"
-      >
-        <RefreshCw className="h-4 w-4" />
-      </Button>
 
-      {/* 1. LOCALIZAR */}
-      <Button 
-        onClick={() => locate()} 
-        variant="secondary" size="sm" 
-        className="shadow-lg backdrop-blur bg-white/90 dark:bg-black/80 font-bold border h-12 px-4 flex items-center gap-2 hover:bg-white transition-all text-blue-600 border-blue-100"
+      {/* Atualizar (invalidar tamanho e limpar rota) */}
+      <button
+        onClick={() => {
+          setRoute(null);
+          mapRef.current?.invalidateSize();
+        }}
+        title="Atualizar mapa"
+        className="h-10 w-10 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95"
       >
-        <Locate className="h-5 w-5" /> 
-        <span className="hidden sm:inline">Localizar</span>
-      </Button>
-      
-      {/* 2. FILTRO */}
-      <Button 
-        onClick={() => setShowFilters(v => !v)} 
-        variant="secondary" size="sm" 
-        className={`shadow-lg backdrop-blur font-bold border h-12 px-4 flex items-center gap-2 transition-all ${showFilters ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-white/90 dark:bg-black/80 text-foreground'}`}
-      >
-        <Filter className="h-5 w-5" />
-        <span className="hidden sm:inline">Filtros</span>
-      </Button>
+        <RefreshCw className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+      </button>
 
-      {/* 3. LIMPAR FILTRO */}
-      <Button 
-        onClick={() => clearFilters()} 
-        variant="secondary" size="sm" 
-        className="shadow-lg backdrop-blur bg-white/90 dark:bg-black/80 font-bold border h-12 px-4 flex items-center gap-2 text-red-500 hover:bg-red-50 border-red-100"
+      {/* Localizar */}
+      <button
+        onClick={locate}
+        title="Localizar"
+        className="h-10 w-10 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-blue-200 dark:border-blue-700 rounded-xl shadow-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all active:scale-95 text-blue-600"
       >
-        <XCircle className="h-5 w-5" />
-        <span className="hidden sm:inline">Limpar</span>
-      </Button>
+        <Locate className="h-5 w-5" />
+      </button>
+
+      {/* Filtros */}
+      <button
+        onClick={() => setShowFilters(v => !v)}
+        title="Filtros"
+        className={`h-10 w-10 flex items-center justify-center backdrop-blur rounded-xl shadow-lg transition-all active:scale-95 border ${
+          showFilters
+            ? 'bg-primary border-primary text-white shadow-primary/30'
+            : 'bg-white/95 dark:bg-slate-900/95 border-slate-200 dark:border-slate-700 text-foreground hover:bg-slate-50 dark:hover:bg-slate-800'
+        }`}
+      >
+        <Filter className="h-4 w-4" />
+      </button>
+
+      {/* Limpar filtros */}
+      <button
+        onClick={clearFilters}
+        title="Limpar filtros"
+        className="h-10 w-10 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-red-200 dark:border-red-800 rounded-xl shadow-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all active:scale-95 text-red-500"
+      >
+        <XCircle className="h-4 w-4" />
+      </button>
     </div>
   );
 }

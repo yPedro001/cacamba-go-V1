@@ -335,7 +335,7 @@ export default function Dashboard() {
                     <div key={loc.id} className="p-5 flex justify-between items-center transition-all hover:bg-muted/30">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center font-black text-xs text-muted-foreground">
-                          {cliente?.nome?.charAt(0) || '?'}
+                          {(cliente?.nome || '?').charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <p className="font-bold text-sm tracking-tight text-foreground line-clamp-1">{cliente?.nome || '—'}</p>
@@ -373,7 +373,7 @@ export default function Dashboard() {
                     <div key={loc.id} className="p-5 flex justify-between items-center transition-all hover:bg-muted/30">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center font-black text-xs text-accent">
-                          {cliente?.nome?.charAt(0) || '?'}
+                          {(cliente?.nome || '?').charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <p className="font-bold text-sm tracking-tight text-foreground line-clamp-1">{cliente?.nome || '—'}</p>

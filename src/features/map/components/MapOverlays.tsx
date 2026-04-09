@@ -9,52 +9,59 @@ interface MapOverlaysProps {
   geoError: string;
 }
 
+/**
+ * MapOverlays: Elementos de UI flutuantes DENTRO do mapa.
+ * - Legenda no canto superior esquerdo (clicável para filtrar)
+ * - Toast de erro de geolocalização
+ * (A rota badge foi movida para fora do mapa no MapaView)
+ */
 export function MapOverlays({
   filterColor,
   setFilterColor,
   route,
-  geoError
+  geoError,
 }: MapOverlaysProps) {
   return (
     <>
-      {/* Legend Overlay */}
+      {/* Legenda no canto superior esquerdo */}
       <div className="absolute top-3 left-3 z-[1000] pointer-events-auto">
-        <div className="bg-card/95 backdrop-blur border border-border rounded-xl shadow-xl p-3 min-w-[180px]">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Legenda</p>
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-3 min-w-[175px]">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+            Legenda
+          </p>
           {Object.entries(MAP_COLORS).map(([key, val]) => (
-            <div 
-              key={key} 
-              onClick={() => setFilterColor(filterColor === key ? 'todos' : key as MapColor)} 
-              className={`flex items-center gap-2 mb-1.5 cursor-pointer rounded-md px-1 py-0.5 transition-colors ${filterColor === key ? 'bg-muted' : 'hover:bg-muted/50'}`}
+            <div
+              key={key}
+              onClick={() => setFilterColor(filterColor === key ? 'todos' : key as MapColor)}
+              className={`flex items-center gap-2 mb-1.5 cursor-pointer rounded-md px-1.5 py-1 transition-colors select-none ${
+                filterColor === key ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
+              }`}
             >
-              <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ background: val.bg, border: `2px solid ${val.ring}` }} />
+              <div
+                className="h-3 w-3 rounded-full flex-shrink-0"
+                style={{ background: val.bg, border: `2px solid ${val.ring}` }}
+              />
               <div>
-                <p className="text-xs font-semibold text-foreground">{val.label}</p>
-                <p className="text-[9px] text-muted-foreground leading-none">{val.desc}</p>
+                <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">{val.label}</p>
+                <p className="text-[9px] text-slate-400 leading-none">{val.desc}</p>
               </div>
             </div>
           ))}
           {filterColor !== 'todos' && (
-            <button 
-              onClick={() => setFilterColor('todos')} 
-              className="mt-1 w-full text-[10px] text-accent hover:text-accent-foreground font-semibold"
+            <button
+              onClick={() => setFilterColor('todos')}
+              className="mt-1 w-full text-[10px] text-indigo-600 hover:text-indigo-800 font-bold"
             >
-              Limpar filtro
+              Limpar filtro ✕
             </button>
           )}
         </div>
       </div>
 
-      {/* Error / Route Toast */}
+      {/* Toast de erro de geolocalização */}
       {geoError && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2 bg-red-500 text-white shadow-xl text-xs rounded-full font-semibold">
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2 bg-amber-500 text-white shadow-xl text-xs rounded-full font-semibold max-w-xs text-center">
           {geoError}
-        </div>
-      )}
-      
-      {route && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] px-5 py-2.5 bg-blue-600/95 text-white shadow-2xl text-sm rounded-full font-bold flex items-center gap-3">
-          {route.distance} km · ~{route.time} min
         </div>
       )}
     </>
