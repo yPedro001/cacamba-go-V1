@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   keywords: ['caçamba', 'aluguel', 'gestão', 'entulho', 'locação'],
   authors: [{ name: 'CaçambaGo' }],
   robots: 'index, follow',
+  icons: { icon: '/favicon.svg' }
 }
 
 export default function RootLayout({
