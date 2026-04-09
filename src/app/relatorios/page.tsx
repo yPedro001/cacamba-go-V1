@@ -169,17 +169,40 @@ export default function RelatoriosPage() {
   }
 
   const exportExcel = () => {
+    // 1. Mapear Entradas (Locações pagas no período)
+    const entradasMapped = locacoesReceita.map(l => ({
+      data: l.dataRetirada,
+      tipo: 'Entrada',
+      detalhes: getClientName(l.clienteId, clientes),
+      descricao: `Locação: ${l.quantidadeCacambas || 1} caçamba(s) - ${l.metodoPagamento || 'N/A'}`,
+      valor: l.valorLiquido ?? l.valor ?? 0
+    }))
+
+    // 2. Mapear Saídas (Gastos no período)
+    const saidasMapped = gastosFiltrados.map(g => ({
+      data: g.data,
+      tipo: 'Saída',
+      detalhes: g.categoria,
+      descricao: g.descricao,
+      valor: g.valor
+    }))
+
+    // 3. Combinar e Ordenar (mais recente primeiro)
+    const allItems = [...entradasMapped, ...saidasMapped].sort((a, b) => b.data.localeCompare(a.data))
+
+    // 4. Exportar via serviço
     exportService.exportExcel({
-      title: 'Relatório de Gastos',
-      filename: `gastos_${Date.now()}`,
-      headers: ['Data', 'Categoria', 'Descrição', 'Valor'],
-      data: gastos.map(g => [
-        new Date(g.data + 'T00:00:00').toLocaleDateString('pt-BR'),
-        g.categoria,
-        g.descricao,
-        `R$ ${g.valor.toFixed(2)}`
+      title: 'Relatório Financeiro Completo',
+      filename: `financeiro_${dataInicio}_a_${dataFim}`,
+      headers: ['Data', 'Tipo', 'Cliente / Categoria', 'Descrição', 'Valor'],
+      data: allItems.map(item => [
+        new Date(item.data + 'T00:00:00').toLocaleDateString('pt-BR'),
+        item.tipo,
+        item.detalhes,
+        item.descricao,
+        `R$ ${item.valor.toFixed(2)}`
       ])
-    });
+    })
   }
 
   const toggleSerie = (key: SerieKey | 'all') => {
