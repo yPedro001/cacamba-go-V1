@@ -89,7 +89,6 @@ useAppStore.subscribe(
  * Seletores Granulares (Backward Compatibility)
  * Mantemos estes seletores para que os componentes existentes continuem funcionando sem alterações.
  */
-export const useUsuarios = () => useAppStore(s => s.usuarios);
 export const useUsuarioAtual = () => useAppStore(s => s.usuarioAtual);
 export const useClientes = () => useAppStore(s => s.clientes);
 export const useCacambas = () => useAppStore(s => s.cacambas);
@@ -98,14 +97,3 @@ export const useGastos = () => useAppStore(s => s.gastos);
 export const usePerfil = () => useAppStore(s => s.perfil);
 export const useConfiguracoes = () => useAppStore(s => s.configuracoes);
 export const useNotificacoes = () => useAppStore(s => s.notificacoes);
-
-/**
- * Utilitários de Segurança
- */
-export async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}

@@ -2,15 +2,58 @@
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MapComponent } from './MapComponent'
 import { useMapController } from '../hooks/useMapController'
 import { MAP_COLORS } from '../constants'
 import { MapFilterPanel } from './MapFilterPanel'
 import { useClientes } from '@/store/useAppStore'
+import { cn } from '@/lib/utils'
+import { useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
+
+const MapComponent = dynamic(
+  () => import('./MapComponent').then((mod) => mod.MapComponent),
+  { 
+    ssr: false,
+    loading: () => <div className="h-[600px] w-full bg-slate-100 dark:bg-slate-900 animate-pulse rounded-2xl flex items-center justify-center text-muted-foreground font-black tracking-widest uppercase text-xs">PÁTIO DE OPERAÇÕES — INICIALIZANDO...</div>
+  }
+)
 
 export default function MapaView() {
   const controller = useMapController();
   const clientes = useClientes();
+  const searchParams = useSearchParams();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+    const filterFromUrl = searchParams.get('filtro');
+    if (filterFromUrl) {
+      setTimeout(() => {
+        controller.setFilterColor(filterFromUrl as any);
+        if (!controller.showFilters) {
+          controller.setShowFilters(true);
+        }
+      }, 100);
+    }
+  }, [searchParams]);
+
+  const cacambas = controller.filteredCacambas;
+  const locacoes = controller.locacoes;
+
+  // Memoização do Itinerário para evitar filtragens repetitivas
+  const itinerario = React.useMemo(() => {
+    return locacoes
+      .filter(l => l.status === 'vencida' || l.status === 'entrega_pendente')
+      .slice(0, 5);
+  }, [locacoes]);
+
+  if (!mounted) {
+    return (
+      <div className="w-full h-[600px] bg-slate-100 dark:bg-slate-900 animate-pulse rounded-2xl flex items-center justify-center text-muted-foreground font-black tracking-widest uppercase text-xs">
+        ESTABILIZANDO CENTRO DE OPERAÇÕES...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 w-full max-w-none px-2" data-build-v2-9-pixel-perfect="true">
@@ -25,8 +68,8 @@ export default function MapaView() {
       </div>
 
       <div className="flex flex-col gap-6 w-full">
-        {/* MAPA - LARGURA TOTAL NO TOPO */}
-        <div className="w-full h-auto overflow-hidden rounded-2xl border border-border/40 shadow-xl">
+        {/* MAPA - ALTURA FIXA GARANTIDA */}
+        <div className="w-full h-[600px] lg:h-[700px] overflow-hidden rounded-2xl border border-border/40 shadow-xl bg-muted/10">
           <MapComponent controller={controller} />
         </div>
         
@@ -43,25 +86,27 @@ export default function MapaView() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6 flex-1">
-                <div className="space-y-5">
-                  <div className="p-4 border-l-4 border-l-blue-600 bg-blue-600/5 hover:bg-blue-600/10 transition-all rounded-r-xl border border-border/5">
-                    <p className="font-black text-base text-blue-700 dark:text-blue-400">Entrega Urgente: C-008</p>
-                    <p className="text-sm text-muted-foreground font-medium">Pátio principal</p>
-                    <p className="text-xs font-semibold mt-2 opacity-70">Levar para base de operações</p>
-                  </div>
-                  
-                  <div className="p-4 border-l-4 border-l-yellow-500 bg-yellow-500/5 hover:bg-yellow-500/10 transition-all rounded-r-xl border border-border/5">
-                    <p className="font-black text-base text-yellow-700 dark:text-yellow-400">Entrega: C-052</p>
-                    <p className="text-sm text-muted-foreground font-medium">Roberto Almeida</p>
-                    <p className="text-xs font-semibold mt-2 opacity-70">Av. Brasil, 2500 - 10:00</p>
-                  </div>
-                  
-                  <div className="p-4 border-l-4 border-l-red-600 bg-red-600/5 hover:bg-red-600/10 transition-all rounded-r-xl border border-border/5">
-                    <p className="font-black text-base text-red-700 dark:text-red-400">Retirada: C-045</p>
-                    <p className="text-sm text-muted-foreground font-medium">Maria Souza</p>
-                    <p className="text-xs font-semibold mt-2 opacity-70">Rua Augusta, 400 - 14:00</p>
-                  </div>
-                </div>
+                  {itinerario.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground animate-in fade-in duration-500">
+                      <p className="text-sm font-medium">Nenhuma tarefa pendente para hoje.</p>
+                      <p className="text-[10px] uppercase tracking-wider mt-1 opacity-50">Tudo em dia!</p>
+                    </div>
+                  ) : itinerario.map(loc => (
+                    <div key={loc.id} className={cn(
+                      "p-4 border-l-4 transition-all rounded-r-xl border border-border/5 shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-100 cursor-pointer",
+                      loc.status === 'vencida' ? "border-l-red-600 bg-red-600/5 hover:bg-red-600/10" : "border-l-yellow-500 bg-yellow-500/5 hover:bg-yellow-500/10"
+                    )}>
+                      <p className="font-black text-base truncate">
+                        {loc.status === 'vencida' ? 'Retirada' : 'Entrega'}: {loc.enderecoObra.split(',')[0]}
+                      </p>
+                      <p className="text-sm text-muted-foreground font-medium truncate">{controller.getClienteName(loc.clienteId)}</p>
+                      <p className="text-xs font-semibold mt-2 opacity-70 flex items-center gap-2">
+                        <div className="w-1 h-1 rounded-full bg-current" />
+                        {loc.status === 'vencida' ? 'Venceu em ' : 'Agendado: '}
+                        {new Date(loc.dataRetirada).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
               </CardContent>
             </Card>
           </div>

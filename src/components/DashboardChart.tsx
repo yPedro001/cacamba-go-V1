@@ -40,9 +40,15 @@ export default function DashboardChart({ data }: DashboardChartProps) {
           tickFormatter={(value) => `R$${value}`}
         />
         <Tooltip
-          cursor={{ fill: 'transparent' }}
-          contentStyle={{ backgroundColor: '#111', borderColor: '#333' }}
-          itemStyle={{ color: '#fff' }}
+          cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+          contentStyle={{ 
+            backgroundColor: 'hsl(var(--card))', 
+            borderColor: 'hsl(var(--border))',
+            borderRadius: '12px',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+          }}
+          itemStyle={{ color: 'hsl(var(--foreground))' }}
+          labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
         />
         <Legend />
         <Bar dataKey="Arrecadação" fill="#10b981" radius={[4, 4, 0, 0]} />

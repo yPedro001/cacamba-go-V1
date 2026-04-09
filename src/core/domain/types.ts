@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import * as schemas from './schemas';
 
+export type ClienteEndereco = z.infer<typeof schemas.ClienteEnderecoSchema>;
 export type Cliente = z.infer<typeof schemas.ClienteSchema>;
 export type StatusHistoricoEntry = z.infer<typeof schemas.StatusHistoricoEntrySchema>;
 export type Cacamba = z.infer<typeof schemas.CacambaSchema>;

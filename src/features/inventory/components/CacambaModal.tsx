@@ -1,9 +1,11 @@
 import React from 'react';
-import { X, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import { cepMask } from '@/lib/masks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { Cacamba, Perfil } from '@/core/domain/types';
+import { ModalBase } from '@/components/ui/modal-base';
 
 interface CacambaModalProps {
   isOpen: boolean;
@@ -20,116 +22,127 @@ interface CacambaModalProps {
   perfil: Perfil;
 }
 
+// Classe base semântica para todos os inputs — funciona em light e dark
+const inputBase = "h-12 rounded-2xl px-4 bg-background border-input text-foreground placeholder:text-muted-foreground/60 focus:ring-accent focus:border-accent";
+const selectBase = "w-full h-12 px-4 py-2 rounded-2xl border border-input bg-background text-foreground text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent appearance-none transition-all";
+
 export function CacambaModal({
   isOpen, onClose, isEditing, currentCacamba, setCurrentCacamba,
   batchQuantity, setBatchQuantity, isCepLoading, handleCepLookup,
   onSave, alertMessage, perfil
 }: CacambaModalProps) {
-  if (!isOpen) return null;
+  const [cepSearch, setCepSearch] = React.useState('');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-card text-card-foreground w-full max-w-sm rounded-xl shadow-2xl overflow-hidden border border-border flex flex-col max-h-[90vh]">
-        <div className="flex justify-between items-center p-4 border-b border-border bg-muted/30">
-          <h3 className="text-lg font-bold">{isEditing ? 'Editar Caçamba' : 'Nova Caçamba'}</h3>
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">
-            <X className="h-5 w-5" />
+    <ModalBase
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      title={<>{isEditing ? 'Editar' : 'Nova'} <span className="text-accent">Caçamba</span></>}
+      subtitle={<><span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />SaaS Enterprise v1.0</>}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} className="px-8 font-black text-xs uppercase tracking-widest h-12 rounded-2xl text-muted-foreground hover:text-foreground hover:bg-muted/30">Descartar</Button>
+          <Button onClick={onSave} className="bg-accent hover:bg-accent/90 text-white font-black px-12 text-xs uppercase tracking-widest h-12 rounded-2xl shadow-xl shadow-accent/20 transition-all active:scale-95 italic">
+            {isEditing ? 'Salvar Alterações' : 'Confirmar Cadastro'}
           </Button>
-        </div>
-        
+        </>
+      }
+    >
+      <div className="space-y-6">
         {alertMessage && (
-          <div className="mx-4 mt-3 flex gap-2 items-start p-3 rounded-lg bg-destructive/15 text-destructive border border-destructive/30 text-sm">
+          <div className="flex gap-2 items-start p-4 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 text-xs font-bold uppercase tracking-wider">
             <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <span>{alertMessage}</span>
           </div>
         )}
         
         {!isEditing && perfil.endereco && (
-          <div className="mx-4 mt-3 p-2 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs flex gap-2 items-center">
-            <span className="font-semibold">Pátio padrão:</span> {perfil.endereco}
+          <div className="p-3 rounded-2xl bg-blue-500/5 text-blue-500 dark:text-blue-400 border border-blue-500/10 text-[10px] font-black uppercase tracking-widest flex gap-2 items-center">
+            <span className="opacity-50">📍 Pátio padrão:</span> {perfil.endereco}
           </div>
         )}
 
-        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Código</label>
-              <Input 
-                value={currentCacamba.codigo || ''} 
-                onChange={e => setCurrentCacamba({...currentCacamba, codigo: e.target.value})} 
-                placeholder="C-000" 
-              />
-            </div>
-            {!isEditing && (
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-accent">Qtd. Lote</label>
-                <Input 
-                  type="number" min="1" max="50" 
-                  value={batchQuantity} 
-                  onChange={e => setBatchQuantity(parseInt(e.target.value) || 1)} 
-                />
-              </div>
-            )}
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-muted-foreground">Tamanho</label>
-              <select 
-                className="w-full h-10 px-3 py-2 rounded-md border border-input bg-transparent text-sm"
-                value={currentCacamba.tamanho || '5m'} 
-                onChange={e => setCurrentCacamba({...currentCacamba, tamanho: e.target.value})}
-              >
-                <option value="3m">3m³</option>
-                <option value="4m">4m³</option>
-                <option value="5m">5m³</option>
-                <option value="7m">7m³</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-                <label className="text-sm font-semibold text-muted-foreground">Status</label>
-                <select 
-                  className="w-full h-10 px-3 py-2 rounded-md border border-input bg-transparent text-sm"
-                  value={currentCacamba.status || 'disponivel'} 
-                  onChange={e => setCurrentCacamba({...currentCacamba, status: e.target.value as any})}
-                >
-                  <option value="disponivel">Disponível</option>
-                  <option value="locada">Locada</option>
-                  <option value="entrega_pendente">Entrega Pendente</option>
-                </select>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-muted-foreground">Endereço Atual</label>
-            <AddressAutocomplete 
-              value={currentCacamba.enderecoAtual || ''} 
-              onChange={(val, lat, lng) => {
-                setCurrentCacamba((prev: any) => ({ ...prev, enderecoAtual: val, lat: lat || prev.lat, lng: lng || prev.lng }));
-              }} 
-              placeholder="Pátio ou Local" 
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Código</label>
+            <Input 
+              className={`${inputBase} font-black`}
+              value={currentCacamba.codigo || ''} 
+              onChange={e => setCurrentCacamba({...currentCacamba, codigo: e.target.value})} 
+              placeholder="C-000" 
             />
           </div>
-          
-          <div className="space-y-2">
-            <label className="text-[11px] font-semibold text-muted-foreground uppercase">Ou Buscar por CEP</label>
-            <div className="relative">
+          {!isEditing && (
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-accent uppercase tracking-[0.2em] ml-1">Qtd. Lote</label>
               <Input 
-                placeholder="00000-000"
-                onBlur={e => handleCepLookup(e.target.value)}
+                className="h-12 rounded-2xl font-black px-4 bg-accent/5 border-accent/20 text-foreground focus:ring-accent"
+                type="number" min="1" max="50" 
+                value={batchQuantity} 
+                onChange={e => setBatchQuantity(parseInt(e.target.value) || 1)} 
               />
-              {isCepLoading && <div className="absolute right-2 top-2.5 h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />}
             </div>
+          )}
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Tamanho</label>
+            <select 
+              className={selectBase}
+              value={currentCacamba.tamanho || '5m'} 
+              onChange={e => setCurrentCacamba({...currentCacamba, tamanho: e.target.value})}
+            >
+              <option value="3m">3m³</option>
+              <option value="4m">4m³</option>
+              <option value="5m">5m³</option>
+              <option value="7m">7m³</option>
+            </select>
+          </div>
+          <div className="space-y-3">
+              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Status</label>
+              <select 
+                className={selectBase}
+                value={currentCacamba.status || 'disponivel'} 
+                onChange={e => setCurrentCacamba({...currentCacamba, status: e.target.value as any})}
+              >
+                <option value="disponivel">✅ Disponível</option>
+                <option value="locada">🏗️ Locada</option>
+                <option value="entrega_pendente">🚀 Pendente</option>
+              </select>
           </div>
         </div>
-
-        <div className="flex justify-end p-4 border-t border-border bg-muted/30 gap-2">
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={onSave} className="bg-accent hover:bg-accent-dark text-white">
-            {isEditing ? 'Salvar' : 'Cadastrar'}
-          </Button>
+        
+        <div className="space-y-5 p-6 rounded-[32px] border border-border bg-muted/20 relative overflow-hidden group">
+          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2 relative">
+             📍 Localização Atual
+          </label>
+          <AddressAutocomplete 
+            value={currentCacamba.enderecoAtual || ''} 
+            onChange={(val, lat, lng) => {
+              setCurrentCacamba((prev: any) => ({ ...prev, enderecoAtual: val, lat: lat || prev.lat, lng: lng || prev.lng }));
+            }} 
+            placeholder="Endereço do Pátio ou Localização..." 
+          />
+          <div className="relative">
+            <Input 
+              className={`${inputBase} text-sm font-black`}
+              placeholder="00000-000 para busca"
+              value={cepSearch}
+              onChange={e => {
+                const maskedValue = cepMask(e.target.value);
+                setCepSearch(maskedValue);
+                if (maskedValue.length === 9) {
+                  handleCepLookup(maskedValue);
+                }
+              }}
+              onBlur={e => handleCepLookup(e.target.value)}
+            />
+            {isCepLoading && <div className="absolute right-4 top-4 h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />}
+          </div>
         </div>
       </div>
-    </div>
+    </ModalBase>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useClientes, useConfiguracoes } from '@/store/useAppStore';
-import { Cliente } from '@/core/domain/types';
+import { Cliente, ClienteEndereco } from '@/core/domain/types';
 import { geocodeService } from '@/infrastructure/api/geocode-service';
 import { useDataActions } from '@/core/application/useDataActions';
 import { exportService } from '@/infrastructure/services/export-service';
@@ -18,29 +18,47 @@ export function useCustomersController() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [clientIdToDelete, setClientIdToDelete] = useState<string | null>(null);
 
-  const [enderecoForm, setEnderecoForm] = useState({ rua: '', numero: '', cidade: '', cep: '' });
+  // Estado para gerenciar múltiplos endereços no formulário
+  const [enderecosForm, setEnderecosForm] = useState<Partial<ClienteEndereco>[]>([]);
 
-  const filteredClientes = clientes.filter(c => 
-    c.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (c.telefone?.includes(searchTerm) ?? false) ||
-    (c.endereco?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
-  );
+  const filteredClientes = (clientes || []).filter(c => {
+    const nome = c?.nome?.toLowerCase() || '';
+    const search = searchTerm.toLowerCase();
+    const telefone = c?.telefone || '';
+    const enderecoLegado = c?.endereco?.toLowerCase() || '';
+    
+    return nome.includes(search) || 
+           telefone.includes(searchTerm) ||
+           enderecoLegado.includes(search) ||
+           (c?.enderecos?.some(e => e.rua?.toLowerCase().includes(search)) ?? false);
+  });
 
   const handleOpenModal = useCallback((cliente?: Cliente) => {
     if (cliente) {
       setCurrentClient(cliente);
-      const parts = (cliente.endereco || '').split(' - ');
-      const ruaNum = (parts[0] || '').split(',');
-      setEnderecoForm({
-        rua: (ruaNum[0] || '').trim() || cliente.endereco,
-        numero: (ruaNum[1] || '').trim(),
-        cidade: (parts[1] || '').trim(),
-        cep: (parts[2] || '').trim()
-      });
+      // Migração rápida: se não tem endereços mas tem o campo antigo, converter
+      if (!cliente.enderecos || cliente.enderecos.length === 0) {
+        if (cliente.endereco) {
+           const parts = cliente.endereco.split(' - ');
+           const ruaNum = (parts[0] || '').split(',');
+           setEnderecosForm([{
+             id: crypto.randomUUID(),
+             nome: 'Principal',
+             rua: (ruaNum[0] || '').trim(),
+             numero: (ruaNum[1] || '').trim() || 'S/N',
+             cidade: (parts[1] || '').trim(),
+             cep: (parts[2] || '').trim()
+           }]);
+        } else {
+          setEnderecosForm([]);
+        }
+      } else {
+        setEnderecosForm(cliente.enderecos);
+      }
       setIsEditing(true);
     } else {
-      setCurrentClient({ nome: '', cpfCnpj: '', telefone: '', email: '', endereco: '' });
-      setEnderecoForm({ rua: '', numero: '', cidade: '', cep: '' });
+      setCurrentClient({ nome: '', cpfCnpj: '', telefone: '', email: '' });
+      setEnderecosForm([{ id: crypto.randomUUID(), nome: 'Principal', rua: '', numero: '', cidade: '', cep: '' }]);
       setIsEditing(false);
     }
     setIsModalOpen(true);
@@ -49,20 +67,32 @@ export function useCustomersController() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setCurrentClient({});
+    setEnderecosForm([]);
   };
 
-  const handleCepLookup = async (cep: string) => {
+  const addEnderecoField = () => {
+    setEnderecosForm([...enderecosForm, { id: crypto.randomUUID(), nome: '', rua: '', numero: '', cidade: '', cep: '' }]);
+  };
+
+  const removeEnderecoField = (index: number) => {
+    setEnderecosForm(enderecosForm.filter((_, i) => i !== index));
+  };
+
+  const updateEnderecoField = (index: number, data: Partial<ClienteEndereco>) => {
+    setEnderecosForm(enderecosForm.map((e, i) => i === index ? { ...e, ...data } : e));
+  };
+
+  const handleCepLookup = async (index: number, cep: string) => {
     setIsCepLoading(true);
     const data = await geocodeService.fetchByCep(cep);
     setIsCepLoading(false);
     if (!data) return;
 
-    setEnderecoForm(prev => ({
-      ...prev,
-      rua: data.rua || prev.rua,
-      cidade: data.cidade || prev.cidade,
-      cep: data.cep || prev.cep
-    }));
+    updateEnderecoField(index, {
+      rua: data.rua || enderecosForm[index].rua,
+      cidade: data.cidade || enderecosForm[index].cidade,
+      cep: data.cep || enderecosForm[index].cep
+    });
   };
 
   const saveClient = () => {
@@ -71,9 +101,19 @@ export function useCustomersController() {
       return;
     }
 
-    const { rua, numero, cidade, cep } = enderecoForm;
-    const finalEndereco = rua ? `${rua}, ${numero || 'S/N'} - ${cidade || 'Sem Cidade'} - ${cep || 'Sem CEP'}` : '';
-    const payload = { ...currentClient, endereco: finalEndereco } as Cliente;
+    // Validação mínima de endereços
+    const enderecosValidos = enderecosForm.filter(e => e.nome && e.rua && e.cidade) as ClienteEndereco[];
+    
+    // Manter o campo endereco legado como o primeiro endereço para compatibilidade
+    const legacyEndereco = enderecosValidos[0] 
+      ? `${enderecosValidos[0].rua}, ${enderecosValidos[0].numero || 'S/N'} - ${enderecosValidos[0].cidade} - ${enderecosValidos[0].cep || ''}`
+      : '';
+
+    const payload = { 
+      ...currentClient, 
+      enderecos: enderecosValidos,
+      endereco: legacyEndereco // Snapshot para compatibilidade
+    } as Cliente;
 
     if (isEditing && currentClient.id) {
       updateCliente(currentClient.id, payload);
@@ -104,13 +144,13 @@ export function useCustomersController() {
     exportService.exportPDF({
       title: 'Relatório Geral de Clientes',
       filename: `clientes_cacambago_${Date.now()}`,
-      headers: ['Nome', 'Documento', 'Telefone', 'E-mail', 'Endereço'],
+      headers: ['Nome', 'Documento', 'Telefone', 'E-mail', 'Endereços'],
       data: filteredClientes.map(c => [
         c.nome,
         c.cpfCnpj || '-',
         c.telefone || '-',
         c.email || '-',
-        c.endereco || '-'
+        (c.enderecos || []).map(e => `${e.nome}: ${e.rua}, ${e.numero}`).join(' | ') || (c.endereco ? `Legado: ${c.endereco}` : '-')
       ])
     });
   };
@@ -119,13 +159,13 @@ export function useCustomersController() {
     exportService.exportExcel({
       title: 'Clientes CaçambaGo',
       filename: `clientes_excel_${Date.now()}`,
-      headers: ['Nome', 'CPF/CNPJ', 'Telefone', 'E-mail', 'Endereço'],
+      headers: ['Nome', 'CPF/CNPJ', 'Telefone', 'E-mail', 'Qtd Endereços'],
       data: filteredClientes.map(c => [
         c.nome,
         c.cpfCnpj || '',
         c.telefone || '',
         c.email || '',
-        c.endereco || ''
+        (c.enderecos?.length || (c.endereco ? 1 : 0)).toString()
       ])
     });
   };
@@ -147,8 +187,10 @@ export function useCustomersController() {
     confirmDelete,
     isDeleteModalOpen,
     setIsDeleteModalOpen,
-    enderecoForm,
-    setEnderecoForm,
+    enderecosForm,
+    addEnderecoField,
+    removeEnderecoField,
+    updateEnderecoField,
     exportPDF,
     exportExcel
   };

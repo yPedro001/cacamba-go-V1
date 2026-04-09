@@ -207,7 +207,7 @@ export function useMapController() {
     locate();
   }, []); // Efeito de montagem puro
 
-  return {
+  return useMemo(() => ({
     mapRef,
     userPos,
     accuracy,
@@ -237,5 +237,10 @@ export function useMapController() {
     setFilterColor: (v: MapColor | 'todos') => handleFilterChange('color', v),
     setFilterCliente: (v: string) => handleFilterChange('cliente', v),
     setFilterVencimento: (v: any) => handleFilterChange('vencimento', v)
-  };
+  }), [
+    userPos, accuracy, geoError, route, isRouting, filteredCacambas,
+    filterColor, filterCliente, filterVencimento, showFilters,
+    historicoModal, tick, today, locacoes, locate, drawRoute,
+    clearFilters, advanceRentalStatus
+  ]);
 }

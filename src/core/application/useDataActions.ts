@@ -68,13 +68,38 @@ export function useDataActions() {
   // --- AÇÕES DE CLIENTES ---
 
   const addCliente = (c: Cliente) => {
-    setClientes([...clientes, c]);
+    const novoCliente = {
+      ...c,
+      enderecos: c.enderecos || (c.endereco ? [{
+        id: crypto.randomUUID(),
+        nome: 'Principal',
+        rua: c.endereco.split(',')[0],
+        numero: c.endereco.split(',')[1]?.split('-')[0]?.trim() || 'S/N',
+        cidade: c.endereco.split('-')[1]?.trim() || '',
+        cep: c.endereco.split('-')[2]?.trim() || ''
+      }] : [])
+    };
+    setClientes([...clientes, novoCliente]);
     sync();
   };
 
   const updateCliente = (id: string, updated: Partial<Cliente>) => {
     setClientes(clientes.map(c => c.id === id ? { ...c, ...updated } : c));
     sync();
+  };
+
+  const addEnderecoAoCliente = (clienteId: string, endereco: any) => {
+    const cliente = clientes.find(c => c.id === clienteId);
+    if (!cliente) return;
+
+    const novoEndereco = {
+      id: crypto.randomUUID(),
+      ...endereco
+    };
+
+    updateCliente(clienteId, {
+      enderecos: [...(cliente.enderecos || []), novoEndereco]
+    });
   };
 
   const removeCliente = (id: string) => {
@@ -106,7 +131,7 @@ export function useDataActions() {
 
   return { 
     addLocacao, updateLocacao, removeLocacao, advanceRentalStatus,
-    addCliente, updateCliente, removeCliente,
+    addCliente, updateCliente, removeCliente, addEnderecoAoCliente,
     addCacamba, updateCacamba, removeCacamba,
     addCacambasBatch,
     updatePerfil: (p: Partial<Perfil>) => { 

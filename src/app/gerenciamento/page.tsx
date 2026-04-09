@@ -113,6 +113,7 @@ export default function GerenciamentoPage() {
         onClose={rentals.handleCloseModal}
         locacao={rentals.editingLocacao}
         onSave={rentals.handleSave}
+        onAddClienteAndSave={rentals.handleAddClienteAndSave}
         clientes={rentals.clientes}
         perfil={perfil}
         cacambas={inventory.cacambas}

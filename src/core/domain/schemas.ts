@@ -7,13 +7,25 @@ export const StatusHistoricoEntrySchema = z.object({
   motivo: z.string().optional(),
 });
 
+export const ClienteEnderecoSchema = z.object({
+  id: z.string().uuid().or(z.string()),
+  nome: z.string().min(1, "Identificação do endereço é obrigatória"), // ex: "Matriz"
+  rua: z.string().min(1, "Rua é obrigatória"),
+  numero: z.string().optional().default('S/N'),
+  cidade: z.string().min(1, "Cidade é obrigatória"),
+  cep: z.string().optional(),
+  lat: z.number().optional().nullable(),
+  lng: z.number().optional().nullable(),
+});
+
 export const ClienteSchema = z.object({
-  id: z.string().uuid() || z.string(),
+  id: z.string().uuid().or(z.string()),
   nome: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   cpfCnpj: z.string().min(11, "Documento inválido"),
   telefone: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal('')),
-  endereco: z.string().min(5, "Endereço incompleto"),
+  endereco: z.string().optional(), // Mantido para compatibilidade, mas opcional
+  enderecos: z.array(ClienteEnderecoSchema).default([]),
 });
 
 export const CacambaStatusSchema = z.enum(['disponivel', 'entrega_pendente', 'locada', 'vencida']);
@@ -32,7 +44,8 @@ export const CacambaSchema = z.object({
 
 export const MetodoPagamentoSchema = z.enum(['pix', 'debito', 'credito', 'boleto']);
 
-export const LocacaoStatusSchema = z.enum(['entrega_pendente', 'em_uso', 'vencida', 'pago', 'a_pagar', 'concluida']);
+export const LocacaoStatusSchema = z.enum(['entrega_pendente', 'em_uso', 'vencida', 'pago', 'a_pagar', 'concluida', 'cancelada']);
+
 
 export const LocacaoSchema = z.object({
   id: z.string().optional(),
@@ -88,5 +101,5 @@ export const UsuarioSchema = z.object({
   id: z.string(),
   nome: z.string(),
   email: z.string().email(),
-  senha: z.string(), // Hash
+  senha: z.string().optional(), // Movido para Supabase Auth, nĂŁo transacionado visualmente no state local
 });

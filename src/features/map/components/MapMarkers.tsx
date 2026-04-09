@@ -46,7 +46,9 @@ export const MapMarkersV2 = React.memo(({
 
       {route && <Polyline positions={route.coords} pathOptions={{ color: '#2563eb', weight: 5, opacity: 0.85, dashArray: '12,8' }} />}
 
-      {filteredCacambas.map((cab) => {
+      {filteredCacambas
+        .filter(cab => cab.lat != null && cab.lng != null)
+        .map((cab) => {
         const loc = getLocacaoForCacamba(cab.id);
         const color = getMapColor(cab, locacoes, today, loc); 
         const blink = color === 'vermelho';

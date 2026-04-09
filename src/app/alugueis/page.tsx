@@ -7,13 +7,14 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Plus, CheckCircle2, Truck, X, Trash, Edit, Receipt } from 'lucide-react'
 import { useAppStore, useClientes, useLocacoes, useCacambas, useNotificacoes, useConfiguracoes, usePerfil } from '@/store/useAppStore'
-import { Locacao, MetodoPagamento } from '@/core/domain/types'
+import { Locacao, MetodoPagamento, Cliente } from '@/core/domain/types'
 import { ReciboModal } from '@/components/ReciboModal'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { LocacaoModal } from '@/features/rentals/components/LocacaoModal'
 import { getClientName } from '@/lib/business-utils'
 import { useSearchParams } from 'next/navigation'
 import { useDataActions } from '@/core/application/useDataActions'
+import { useRentalsController } from '@/features/rentals/hooks/useRentalsController'
 
 const labelMetodo: Record<MetodoPagamento, string> = {
   pix: 'PIX',
@@ -36,16 +37,15 @@ export default function AlugueisPage() {
   const notificacoes = useNotificacoes()
   const configuracoes = useConfiguracoes()
   const perfil = usePerfil()
-  const { addLocacao, updateLocacao, removeLocacao, advanceRentalStatus } = useDataActions()
+  const { addLocacao, updateLocacao, removeLocacao, advanceRentalStatus, addCliente, updateCliente } = useDataActions()
   const [filter, setFilter] = useState<'todos' | 'entrega_pendente' | 'em_uso' | 'vencida' | 'pago'>('todos')
   
   // Capturando search params de forma segura
   const searchParams = useSearchParams()
   const highlightId = searchParams ? searchParams.get('highlightId') : null
 
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [currentLocacao, setCurrentLocacao] = useState<Partial<Locacao>>({})
+  const rentals = useRentalsController();
+
   const [reciboLocacao, setReciboLocacao] = useState<Locacao | null>(null)
   
   // Estado para exclusão
@@ -53,45 +53,7 @@ export default function AlugueisPage() {
   const [locacaoIdToDelete, setLocacaoIdToDelete] = useState<string | null>(null)
 
   const handleOpenModal = (locacao?: Locacao) => {
-    if (locacao) {
-      setCurrentLocacao(locacao)
-      setIsEditing(true)
-    } else {
-      setCurrentLocacao({})
-      setIsEditing(false)
-    }
-    setIsModalOpen(true)
-  }
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false)
-    setCurrentLocacao({})
-  }
-
-  const handleSave = async (data: Partial<Locacao>) => {
-    if (!isEditing) {
-      const disponiveis = cacambas.filter(c => c.status === 'disponivel')
-      if (disponiveis.length < (data.quantidadeCacambas || 1)) {
-        alert(`Caçambas insuficientes no pátio. Disponível: ${disponiveis.length}.`)
-        return
-      }
-    }
-
-    if (isEditing && currentLocacao.id) {
-      updateLocacao(currentLocacao.id, data as Locacao)
-      setIsModalOpen(false)
-    } else {
-      const newId = Date.now().toString()
-      // Garante status inicial correto
-      const savedLocacao = { 
-        ...data, 
-        id: newId, 
-        status: 'entrega_pendente' as const 
-      } as Locacao
-      addLocacao(savedLocacao)
-      setIsModalOpen(false)
-      setReciboLocacao(savedLocacao)
-    }
+    rentals.handleOpenModal(locacao);
   }
 
   const handleDelete = (id: string) => {
@@ -107,10 +69,11 @@ export default function AlugueisPage() {
     if (locacaoIdToDelete) {
       removeLocacao(locacaoIdToDelete)
       setLocacaoIdToDelete(null)
+      setIsDeleteModalOpen(false)
     }
   }
 
-  const usaTaxa = currentLocacao.metodoPagamento === 'credito' || currentLocacao.metodoPagamento === 'debito'
+  const usaTaxa = rentals.editingLocacao?.metodoPagamento === 'credito' || rentals.editingLocacao?.metodoPagamento === 'debito'
 
   const filteredLocacoes = locacoes.filter(l =>
     filter === 'todos' ? true : l.status === filter
@@ -237,10 +200,11 @@ export default function AlugueisPage() {
       </Card>
 
       <LocacaoModal 
-        isOpen={isModalOpen} 
-        onClose={handleCloseModal} 
-        locacao={currentLocacao} 
-        onSave={handleSave} 
+        isOpen={rentals.isModalOpen} 
+        onClose={rentals.handleCloseModal} 
+        locacao={rentals.editingLocacao} 
+        onSave={rentals.handleSave} 
+        onAddClienteAndSave={rentals.handleAddClienteAndSave}
         clientes={clientes}
         perfil={perfil}
         cacambas={cacambas}

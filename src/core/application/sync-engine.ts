@@ -46,30 +46,31 @@ class SyncEngine {
       const state = useAppStore.getState();
       const today = new Date();
       
-      this.checkOverdue(state, today);
-      this.checkNearExpiry(state, today);
-      this.checkPendingLogistics(state, today);
+      // Criar cache de notificações para busca O(1)
+      const notificacaoIds = new Set(state.notificacoes.map((n: Notificacao) => n.id));
+      
+      // Criar mapa de caçambas por ID para busca O(1)
+      const cacambasMap = new Map<string, Cacamba>(state.cacambas.map((c: Cacamba) => [c.id, c]));
+
+      this.checkOverdue(state, today, notificacaoIds);
+      this.checkNearExpiry(state, today, notificacaoIds);
+      this.checkPendingLogistics(state, today, notificacaoIds, cacambasMap);
     } finally {
       this.isProcessing = false;
     }
   }
 
-  /**
-   * Verifica locações que acabaram de vencer
-   */
-  private checkOverdue(state: any, today: Date) {
-    const { locacoes, addNotificacao, notificacoes, setLocacoes } = state;
+  private checkOverdue(state: any, today: Date, notifIds: Set<string>) {
+    const { locacoes, addNotificacao, setLocacoes } = state;
     let modified = false;
 
     const updatedLocs = locacoes.map((loc: Locacao) => {
-      // Garantir que temos um ID válido para trabalhar
       const locId = loc.id!;
-      
       if (isLocacaoOverdue(loc, today) && loc.status !== 'vencida' && loc.status !== 'concluida') {
         modified = true;
         
         const key = `retirada-${locId}`;
-        if (!notificacoes.some((n: Notificacao) => n.id === key)) {
+        if (!notifIds.has(key)) {
           addNotificacao({
             id: key,
             titulo: 'Retirada Necessária',
@@ -86,11 +87,8 @@ class SyncEngine {
     if (modified) setLocacoes(updatedLocs);
   }
 
-  /**
-   * Verifica pendências de pagamento e entregas
-   */
-  private checkPendingLogistics(state: any, today: Date) {
-    const { locacoes, cacambas, addNotificacao, notificacoes } = state;
+  private checkPendingLogistics(state: any, today: Date, notifIds: Set<string>, cacambasMap: Map<string, Cacamba>) {
+    const { locacoes, addNotificacao } = state;
 
     locacoes.forEach((loc: Locacao) => {
       const locId = loc.id!;
@@ -99,7 +97,7 @@ class SyncEngine {
       // 1. Pagamento Pendente
       if (loc.status === 'a_pagar') {
         const key = `pgto-${locId}`;
-        if (!notificacoes.some((n: Notificacao) => n.id === key)) {
+        if (!notifIds.has(key)) {
           addNotificacao({
             id: key,
             titulo: 'Pagamento Pendente',
@@ -111,27 +109,28 @@ class SyncEngine {
       }
 
       // 2. Entrega Pendente
-      const cab = cacambas.find((c: Cacamba) => c.id === loc.cacambaId || loc.cacambaIds?.includes(c.id));
-      if (cab && !cab.dataEntrega && loc.status !== ('concluida' as any)) {
-        const key = `entrega-${locId}`;
-        if (!notificacoes.some((n: Notificacao) => n.id === key)) {
-          addNotificacao({
-            id: key,
-            titulo: 'Entrega Pendente',
-            mensagem: `A caçamba ${cab.codigo} precisa ser entregue para a locação #${locId.slice(-4)}.`,
-            locacaoId: locId,
-            lida: false
-          });
+      // Busca eficiente da caçamba principal ou lista
+      const cabId = loc.cacambaId || (loc.cacambaIds && loc.cacambaIds[0]);
+      if (cabId) {
+        const cab = cacambasMap.get(cabId);
+        if (cab && !cab.dataEntrega && loc.status !== ('concluida' as any)) {
+          const key = `entrega-${locId}`;
+          if (!notifIds.has(key)) {
+            addNotificacao({
+              id: key,
+              titulo: 'Entrega Pendente',
+              mensagem: `A caçamba ${cab.codigo} precisa ser entregue para a locação #${locId.slice(-4)}.`,
+              locacaoId: locId,
+              lida: false
+            });
+          }
         }
       }
     });
   }
 
-  /**
-   * Verifica locações que vencem em breve (24h)
-   */
-  private checkNearExpiry(state: any, today: Date) {
-    const { locacoes, addNotificacao, notificacoes } = state;
+  private checkNearExpiry(state: any, today: Date, notifIds: Set<string>) {
+    const { locacoes, addNotificacao } = state;
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
@@ -140,7 +139,7 @@ class SyncEngine {
       const locId = loc.id!;
       if (loc.dataDevolucaoPrevista === tomorrowStr && loc.status === 'pago') {
         const key = `expiry-${locId}`;
-        if (!notificacoes.some((n: Notificacao) => n.id === key)) {
+        if (!notifIds.has(key)) {
           addNotificacao({
             id: key,
             titulo: 'Vencimento Próximo',

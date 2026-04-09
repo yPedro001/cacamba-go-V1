@@ -16,12 +16,18 @@ export type Configuracoes = {
 export interface UISlice {
   notificacoes: Notificacao[];
   configuracoes: Configuracoes;
+  sidebarOpen: boolean;
+  sidebarCollapsed: boolean;
 
   setNotificacoes: (n: Notificacao[]) => void;
   updateConfiguracoes: (c: Partial<Configuracoes>) => void;
   addNotificacao: (n: Omit<Notificacao, 'id' | 'dataCriacao'>) => void;
   marcarNotificacaoLida: (id: string) => void;
   marcarTodasLidas: () => void;
+  setSidebarOpen: (open: boolean) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
+  toggleSidebarCollapsed: () => void;
 }
 
 export const createUISlice: StateCreator<UISlice> = (set) => ({
@@ -29,6 +35,8 @@ export const createUISlice: StateCreator<UISlice> = (set) => ({
   configuracoes: {
     pularConfirmacaoExclusao: false,
   },
+  sidebarOpen: false,
+  sidebarCollapsed: false,
 
   setNotificacoes: (notificacoes) => set({ notificacoes }),
   updateConfiguracoes: (c) => set((state) => ({ 
@@ -47,4 +55,8 @@ export const createUISlice: StateCreator<UISlice> = (set) => ({
   marcarTodasLidas: () => set((state) => ({
     notificacoes: state.notificacoes.map(n => ({ ...n, lida: true }))
   })),
+  setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+  setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  toggleSidebarCollapsed: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 });

@@ -6,11 +6,17 @@ import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { Loader2 } from 'lucide-react'
 import { BackgroundSyncProvider } from '@/shared/providers/BackgroundSyncProvider'
+import { cn } from '@/lib/utils'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { usuarioAtual } = useAppStore()
+  const { 
+    usuarioAtual, 
+    sidebarOpen, 
+    sidebarCollapsed, 
+    setSidebarOpen 
+  } = useAppStore()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -36,19 +42,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Se não estiver logado e não estiver no login, mostra um loader enquanto redireciona
   if (!usuarioAtual) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-slate-950">
+    <div className="min-h-screen w-full flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 text-accent animate-spin" />
       </div>
+
     )
   }
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+
   return (
     <BackgroundSyncProvider>
-      <div className="min-h-screen bg-background text-foreground flex">
+      <div className="min-h-screen bg-background text-foreground flex relative overflow-x-hidden">
+        {/* Mobile Overlay */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-30 md:hidden animate-in fade-in duration-300"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         <Sidebar />
-        <div className="flex-1 flex flex-col md:ml-64">
+        
+        <div 
+          className={cn(
+            "flex-1 flex flex-col transition-all duration-300 ease-in-out min-w-0",
+            sidebarCollapsed ? "md:ml-20" : "md:ml-64"
+          )}
+        >
           <Header />
-          <main className="flex-1 p-6 overflow-x-hidden">
+          <main className={cn(
+            "flex-1 p-4 md:p-6 transition-all duration-300",
+            // Evita que o conteúdo mude drasticamente no mobile quando a sidebar abre
+            sidebarOpen && isMobile ? "blur-[2px] opacity-80" : ""
+          )}>
             {children}
           </main>
         </div>

@@ -9,6 +9,8 @@ import { MapFilterPanel } from './MapFilterPanel';
 import { MapRegister, InvalidateOnVisible, FlyToCenter } from './MapHelpers';
 import { useClientes } from '@/store/useAppStore';
 import { getMapColor } from '@/core/domain/business-logic';
+import { ModalBase } from '@/components/ui/modal-base';
+import { Button } from '@/components/ui/button';
 
 export function MapInnerContent({ controller }: { controller: any }) {
   const {
@@ -30,8 +32,8 @@ export function MapInnerContent({ controller }: { controller: any }) {
       {userPos && <FlyToCenter center={userPos} zoom={16} />}
 
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
       <MapControls 
@@ -45,7 +47,6 @@ export function MapInnerContent({ controller }: { controller: any }) {
         filteredCacambas={filteredCacambas}
       />
 
-      {/* Leaflet Content */}
       <MapMarkers 
         userPos={userPos}
         accuracy={accuracy}
@@ -65,34 +66,65 @@ export function MapInnerContent({ controller }: { controller: any }) {
         isRouting={isRouting}
       />
 
-      {/* Histórico Modal (Simplified, can be a child later) */}
-      {historicoModal && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 pointer-events-auto">
-          <div className="bg-card text-card-foreground w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-border">
-            <div className="flex justify-between items-center p-4 border-b border-border bg-muted/30">
-              <h3 className="text-lg font-bold">Histórico — {historicoModal.codigo}</h3>
-              <button 
-                onClick={() => setHistoricoModal(null)} 
-                className="h-8 w-8 rounded-full hover:bg-muted flex items-center justify-center"
-              >✕</button>
-            </div>
-            <div className="p-4 max-h-[55vh] overflow-y-auto space-y-2">
-              {[...(historicoModal.historico || [])].reverse().map((entry, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 border border-border text-xs">
-                  <div className="mt-0.5 h-2 w-2 rounded-full bg-accent flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="flex justify-between font-bold">
-                      <span>{entry.status}</span>
-                      <span>{new Date(entry.data).toLocaleString()}</span>
+      {/* Modal de Histórico da Caçamba — padronizado com ModalBase */}
+      <ModalBase
+        isOpen={!!historicoModal}
+        onClose={() => setHistoricoModal(null)}
+        maxWidth="lg"
+        title={
+          historicoModal ? (
+            <>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Histórico de Operações</span>
+              <span className="text-accent">{historicoModal.codigo}</span>
+            </>
+          ) : null
+        }
+        footer={
+          <Button
+            onClick={() => setHistoricoModal(null)}
+            className="h-11 px-8 font-black uppercase tracking-widest text-[11px] bg-accent hover:bg-accent-dark text-white rounded-2xl"
+          >
+            Fechar Visualização
+          </Button>
+        }
+      >
+        {historicoModal && (
+          <div className="space-y-4">
+            {(!historicoModal.historico || historicoModal.historico.length === 0) ? (
+              <div className="py-12 flex flex-col items-center justify-center text-center opacity-40">
+                <div className="w-16 h-16 rounded-2xl bg-white/5 border-2 border-dashed border-white/10 flex items-center justify-center mb-4">
+                  <span className="text-2xl">⏳</span>
+                </div>
+                <p className="text-sm font-bold">Sem histórico registrado</p>
+                <p className="text-xs text-slate-500 mt-1">Não há registros de movimentação para esta caçamba.</p>
+              </div>
+            ) : (
+              [...(historicoModal.historico || [])].reverse().map((entry, i) => (
+                <div key={i} className="relative pl-6 pb-4 border-l-2 border-white/10 last:border-0 last:pb-0">
+                  <div className="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-slate-900 border-4 border-accent shadow-sm" />
+                  <div className="bg-white/5 p-4 rounded-2xl border border-white/5 hover:border-accent/20 transition-colors">
+                    <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-accent/10 text-accent">
+                        {entry.status}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                        {new Date(entry.data).toLocaleString('pt-BR')}
+                      </span>
                     </div>
-                    <p className="text-muted-foreground">{entry.usuario} · {entry.motivo}</p>
+                    <p className="text-sm font-semibold mb-1 leading-snug">{entry.motivo || 'Nenhum comentário adicional'}</p>
+                    <div className="flex items-center gap-1.5 pt-2 border-t border-white/5 mt-2">
+                      <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-black text-slate-300">
+                        {entry.usuario?.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-400">Responsável: {entry.usuario}</span>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </ModalBase>
     </>
   );
 }

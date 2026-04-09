@@ -1,51 +1,55 @@
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: #ffffff;
-    --foreground: #000000;
+    --background: #f8fafc;
+    --foreground: #020617;
     --card: #ffffff;
-    --card-foreground: #000000;
+    --card-foreground: #020617;
     --popover: #ffffff;
-    --popover-foreground: #000000;
-    --primary: #7C3AED;
+    --popover-foreground: #020617;
+    --primary: #6366f1;
     --primary-foreground: #ffffff;
     --secondary: #f1f5f9;
     --secondary-foreground: #0f172a;
     --muted: #f1f5f9;
     --muted-foreground: #64748b;
-    --accent: #f1f5f9;
-    --accent-foreground: #0f172a;
+    --accent: #6366f1;
+    --accent-foreground: #ffffff;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
     --border: #e2e8f0;
     --input: #e2e8f0;
-    --ring: #7C3AED;
-    --radius: 0.5rem;
+    --ring: #6366f1;
+    --radius: 0.75rem;
+    --sidebar: #020617;
   }
 
   .dark {
-    --background: #000000;
-    --foreground: #ffffff;
-    --card: #111111;
-    --card-foreground: #ffffff;
-    --popover: #111111;
-    --popover-foreground: #ffffff;
-    --primary: #7C3AED;
+    --background: #020617;
+    --foreground: #f8fafc;
+    --card: #0f172a;
+    --card-foreground: #f8fafc;
+    --popover: #0f172a;
+    --popover-foreground: #f8fafc;
+    --primary: #818cf8;
     --primary-foreground: #ffffff;
     --secondary: #1e293b;
-    --secondary-foreground: #ffffff;
+    --secondary-foreground: #f8fafc;
     --muted: #1e293b;
     --muted-foreground: #94a3b8;
-    --accent: #1e293b;
+    --accent: #818cf8;
     --accent-foreground: #ffffff;
-    --destructive: #ef4444;
+    --destructive: #f87171;
     --destructive-foreground: #ffffff;
-    --border: #333333;
-    --input: #333333;
-    --ring: #7C3AED;
+    --border: #1e293b;
+    --input: #1e293b;
+    --ring: #818cf8;
+    --sidebar: #000000;
   }
 }
 
@@ -156,4 +160,80 @@
   font-weight: 800;
   padding: 3px 8px;
   border-radius: 12px;
+}
+/* Estilos Globais Premium */
+@layer utilities {
+  .glass {
+    @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/20 dark:border-slate-800/20 shadow-xl;
+  }
+  
+  .glass-dark {
+    @apply bg-slate-950/40 backdrop-blur-xl border border-white/5 shadow-2xl;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500;
+  }
+}
+
+/* Scrollbar Customizada */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-400/30 rounded-full hover:bg-slate-400/50 transition-colors;
+}
+
+/* Animações de Entrada */
+.animate-in {
+  animation-duration: 0.5s;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in { animation-name: fadeIn; }
+.slide-up { animation-name: slideUp; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Melhorias no Leaflet */
+.leaflet-container {
+  @apply font-sans !important;
+  background-color: #f8fafc !important; /* Cor clara baseada no tema */
+  z-index: 1 !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.leaflet-pane {
+  z-index: 10 !important;
+}
+
+.leaflet-tile-pane {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.leaflet-tile {
+  filter: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.cacamba-marker-pin {
+  @apply transition-transform duration-200 hover:scale-125 items-center justify-center font-black !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+  z-index: 1000 !important;
 }

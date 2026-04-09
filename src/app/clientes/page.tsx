@@ -14,7 +14,8 @@ export default function ClientesPage() {
     currentClient, setCurrentClient, isEditing,
     isCepLoading, handleCepLookup, saveClient,
     deleteClient, confirmDelete, isDeleteModalOpen, setIsDeleteModalOpen,
-    enderecoForm, setEnderecoForm, exportPDF, exportExcel
+    enderecosForm, addEnderecoField, removeEnderecoField, updateEnderecoField,
+    exportPDF, exportExcel
   } = useCustomersController();
 
   return (
@@ -37,7 +38,7 @@ export default function ClientesPage() {
       <Card className="shadow-lg border-slate-200">
         <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border bg-slate-50/50 rounded-t-xl">
           <CardTitle className="text-lg">Base de Clientes</CardTitle>
-          <div className="relative w-full max-w-sm">
+          <div className="relative w-full max-sm:max-w-xs">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
               type="search" 
@@ -64,8 +65,10 @@ export default function ClientesPage() {
         isEditing={isEditing}
         currentClient={currentClient}
         setCurrentClient={setCurrentClient}
-        enderecoForm={enderecoForm}
-        setEnderecoForm={setEnderecoForm}
+        enderecosForm={enderecosForm}
+        addEnderecoField={addEnderecoField}
+        removeEnderecoField={removeEnderecoField}
+        updateEnderecoField={updateEnderecoField}
         isCepLoading={isCepLoading}
         handleCepLookup={handleCepLookup}
         onSave={saveClient}

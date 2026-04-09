@@ -1,14 +1,13 @@
-import { useAppStore, hashPassword } from '@/store/useAppStore';
-import { Usuario, UserData } from '@/core/domain/types';
+import { useAppStore } from '@/store/useAppStore';
+import { UserData } from '@/core/domain/types';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export function useAuthActions() {
   const router = useRouter();
-  const usuarios = useAppStore(s => s.usuarios);
   const usersData = useAppStore(s => s.usersData);
   const { 
     setUsuarioAtual, 
-    setUsuarios, 
     setUsersData,
     setClientes,
     setCacambas,
@@ -43,38 +42,146 @@ export function useAuthActions() {
     configuracoes: { pularConfirmacaoExclusao: false }
   });
 
-  const login = async (email: string, senha: string) => {
-    const hashedInput = await hashPassword(senha);
-    const user = usuarios.find(u => u.email === email && (u.senha === hashedInput || u.senha === senha));
+  const carregarDadosDoUsuario = (userId: string, email: string, nome: string) => {
+    // Busca os dados locais ou cria default
+    const data = usersData[userId] || getDefaultUserData();
     
-    if (user) {
-      if (user.senha === senha) {
-        setUsuarios(usuarios.map(u => u.id === user.id ? { ...u, senha: hashedInput } : u));
-      }
+    // Atualiza State Global
+    setUsuarioAtual({ id: userId, email, nome });
+    setClientes(data.clientes);
+    setCacambas(data.cacambas);
+    setLocacoes(data.locacoes);
+    setGastos(data.gastos);
+    setPerfil(data.perfil);
+    setNotificacoes(data.notificacoes);
 
-      const data = usersData[user.id] || getDefaultUserData();
-      setUsuarioAtual({ ...user, senha: '' });
-      setClientes(data.clientes);
-      setCacambas(data.cacambas);
-      setLocacoes(data.locacoes);
-      setGastos(data.gastos);
-      setPerfil(data.perfil);
-      setNotificacoes(data.notificacoes);
-      return true;
+    // Se é a primeira vez, salva os dados default no mapa global
+    if (!usersData[userId]) {
+      setUsersData({ ...usersData, [userId]: data });
     }
-    return false;
   };
 
-  const register = async (nome: string, email: string, senha: string) => {
-    if (usuarios.some(u => u.email === email)) return false;
-    
-    const hashedSenha = await hashPassword(senha);
-    const newUser: Usuario = { id: Date.now().toString(), nome, email, senha: hashedSenha };
-    const newUsersData = { ...usersData, [newUser.id]: getDefaultUserData() };
-    
-    setUsuarios([...usuarios, newUser]);
-    setUsersData(newUsersData);
-    return true;
+  const login = async (email: string, senha: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: senha,
+      });
+
+      if (error) throw error;
+      if (!data.user) throw new Error("Usuário não retornado.");
+
+      // Supabase user id as local id
+      const userId = data.user.id;
+      const nome = data.user.user_metadata?.nome || email.split('@')[0];
+
+      carregarDadosDoUsuario(userId, email, nome);
+
+      return { success: true };
+    } catch (err: any) {
+      console.error("Login Error:", err);
+      return { success: false, error: err.message || "E-mail ou senha incorretos." };
+    }
+  };
+
+  const register = async (nome: string, email: string, senha: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password: senha,
+        options: {
+          data: { nome } // Salva o nome nos metadados do usuário
+        }
+      });
+
+      if (error) throw error;
+      
+      // Se a confirmação de email estiver ativada, user não estará logado imediatamente
+      return { success: true };
+    } catch (err: any) {
+      console.error("Register Error:", err);
+      let errorMsg = err.message || "Erro ao criar conta.";
+      
+      if (err.message?.includes("rate limit")) {
+        errorMsg = "Limite de e-mails atingido. Por favor, aguarde alguns minutos ou verifique as configurações do Supabase.";
+      } else if (err.message?.includes("already registered")) {
+        errorMsg = "Este e-mail já está em uso.";
+      }
+      
+      return { success: false, error: errorMsg };
+    }
+  };
+
+  const resendOtp = async (email: string, type: 'signup' | 'recovery'): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (type === 'signup') {
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email,
+        });
+        if (error) throw error;
+      } else {
+        // Para recovery, chamamos novamente a função de reset
+        return sendPasswordReset(email);
+      }
+      return { success: true };
+    } catch (err: any) {
+      console.error("Resend OTP Error:", err);
+      let errorMsg = "Erro ao reenviar código.";
+      if (err.message?.includes("rate limit")) {
+        errorMsg = "Limite de reenvio atingido. Aguarde alguns minutos.";
+      }
+      return { success: false, error: errorMsg };
+    }
+  };
+
+  const verifyOtp = async (email: string, token: string, type: 'signup' | 'recovery' | 'magiclink'): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type,
+      });
+
+      if (error) throw error;
+
+      if (type === 'signup' && data.user) {
+        // Loga o usuário logo após confirmar e carrega os arquivos offline
+        const userId = data.user.id;
+        const nome = data.user.user_metadata?.nome || email.split('@')[0];
+        carregarDadosDoUsuario(userId, email, nome);
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error("Verify OTP Error:", err);
+      return { success: false, error: err.message || "Código inválido ou expirado." };
+    }
+  };
+
+  const sendPasswordReset = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      console.error("Reset Password Error:", err);
+      return { success: false, error: err.message || "Erro ao solicitar recuperação." };
+    }
+  };
+
+  const resetPassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      console.error("Update Password Error:", err);
+      return { success: false, error: err.message || "Erro ao atualizar a senha." };
+    }
   };
 
   const sync = () => {
@@ -94,11 +201,21 @@ export function useAuthActions() {
     }
   };
 
-  const logout = () => {
-    sync();
+  const logout = async () => {
+    sync(); // Salva o state da sessão atual localmente antes de deslogar
+    await supabase.auth.signOut();
     setUsuarioAtual(null);
     router.push('/login');
   };
 
-  return { login, register, logout, sync };
+  return { 
+    login, 
+    register, 
+    verifyOtp, 
+    sendPasswordReset, 
+    resetPassword,
+    resendOtp,
+    logout, 
+    sync 
+  };
 }

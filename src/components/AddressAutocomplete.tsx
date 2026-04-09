@@ -65,8 +65,9 @@ export function AddressAutocomplete({ value, onChange, placeholder, className }:
           onChange={handleInputChange}
           onFocus={() => value.length >= 3 && setIsOpen(true)}
           placeholder={placeholder || "Buscar endereço..."}
-          className={`pl-10 ${className || ''}`}
+          className={`pl-10 bg-background border-input text-foreground placeholder:text-muted-foreground/60 ${className || ''}`}
         />
+
         {isLoading && (
           <div className="absolute right-3 top-3">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

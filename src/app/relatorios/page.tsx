@@ -16,7 +16,7 @@ import { ConfirmModal } from '@/components/ConfirmModal'
 import { getClientName, MESES_ABREV } from '@/lib/business-utils'
 
 type PeriodoFiltro = '7d' | '30d' | '90d' | '1a' | 'custom'
-type SerieAtiva = 'bruto' | 'liquido' | 'taxas' | 'gastos' | 'all'
+type SerieKey = 'bruto' | 'liquido' | 'taxas' | 'gastos'
 
 // Tooltip customizado
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -50,7 +50,7 @@ export default function RelatoriosPage() {
   const [periodoBotao, setPeriodoBotao] = useState<PeriodoFiltro>('30d')
   const [dataInicio, setDataInicio] = useState('')
   const [dataFim, setDataFim] = useState('')
-  const [serieAtiva, setSerieAtiva] = useState<SerieAtiva>('all')
+  const [seriesAtivas, setSeriesAtivas] = useState<SerieKey[]>(['bruto', 'liquido', 'taxas', 'gastos'])
   const [barSelecionada, setBarSelecionada] = useState<string | null>(null)
 
   // Gastos
@@ -182,11 +182,28 @@ export default function RelatoriosPage() {
     });
   }
 
+  const toggleSerie = (key: SerieKey | 'all') => {
+    if (key === 'all') {
+      if (seriesAtivas.length === 4) {
+        setSeriesAtivas([])
+      } else {
+        setSeriesAtivas(['bruto', 'liquido', 'taxas', 'gastos'])
+      }
+      return
+    }
+
+    setSeriesAtivas(prev => 
+      prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key]
+    )
+  }
+
+  const isAllActive = seriesAtivas.length === 4
+
   // Barras visíveis por série selecionada
-  const showBruto = serieAtiva === 'all' || serieAtiva === 'bruto'
-  const showLiquido = serieAtiva === 'all' || serieAtiva === 'liquido'
-  const showTaxas = serieAtiva === 'all' || serieAtiva === 'taxas'
-  const showGastos = serieAtiva === 'all' || serieAtiva === 'gastos'
+  const showBruto = seriesAtivas.includes('bruto')
+  const showLiquido = seriesAtivas.includes('liquido')
+  const showTaxas = seriesAtivas.includes('taxas')
+  const showGastos = seriesAtivas.includes('gastos')
 
   const periodoOpcoes: { key: PeriodoFiltro; label: string }[] = [
     { key: '7d', label: '7 dias' },
@@ -196,7 +213,7 @@ export default function RelatoriosPage() {
     { key: 'custom', label: 'Personalizado' },
   ]
 
-  const serieOpcoes: { key: SerieAtiva; label: string; color: string }[] = [
+  const serieOpcoes: { key: SerieKey | 'all'; label: string; color: string }[] = [
     { key: 'all', label: 'Todos', color: '#888' },
     { key: 'bruto', label: 'Bruto', color: '#10b981' },
     { key: 'liquido', label: 'Líquido', color: '#38bdf8' },
@@ -325,13 +342,16 @@ export default function RelatoriosPage() {
                 {/* Filtros de Series */}
                 <div className="flex flex-wrap gap-2 items-center">
                   <span className="text-xs text-muted-foreground font-medium">Exibir:</span>
-                  {serieOpcoes.map(s => (
-                    <button key={s.key} onClick={() => setSerieAtiva(s.key)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${serieAtiva === s.key ? 'text-white border-transparent' : 'border-border text-muted-foreground hover:border-accent/50'}`}
-                      style={serieAtiva === s.key ? { backgroundColor: s.color, borderColor: s.color } : {}}>
-                      {s.label}
-                    </button>
-                  ))}
+                  {serieOpcoes.map(s => {
+                    const isActive = s.key === 'all' ? isAllActive : seriesAtivas.includes(s.key as SerieKey)
+                    return (
+                      <button key={s.key} onClick={() => toggleSerie(s.key)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${isActive ? 'text-white border-transparent' : 'border-border text-muted-foreground hover:border-accent/50'}`}
+                        style={isActive ? { backgroundColor: s.color, borderColor: s.color } : {}}>
+                        {s.label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </CardHeader>
