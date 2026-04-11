@@ -13,7 +13,8 @@ import { geocodeService } from '@/infrastructure/api/geocode-service';
 import { DuplicateClientDialog } from '@/components/DuplicateClientDialog';
 import { cn } from '@/lib/utils';
 import { Controller } from 'react-hook-form';
-import { formatCurrency, parseCurrencyToNumber, maskCurrency } from '@/lib/currency-utils';
+import { formatCurrency } from '@/lib/currency-utils';
+import { SmartCurrencyInput } from '@/components/ui/smart-currency-input';
 import { cpfCnpjMask, phoneMask } from '@/lib/masks';
 import { ModalBase } from '@/components/ui/modal-base';
 
@@ -374,7 +375,7 @@ export function LocacaoModal({
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 text-accent">Previsão Fim</label>
-                <Input className="h-11 rounded-2xl font-mono text-sm px-4 border-accent/30 bg-accent/5 focus:ring-accent text-foreground" type="date" {...register('dataDevolucaoPrevista')} />
+                <Input className="h-11 rounded-2xl font-mono text-sm px-4 bg-background border-input text-foreground" type="date" {...register('dataDevolucaoPrevista')} />
               </div>
             </div>
 
@@ -474,15 +475,12 @@ export function LocacaoModal({
                     control={control}
                     render={({ field }) => (
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-muted-foreground/50">R$</span>
-                        <Input 
-                          className="h-11 rounded-2xl pl-10 font-black text-lg tabular-nums bg-background border-input text-foreground" 
-                          placeholder="R$ 0,00"
-                          value={maskCurrency(String((field.value || 0) * 100))}
-                          onChange={(e) => {
-                            const numericValue = parseCurrencyToNumber(e.target.value);
-                            field.onChange(numericValue);
-                          }}
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-muted-foreground/50 z-10 pointer-events-none">R$</span>
+                        <SmartCurrencyInput
+                          value={field.value || 0}
+                          onChange={field.onChange}
+                          className="h-11 rounded-2xl pl-10 font-black text-lg tabular-nums bg-background border-input text-foreground"
+                          placeholder="0,00"
                         />
                       </div>
                     )}

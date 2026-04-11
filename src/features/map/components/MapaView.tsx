@@ -161,9 +161,9 @@ export default function MapaView() {
       </div>
 
       {/* ─── LINHA 3: PAINEL DE CONTROLE (ESQ) E ITINERÁRIO (DIR) ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 xl:grid-cols-5 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 xl:grid-cols-6 gap-6 items-start">
         
-        {/* COLUNA ESQUERDA: PAINEL DE CONTROLE (Compactado e Útil) */}
+        {/* COLUNA ESQUERDA: PAINEL DE CONTROLE (compacto) */}
         <div className="lg:col-span-1 xl:col-span-1 border border-border/20 rounded-2xl bg-card/60 shadow-sm p-4">
           <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-4">
             <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -204,7 +204,7 @@ export default function MapaView() {
         </div>
 
         {/* COLUNA DIREITA: ITINERÁRIO DO DIA */}
-        <div className="lg:col-span-3 xl:col-span-4">
+        <div className="lg:col-span-4 xl:col-span-5">
           <Card className="border-border/20 shadow-sm bg-card/60 h-full">
             <CardHeader className="pb-3 border-b border-border/10 bg-muted/10">
               <CardTitle className="text-sm font-black flex items-center gap-2 uppercase tracking-[0.1em]">
@@ -229,7 +229,7 @@ export default function MapaView() {
                    <p className="text-[10px] font-black uppercase tracking-[0.15em] opacity-50 mt-1">Nenhuma pendência operacional.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                   {itinerario.map(loc => (
                     <div
                       key={loc.id}

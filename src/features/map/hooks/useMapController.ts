@@ -72,23 +72,32 @@ export function useMapController() {
   [clientes]);
 
   /**
-   * Resolução de coordenadas de uma caçamba:
-   * - Se disponível → usa lat/lng da empresa do perfil
-   * - Se vinculada a locação → usa lat/lng da locação (endereço da obra)
-   * - Fallback final: coordenadas da empresa
+   * Resolução de coordenadas de uma caçamba — prioridade correta:
+   * 1. lat/lng próprio da caçamba (endereço cadastrado) — mais preciso
+   * 2. lat/lng da locação ativa (endereço da obra)
+   * 3. Fallback final: coordenadas da empresa (pátio)
+   *
+   * NOTA: Caçambas "disponíveis" fora do pátio (com endereço próprio cadastrado)
+   * aparecem no local correto, não forçamos todas para o pátio da empresa.
    */
   const resolveCacambaCoords = useCallback((c: Cacamba): [number, number] | null => {
-    if (c.status === 'disponivel') {
-      return [empresaLat, empresaLng];
+    // 1. A caçamba tem coordenadas próprias cadastradas (mais confiável)
+    if (c.lat != null && c.lng != null) {
+      return [c.lat, c.lng];
     }
+
+    // 2. Caçamba vinculada a uma locação com coordenadas → usa o endereço da obra
     const loc = locacaoMap[c.id];
     if (loc?.lat != null && loc?.lng != null) {
       return [loc.lat, loc.lng];
     }
-    if (c.lat != null && c.lng != null) {
-      return [c.lat, c.lng];
+
+    // 3. Caçamba disponível sem coordenadas → usa o pátio da empresa como padrão
+    if (c.status === 'disponivel') {
+      return [empresaLat, empresaLng];
     }
-    // Caçambas não-disponíveis sem coordenadas: usa empresa como fallback
+
+    // 4. Fallback final: empresa
     return [empresaLat, empresaLng];
   }, [locacaoMap, empresaLat, empresaLng]);
 

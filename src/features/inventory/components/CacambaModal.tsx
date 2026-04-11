@@ -77,7 +77,7 @@ export function CacambaModal({
             <div className="space-y-3">
               <label className="text-[10px] font-black text-accent uppercase tracking-[0.2em] ml-1">Qtd. Lote</label>
               <Input 
-                className="h-12 rounded-2xl font-black px-4 bg-accent/5 border-accent/20 text-foreground focus:ring-accent"
+                className={`${inputBase} font-black`}
                 type="number" min="1" max="50" 
                 value={batchQuantity} 
                 onChange={e => setBatchQuantity(parseInt(e.target.value) || 1)} 

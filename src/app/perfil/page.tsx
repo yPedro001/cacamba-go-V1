@@ -1,15 +1,16 @@
-﻿"use client"
+"use client"
 import React, { useState, useRef } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Save, Upload, Building2, CheckCircle2, LogOut, Trash2 } from 'lucide-react'
+import { Save, Upload, Building2, CheckCircle2, LogOut, Trash2, X, ZoomIn } from 'lucide-react'
 import { useAppStore, usePerfil } from '@/store/useAppStore'
 import { useDataActions } from '@/core/application/useDataActions'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { AddressAutocomplete } from '@/components/AddressAutocomplete'
 import { fetchAddressByCep } from '@/lib/address-utils'
 import { parseCurrencyToNumber, maskCurrency } from '@/lib/currency-utils'
+import { SmartCurrencyInput } from '@/components/ui/smart-currency-input'
 import { cpfCnpjMask, phoneMask, cepMask } from '@/lib/masks'
 
 export default function PerfilPage() {
@@ -19,6 +20,7 @@ export default function PerfilPage() {
   const [saved, setSaved] = useState(false)
   const [isCepLoading, setIsCepLoading] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     nomeEmpresa: perfil.nomeEmpresa,
@@ -51,9 +53,28 @@ export default function PerfilPage() {
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    // Valida tamanho (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 5MB.')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
     const reader = new FileReader()
-    reader.onloadend = () => updatePerfil({ logoUrl: reader.result as string })
+    // Mostra preview para confirmação antes de salvar
+    reader.onloadend = () => setLogoPreview(reader.result as string)
     reader.readAsDataURL(file)
+  }
+
+  const handleLogoConfirm = () => {
+    if (!logoPreview) return
+    updatePerfil({ logoUrl: logoPreview })
+    setLogoPreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleLogoCancel = () => {
+    setLogoPreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleCepBlur = async (cep: string) => {
@@ -207,15 +228,14 @@ export default function PerfilPage() {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Valor Aluguel (Padrão)</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-muted-foreground/50">R$</span>
-                    <Input
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-muted-foreground/50 z-10 pointer-events-none">R$</span>
+                    <SmartCurrencyInput
                       className="h-11 rounded-2xl bg-background border-input font-bold pl-10 focus:ring-accent"
-                      value={maskCurrency(String((form.padroes?.valorAluguel || 0) * 100))}
-                      onChange={e => {
-                        const numericValue = parseCurrencyToNumber(e.target.value)
+                      value={form.padroes?.valorAluguel || 0}
+                      onChange={(numericValue) => {
                         setForm({ ...form, padroes: { ...form.padroes, valorAluguel: numericValue } })
                       }}
-                      placeholder="R$ 0,00"
+                      placeholder="0,00"
                     />
                   </div>
                 </div>
@@ -256,36 +276,120 @@ export default function PerfilPage() {
             </CardHeader>
             <CardContent className="p-8">
               <div className="flex flex-col gap-6">
-                <div className="flex justify-center">
-                  {perfil.logoUrl ? (
-                    <div className="relative group">
-                      <img src={perfil.logoUrl} alt="Logo" className="w-32 h-32 object-contain rounded-3xl border border-white/10 bg-white/5 p-4 shadow-inner" />
-                      <button onClick={handleRemoveLogo} className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Trash2 size={14} />
-                      </button>
+
+                {/* Preview Modal Inline — visível quando há preview pendente */}
+                {logoPreview ? (
+                  <div className="flex flex-col gap-4 p-4 rounded-3xl border-2 border-accent/30 bg-accent/5 animate-in fade-in duration-300">
+                    <p className="text-[10px] font-black text-accent uppercase tracking-widest flex items-center gap-2">
+                      <ZoomIn size={12} /> Preview da Logo — Confirme antes de salvar
+                    </p>
+
+                    {/* Preview grande da logo */}
+                    <div className="w-full aspect-video rounded-2xl border border-border bg-white flex items-center justify-center overflow-hidden shadow-inner">
+                      <img
+                        src={logoPreview}
+                        alt="Preview da Logo"
+                        className="max-w-full max-h-full object-contain p-4"
+                      />
                     </div>
-                  ) : (
-                    <div className="w-32 h-32 rounded-3xl border-2 border-dashed border-white/10 bg-white/5 flex flex-col items-center justify-center text-slate-500">
-                      <Building2 className="h-10 w-10 mb-2 opacity-20" />
-                      <span className="text-[9px] font-black uppercase tracking-widest">No Assets</span>
+
+                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider leading-relaxed text-center">
+                      Esta é a aparência da logo nos recibos. Se estiver boa, confirme.
+                    </p>
+
+                    {/* Ações do preview */}
+                    <div className="flex gap-3">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleLogoCancel}
+                        className="flex-1 h-10 rounded-2xl border border-border text-muted-foreground font-bold uppercase tracking-widest text-xs hover:bg-muted/30 gap-2"
+                      >
+                        <X size={14} /> Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleLogoConfirm}
+                        className="flex-1 h-10 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-accent/20 gap-2"
+                      >
+                        <CheckCircle2 size={14} /> Confirmar Upload
+                      </Button>
                     </div>
-                  )}
-                </div>
-                <div className="space-y-4 text-center">
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider leading-relaxed px-4">
-                    A logo será aplicada em todos os documentos e recibos PDF gerados pela plataforma.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="h-11 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 text-xs font-black uppercase tracking-widest w-full"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {perfil.logoUrl ? 'Substituir Logo' : 'Enviar Logotipo'}
-                  </Button>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Logo atual */}
+                    <div className="flex justify-center">
+                      {perfil.logoUrl ? (
+                        <div className="relative group w-full">
+                          <div className="w-full rounded-3xl border border-border bg-background p-4 flex items-center justify-center min-h-[140px] overflow-hidden shadow-inner">
+                            <img
+                              src={perfil.logoUrl}
+                              alt="Logo"
+                              className="max-w-full max-h-[120px] object-contain"
+                            />
+                          </div>
+                          <button
+                            onClick={handleRemoveLogo}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-full rounded-3xl border-2 border-dashed border-border bg-muted/20 flex flex-col items-center justify-center py-10 text-muted-foreground gap-3">
+                          <Building2 className="h-12 w-12 opacity-20" />
+                          <div className="text-center">
+                            <p className="text-[10px] font-black uppercase tracking-widest">Sem Logo Cadastrada</p>
+                            <p className="text-[9px] text-muted-foreground/70 mt-1">Envie sua logomarca abaixo</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3 text-center">
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider leading-relaxed">
+                        Aplicada em todos os recibos e documentos PDF gerados pela plataforma.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="h-11 rounded-2xl border-border bg-background hover:bg-muted/30 text-xs font-black uppercase tracking-widest w-full gap-2"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {perfil.logoUrl ? 'Substituir Logo' : 'Enviar Logotipo'}
+                      </Button>
+                      <p className="text-[8px] text-muted-foreground/60 font-medium">
+                        Formatos aceitos: PNG, JPG, SVG · Máx. 5MB
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+
+                {/* Preview de identidade do recibo */}
+                {perfil.nomeEmpresa && (
+                  <div className="p-4 rounded-2xl border border-border bg-muted/10 space-y-2">
+                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-3">
+                      Como aparecerá no recibo
+                    </p>
+                    <div className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-xl border border-border">
+                      {perfil.logoUrl ? (
+                        <img src={perfil.logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded-lg shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center shrink-0">
+                          <span className="text-accent font-black text-sm">{perfil.nomeEmpresa.charAt(0)}</span>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-black text-foreground leading-none">{perfil.nomeEmpresa}</p>
+                        {perfil.cnpj && <p className="text-[9px] text-muted-foreground font-mono mt-0.5">{perfil.cnpj}</p>}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

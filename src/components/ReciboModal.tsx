@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 import React, { useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Printer, Receipt } from 'lucide-react'
@@ -208,7 +208,7 @@ export function ReciboModal({ locacao, onClose }: ReciboModalProps) {
           {/* Cabeçalho */}
           <div className="relative z-10 flex items-center gap-6 mb-6 pb-4 border-b-2 border-slate-100">
             {perfil.logoUrl ? (
-              <img src={perfil.logoUrl} alt="Logo" className="w-20 h-20 object-contain rounded-2xl shadow-sm border border-slate-50" />
+              <img src={perfil.logoUrl} alt="Logo" className="w-28 h-28 object-contain rounded-2xl shadow-sm border border-slate-50" />
             ) : (
               <div className="w-16 h-16 rounded-2xl bg-accent p-0.5 shadow-xl">
                 <div className="w-full h-full rounded-[12px] bg-white flex items-center justify-center text-accent font-black text-2xl">
@@ -281,7 +281,7 @@ export function ReciboModal({ locacao, onClose }: ReciboModalProps) {
               <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-[0.3em] mb-2">Valor Total da Prestação</p>
               <div className="flex items-baseline justify-center gap-2">
                 <span className="text-lg font-bold text-accent">R$</span>
-                <p className="text-4xl font-black text-foreground tracking-tighter tabular-nums leading-none">
+                <p className="text-4xl font-black text-white tracking-tighter tabular-nums leading-none">
                   {valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
@@ -292,7 +292,7 @@ export function ReciboModal({ locacao, onClose }: ReciboModalProps) {
                   </div>
                 </div>
               )}
-              <div className="mt-2 text-[9px] text-foreground/60 font-black uppercase tracking-widest bg-white/10 px-3 py-0.5 rounded-full">
+              <div className="mt-2 text-[9px] text-white/60 font-black uppercase tracking-widest bg-white/10 px-3 py-0.5 rounded-full">
                 {metodo ? metodoPagamentoLabel[metodo] : 'À vista'}
               </div>
             </div>
@@ -312,15 +312,26 @@ export function ReciboModal({ locacao, onClose }: ReciboModalProps) {
 
             {/* Assinatura */}
             <div className="pt-2 flex flex-col items-center text-center">
-              <div className="relative w-[300px] mb-1">
-                <svg width="300" height="80" viewBox="0 0 500 120" xmlns="http://www.w3.org/2000/svg">
-                  <g fill="none" stroke="#000080" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M50 80 C150 70 350 60 450 50" opacity="0.1" />
-                    <path d="M130 90 C80 105 40 40 110 30 C170 20 190 70 140 95 C90 120 120 130 170 115" />
-                    <text x="50%" y="85" textAnchor="middle" fontFamily="cursive" fontSize="34" fill="#000080" fontStyle="italic" stroke="none">
-                      {perfil.nomeEmpresa}
-                    </text>
+              <div className="relative w-[320px] mb-1">
+                <svg width="320" height="90" viewBox="0 0 520 110" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <style>{`@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');`}</style>
+                  </defs>
+                  <g fill="none" stroke="#000080" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M50 80 C150 70 370 60 470 50" opacity="0.08" />
                   </g>
+                  <text
+                    x="50%"
+                    y="74"
+                    textAnchor="middle"
+                    fontFamily="'Dancing Script', cursive"
+                    fontSize="46"
+                    fontWeight="700"
+                    fill="#1e3a5f"
+                    stroke="none"
+                  >
+                    {perfil.nomeEmpresa}
+                  </text>
                 </svg>
               </div>
               <div className="w-[180px] border-t-2 border-slate-900 pt-2">
