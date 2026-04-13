@@ -21,17 +21,19 @@ export function useCustomersController() {
   // Estado para gerenciar múltiplos endereços no formulário
   const [enderecosForm, setEnderecosForm] = useState<Partial<ClienteEndereco>[]>([]);
 
-  const filteredClientes = (clientes || []).filter(c => {
-    const nome = c?.nome?.toLowerCase() || '';
-    const search = searchTerm.toLowerCase();
-    const telefone = c?.telefone || '';
-    const enderecoLegado = c?.endereco?.toLowerCase() || '';
-    
-    return nome.includes(search) || 
-           telefone.includes(searchTerm) ||
-           enderecoLegado.includes(search) ||
-           (c?.enderecos?.some(e => e.rua?.toLowerCase().includes(search)) ?? false);
-  });
+  const filteredClientes = (clientes || [])
+    .filter(c => {
+      const nome = c?.nome?.toLowerCase() || '';
+      const search = searchTerm.toLowerCase();
+      const telefone = c?.telefone || '';
+      const enderecoLegado = c?.endereco?.toLowerCase() || '';
+      
+      return nome.includes(search) || 
+             telefone.includes(searchTerm) ||
+             enderecoLegado.includes(search) ||
+             (c?.enderecos?.some(e => e.rua?.toLowerCase().includes(search)) ?? false);
+    })
+    .sort((a, b) => (b.dataCadastro || '').localeCompare(a.dataCadastro || ''));
 
   const handleOpenModal = useCallback((cliente?: Cliente) => {
     if (cliente) {
@@ -118,7 +120,7 @@ export function useCustomersController() {
     if (isEditing && currentClient.id) {
       updateCliente(currentClient.id, payload);
     } else {
-      addCliente({ ...payload, id: Date.now().toString() });
+      addCliente({ ...payload, id: Date.now().toString(), dataCadastro: new Date().toISOString().split('T')[0] });
     }
     handleCloseModal();
   };

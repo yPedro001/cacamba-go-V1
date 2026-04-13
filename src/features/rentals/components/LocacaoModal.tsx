@@ -410,7 +410,8 @@ export function LocacaoModal({
                       if (lat && lng) { setValue('lat', lat); setValue('lng', lng); }
                       if (details) { setValue('enderecoDetalhes', details); }
                     }} 
-                    placeholder="Busque o endereço da obra..." 
+                    placeholder="Busque o endereço da obra..."
+                    forceLightText={true}
                   />
                   <div className="relative">
                     <Input className="h-11 rounded-2xl pl-10 text-sm font-bold bg-background border-input text-foreground placeholder:text-muted-foreground/50" placeholder="CEP para busca rápida" onBlur={e => handleCepLookup(e.target.value)} />

@@ -9,9 +9,10 @@ interface AddressAutocompleteProps {
   onChange: (value: string, lat?: number, lng?: number, addressDetails?: AddressSuggestion['address']) => void;
   placeholder?: string;
   className?: string;
+  forceLightText?: boolean;
 }
 
-export function AddressAutocomplete({ value, onChange, placeholder, className }: AddressAutocompleteProps) {
+export function AddressAutocomplete({ value, onChange, placeholder, className, forceLightText }: AddressAutocompleteProps) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
@@ -65,7 +66,7 @@ export function AddressAutocomplete({ value, onChange, placeholder, className }:
           onChange={handleInputChange}
           onFocus={() => value.length >= 3 && setIsOpen(true)}
           placeholder={placeholder || "Buscar endereço..."}
-          className={`pl-10 bg-background border-input text-foreground placeholder:text-muted-foreground/60 ${className || ''}`}
+          className={`pl-10 bg-background border-input text-foreground placeholder:text-muted-foreground/60 ${forceLightText ? 'text-white font-semibold' : ''} ${className || ''}`}
         />
 
         {isLoading && (

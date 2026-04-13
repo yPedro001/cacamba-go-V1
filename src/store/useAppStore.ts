@@ -3,10 +3,12 @@ import { persist, subscribeWithSelector } from 'zustand/middleware';
 import { AuthSlice, createAuthSlice } from './slices/auth-slice';
 import { DataSlice, createDataSlice } from './slices/data-slice';
 import { UISlice, createUISlice } from './slices/ui-slice';
+import { DescarteSlice, createDescarteSlice } from './slices/descarte-slice';
+import { CTRSlice, createCTRSlice } from './slices/ctr-slice';
 import { Locacao, CacambaStatus, Cacamba } from '@/core/domain/types';
 
 // Tipagem do Store Combinado
-export type AppState = AuthSlice & DataSlice & UISlice;
+export type AppState = AuthSlice & DataSlice & UISlice & DescarteSlice & CTRSlice;
 
 export const useAppStore = create<AppState>()(
   subscribeWithSelector(
@@ -15,9 +17,18 @@ export const useAppStore = create<AppState>()(
         ...createAuthSlice(...a),
         ...createDataSlice(...a),
         ...createUISlice(...a),
+        ...createDescarteSlice(...a),
+        ...createCTRSlice(...a),
       }),
       {
         name: 'cacambago-storage-v2',
+        partialize: (state) => ({
+          ...state,
+          ctrs: state.ctrs,
+          ctrItems: state.ctrItems,
+          locaisDescarte: state.locaisDescarte,
+          localDescartePadraoId: state.localDescartePadraoId,
+        }),
       }
     )
   )
@@ -97,3 +108,20 @@ export const useGastos = () => useAppStore(s => s.gastos);
 export const usePerfil = () => useAppStore(s => s.perfil);
 export const useConfiguracoes = () => useAppStore(s => s.configuracoes);
 export const useNotificacoes = () => useAppStore(s => s.notificacoes);
+
+/**
+ * Seletores para CTR - Controle de Transporte de Resíduos
+ */
+export const useCTRs = () => useAppStore(s => s.ctrs);
+export const useCTRItems = () => useAppStore(s => s.ctrItems);
+export const useCTRAtual = () => useAppStore(s => s.ctrAtual);
+
+/**
+ * Seletores para Locais de Descarte
+ */
+export const useLocaisDescarte = () => useAppStore(s => s.locaisDescarte);
+export const useLocalDescartePadrao = () => {
+  const locais = useLocaisDescarte();
+  return locais.find(l => l.isPadrao);
+};
+export const useLocalDescartePadraoId = () => useAppStore(s => s.localDescartePadraoId);

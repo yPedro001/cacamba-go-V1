@@ -24,8 +24,9 @@ export const ClienteSchema = z.object({
   cpfCnpj: z.string().min(11, "Documento inválido"),
   telefone: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal('')),
-  endereco: z.string().optional(), // Mantido para compatibilidade, mas opcional
+  endereco: z.string().optional(),
   enderecos: z.array(ClienteEnderecoSchema).default([]),
+  dataCadastro: z.string().optional(),
 });
 
 export const CacambaStatusSchema = z.enum(['disponivel', 'entrega_pendente', 'locada', 'vencida']);

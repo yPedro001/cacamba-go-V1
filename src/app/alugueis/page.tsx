@@ -75,9 +75,9 @@ export default function AlugueisPage() {
 
   const usaTaxa = rentals.editingLocacao?.metodoPagamento === 'credito' || rentals.editingLocacao?.metodoPagamento === 'debito'
 
-  const filteredLocacoes = locacoes.filter(l =>
-    filter === 'todos' ? true : l.status === filter
-  )
+  const filteredLocacoes = locacoes
+    .filter(l => filter === 'todos' ? true : l.status === filter)
+    .sort((a, b) => b.dataRetirada.localeCompare(a.dataRetirada));
 
   const getStatusBadge = (status: string) => {
     switch (status) {

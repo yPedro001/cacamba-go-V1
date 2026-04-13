@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Save, Upload, Building2, CheckCircle2, LogOut, Trash2, X, ZoomIn } from 'lucide-react'
-import { useAppStore, usePerfil } from '@/store/useAppStore'
+import { useAppStore, usePerfil, useLocaisDescarte } from '@/store/useAppStore'
 import { useDataActions } from '@/core/application/useDataActions'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { AddressAutocomplete } from '@/components/AddressAutocomplete'
@@ -12,10 +12,13 @@ import { fetchAddressByCep } from '@/lib/address-utils'
 import { parseCurrencyToNumber, maskCurrency } from '@/lib/currency-utils'
 import { SmartCurrencyInput } from '@/components/ui/smart-currency-input'
 import { cpfCnpjMask, phoneMask, cepMask } from '@/lib/masks'
+import { LocalDescarteManager } from '@/features/ctr/components/LocalDescarteManager'
+import { useCTRController } from '@/features/ctr/hooks/useCTRController'
 
 export default function PerfilPage() {
   const perfil = usePerfil()
   const { updatePerfil, logout, deleteAccount } = useDataActions()
+  const ctrController = useCTRController()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [saved, setSaved] = useState(false)
   const [isCepLoading, setIsCepLoading] = useState(false)
@@ -262,6 +265,15 @@ export default function PerfilPage() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Locais de Descarte */}
+          <LocalDescarteManager
+            locais={useLocaisDescarte()}
+            onAdd={(local) => ctrController.addNovoLocalDescarte(local)}
+            onUpdate={(id, updates) => ctrController.updateLocalDescarteById(id, updates)}
+            onDelete={(id) => ctrController.deleteLocalDescarteById(id)}
+            onSetPadrao={(id) => ctrController.setLocalDescartePadraoById(id)}
+          />
         </div>
 
         {/* Sidebar Direita (1/3) — sticky */}

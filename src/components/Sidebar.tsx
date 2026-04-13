@@ -12,7 +12,8 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
-  Menu
+  Menu,
+  FileText
 } from "lucide-react"
 import { useAppStore } from "@/store/useAppStore"
 import { useAuthActions } from "@/core/application/useAuthActions"
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils"
 
 const links = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "CTR", href: "/ctr", icon: FileText },
   { name: "Clientes", href: "/clientes", icon: Users },
   { name: "Aluguéis", href: "/alugueis", icon: Truck },
   { name: "Gerenciamento", href: "/gerenciamento", icon: Settings },

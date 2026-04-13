@@ -498,7 +498,9 @@ export default function RelatoriosPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {gastos.map(g => (
+                  {gastos
+                    .sort((a, b) => b.data.localeCompare(a.data))
+                    .map(g => (
                     <TableRow key={g.id}>
                       <TableCell>{new Date(g.data + 'T00:00:00').toLocaleDateString('pt-BR')}</TableCell>
                       <TableCell>{g.categoria}</TableCell>

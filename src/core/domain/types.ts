@@ -13,6 +13,23 @@ export type Gasto = z.infer<typeof schemas.GastoSchema>;
 export type Perfil = z.infer<typeof schemas.PerfilSchema>;
 export type Usuario = z.infer<typeof schemas.UsuarioSchema>;
 
+// CTR Types
+export type {
+  LocalDescarte,
+  CTR,
+  CTRItem,
+  CTRPayload,
+  CTRStatus,
+  TipoOperacao,
+  ResiduoClasse,
+  ResiduoUnidade,
+  TipoLocalDescarte,
+  CTRConflito,
+  CTRFormData,
+  CTRListItem,
+  CTRExportFormat,
+} from './ctr-types';
+
 export type MapColor = 'verde' | 'amarelo' | 'vermelho' | 'cinza' | 'azul';
 
 export type Notificacao = {
