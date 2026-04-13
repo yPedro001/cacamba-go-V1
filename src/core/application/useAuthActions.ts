@@ -42,23 +42,85 @@ export function useAuthActions() {
     configuracoes: { pularConfirmacaoExclusao: false }
   });
 
-  const carregarDadosDoUsuario = (userId: string, email: string, nome: string) => {
-    // Busca os dados locais ou cria default
-    const data = usersData[userId] || getDefaultUserData();
+  const carregarDadosDoUsuario = async (userId: string, email: string, nome: string) => {
+    let nomeFinal = nome;
+    let cloudData: Partial<UserData> | null = null;
     
-    // Atualiza State Global
-    setUsuarioAtual({ id: userId, email, nome });
-    setClientes(data.clientes);
-    setCacambas(data.cacambas);
-    setLocacoes(data.locacoes);
-    setGastos(data.gastos);
-    setPerfil(data.perfil);
-    setNotificacoes(data.notificacoes);
-
-    // Se é a primeira vez, salva os dados default no mapa global
-    if (!usersData[userId]) {
-      setUsersData({ ...usersData, [userId]: data });
+    try {
+      const { data: dbPerfil, error } = await supabase
+        .from('perfis')
+        .select('nome, app_state')
+        .eq('id', userId)
+        .single();
+        
+      if (dbPerfil) {
+        nomeFinal = dbPerfil.nome || nomeFinal;
+        if (dbPerfil.app_state) {
+          cloudData = dbPerfil.app_state as Partial<UserData>;
+        }
+      }
+    } catch (e) {
+      console.warn("Aviso: Falha ao buscar perfil DB, usando mock (Migration pode não ter rodado ainda).");
     }
+
+    const localData = usersData[userId] || getDefaultUserData();
+    
+    // Função utilitária para FUNDIR (merge) arrays por ID sem duplicar
+    const mergeArrays = <T extends {id?: string}>(arr1: T[], arr2: T[]) => {
+      const map = new Map<string, T>();
+      [...(arr1 || []), ...(arr2 || [])].forEach(item => {
+        if (item.id) map.set(item.id, item);
+      });
+      return Array.from(map.values());
+    };
+
+    // Funde dados Cloud (Supabase) + Dados Locais (LocalStorage)
+    const mergedData = {
+      clientes: mergeArrays(localData.clientes, cloudData?.clientes || []),
+      cacambas: mergeArrays(localData.cacambas, cloudData?.cacambas || []),
+      locacoes: mergeArrays(localData.locacoes, cloudData?.locacoes || []),
+      gastos: mergeArrays(localData.gastos, cloudData?.gastos || []),
+      notificacoes: mergeArrays(localData.notificacoes, cloudData?.notificacoes || []),
+      perfil: { ...localData.perfil, ...(cloudData?.perfil || {}), email },
+    };
+
+    setUsuarioAtual({ id: userId, email, nome: nomeFinal });
+    setClientes(mergedData.clientes);
+    setCacambas(mergedData.cacambas);
+    setLocacoes(mergedData.locacoes);
+    setGastos(mergedData.gastos);
+    setPerfil(mergedData.perfil);
+    setNotificacoes(mergedData.notificacoes);
+
+    // Salva o merge consolidado no mapa global
+    setUsersData({ ...usersData, [userId]: { ...localData, ...mergedData } });
+    
+    // Força um envio do dado fundido para a nuvem
+    setTimeout(() => syncCloud(), 1000);
+  };
+  
+  const syncCloud = async () => {
+    const user = useAppStore.getState().usuarioAtual;
+    if (!user) return;
+    
+    const state = useAppStore.getState();
+    const dataToSync = {
+      clientes: state.clientes,
+      cacambas: state.cacambas,
+      locacoes: state.locacoes,
+      gastos: state.gastos,
+      perfil: state.perfil,
+      notificacoes: state.notificacoes,
+      configuracoes: state.configuracoes,
+      ctrs: state.ctrs,
+      ctrItems: state.ctrItems,
+      locaisDescarte: state.locaisDescarte,
+    };
+    
+    await supabase.from('perfis').update({ 
+      app_state: dataToSync,
+      last_synced_at: new Date().toISOString()
+    }).eq('id', user.id);
   };
 
   const login = async (email: string, senha: string): Promise<{ success: boolean; error?: string }> => {
@@ -71,11 +133,10 @@ export function useAuthActions() {
       if (error) throw error;
       if (!data.user) throw new Error("Usuário não retornado.");
 
-      // Supabase user id as local id
       const userId = data.user.id;
       const nome = data.user.user_metadata?.nome || email.split('@')[0];
 
-      carregarDadosDoUsuario(userId, email, nome);
+      await carregarDadosDoUsuario(userId, email, nome);
 
       return { success: true };
     } catch (err: any) {
@@ -146,10 +207,10 @@ export function useAuthActions() {
       if (error) throw error;
 
       if (type === 'signup' && data.user) {
-        // Loga o usuário logo após confirmar e carrega os arquivos offline
+        // Loga o usuário logo após confirmar e carrega os arquivos
         const userId = data.user.id;
         const nome = data.user.user_metadata?.nome || email.split('@')[0];
-        carregarDadosDoUsuario(userId, email, nome);
+        await carregarDadosDoUsuario(userId, email, nome);
       }
 
       return { success: true };

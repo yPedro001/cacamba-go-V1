@@ -233,7 +233,7 @@ export default function LoginPage() {
             <CardDescription className="text-slate-400">
               {viewState === 'LOGIN' && 'Entre com suas credenciais para gerenciar suas operações.'}
               {viewState === 'CADASTRO' && 'Junte-se a centenas de empresas e simplifique sua logística.'}
-              {viewState === 'CADASTRO_CODIGO' && 'Enviamos um código de 8 dígitos para o seu e-mail.'}
+              {viewState === 'CADASTRO_CODIGO' && 'Enviamos um código de 6 dígitos para o seu e-mail.'}
               {viewState === 'ESQUECI_SENHA' && 'Vamos te ajudar a recuperar o acesso.'}
               {viewState === 'ESQUECI_SENHA_CODIGO' && 'Insira o código enviado pro seu e-mail para confirmar a verificação.'}
               {viewState === 'ESQUECI_SENHA_NOVA' && 'Proteja sua conta com uma senha forte.'}

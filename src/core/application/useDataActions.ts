@@ -18,8 +18,34 @@ export function useDataActions() {
     gastos
   } = useAppStore();
 
-  const sync = () => {
-    // Espaço para futuras integrações com persistência Cloud
+  const sync = async () => {
+    // Persistência Cloud: espelha o estado local para a coluna app_state em public.perfis
+    const state = useAppStore.getState();
+    const userId = state.usuarioAtual?.id;
+    if (!userId) return;
+
+    const dataToSync = {
+      clientes: state.clientes,
+      cacambas: state.cacambas,
+      locacoes: state.locacoes,
+      gastos: state.gastos,
+      perfil: state.perfil,
+      notificacoes: state.notificacoes,
+      configuracoes: state.configuracoes,
+      ctrs: state.ctrs,
+      ctrItems: state.ctrItems,
+      locaisDescarte: state.locaisDescarte,
+    };
+
+    // Usando importação dinâmica para não poluir o ciclo original do hook
+    import('@/lib/supabase').then(({ supabase }) => {
+      supabase.from('perfis').update({ 
+        app_state: dataToSync,
+        last_synced_at: new Date().toISOString()
+      }).eq('id', userId).then(({ error }) => {
+        if (error) console.error("Erro no background sync:", error);
+      });
+    });
   };
 
   // --- AÇÕES DE LOCAÇÃO ---
