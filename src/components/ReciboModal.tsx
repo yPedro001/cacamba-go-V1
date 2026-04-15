@@ -310,12 +310,17 @@ export function ReciboModal({ locacao, onClose }: ReciboModalProps) {
               </div>
             )}
 
-            {/* Assinatura */}
+{/* Assinatura */}
             <div className="pt-2 flex flex-col items-center text-center">
               <div className="relative w-[320px] mb-1">
                 <svg width="320" height="90" viewBox="0 0 520 110" xmlns="http://www.w3.org/2000/svg">
                   <defs>
-                    <style>{`@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');`}</style>
+                    <style>{`
+                      @font-face {
+                        font-family: 'PlaywriteCOGuides';
+                        src: url('/fonts/PlaywriteCOGuides-Regular.ttf') format('truetype');
+                      }
+                    `}</style>
                   </defs>
                   <g fill="none" stroke="#000080" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M50 80 C150 70 370 60 470 50" opacity="0.08" />
@@ -324,9 +329,9 @@ export function ReciboModal({ locacao, onClose }: ReciboModalProps) {
                     x="50%"
                     y="74"
                     textAnchor="middle"
-                    fontFamily="'Dancing Script', cursive"
+                    fontFamily="'PlaywriteCOGuides', cursive"
                     fontSize="46"
-                    fontWeight="700"
+                    fontWeight="400"
                     fill="#1e3a5f"
                     stroke="none"
                   >

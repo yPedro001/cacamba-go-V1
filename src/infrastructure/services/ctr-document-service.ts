@@ -44,8 +44,7 @@ export class CTRDocumentService {
     perfil: Perfil,
     numeroCTR: string
   ): CTRPayload {
-    // Gerar assinatura automática do transportador baseada no nome da empresa
-    const assinaturaTransportador = perfil.nomeEmpresa || formData.transportador.nome || '';
+    const nomeEmpresa = perfil.nomeEmpresa || '';
     
     const payload: CTRPayload = {
       identificacao: {
@@ -99,7 +98,7 @@ export class CTRDocumentService {
       declaracoes: {
         transportador: {
           nome: formData.declaracoes.transportador.nome || formData.transportador.nome || '',
-          assinatura: assinaturaTransportador,
+          assinatura: nomeEmpresa,
         },
         recebedor: {
           nome: formData.declaracoes.recebedor.nome,
@@ -328,12 +327,14 @@ export class CTRDocumentService {
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
             <td style="width: 50%; text-align: center; padding: 15px; vertical-align: top;">
-              <!-- Assinatura do Transportador com mesmo estilo do Recibo -->
               <div style="position: relative; width: 280px; margin: 0 auto 10px auto;">
                 <svg width="280" height="80" viewBox="0 0 280 80" xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <style>
-                      @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap');
+                      @font-face {
+                        font-family: 'PlaywriteCOGuides';
+                        src: url('/fonts/PlaywriteCOGuides-Regular.ttf') format('truetype');
+                      }
                     </style>
                   </defs>
                   <g fill="none" stroke="#000080" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -343,9 +344,9 @@ export class CTRDocumentService {
                     x="50%"
                     y="50"
                     textAnchor="middle"
-                    fontFamily="'Dancing Script', cursive"
+                    fontFamily="'PlaywriteCOGuides', cursive"
                     fontSize="36"
-                    fontWeight="700"
+                    fontWeight="400"
                     fill="#1e3a5f"
                     stroke="none"
                   >${payload.declaracoes.transportador.assinatura || payload.metadados.empresa.nome}</text>

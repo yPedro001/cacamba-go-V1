@@ -103,6 +103,19 @@ export class CTRService {
     return data ? this.mapDBToCTR(data) : null;
   }
 
+  async getProximoNumeroCTR(): Promise<string> {
+    const { data, error } = await supabase.functions.invoke('gerar-numero-ctr', {
+      body: { p_usuario_id: this.usuarioId },
+    });
+
+    if (error || !data) {
+      console.error('Erro ao gerar número CTR:', error);
+      return `FALLBACK-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    }
+
+    return data;
+  }
+
   async getCTRItems(ctrId: string): Promise<CTRItem[]> {
     const { data, error } = await supabase
       .from('ctr_itens')
@@ -125,113 +138,81 @@ export class CTRService {
       throw new Error(`Dados inválidos: ${validation.error.message}`);
     }
 
-    // Obter próximo número sequencial do banco
-    const { data: numeroData, error: numeroError } = await supabase
-      .rpc('gerar_proximo_numero_ctr', { p_usuario_id: this.usuarioId });
-
-    let numero: string;
-    if (numeroError || !numeroData) {
-      console.error('Erro ao gerar número CTR:', numeroError);
-      numero = Date.now().toString().slice(-6);
-    } else {
-      numero = numeroData;
-    }
-
-    const now = new Date().toISOString();
-
-    const ctrData = {
-      usuario_id: this.usuarioId,
-      numero,
-      data: formData.data,
-      hora_saida: formData.horaSaida,
-      tipo_operacao: formData.tipoOperacao,
-      
-      origem_endereco: formData.origem.endereco,
-      origem_bairro: formData.origem.bairro || '',
-      origem_cidade: formData.origem.cidade,
-      origem_uf: formData.origem.uf,
-      origem_responsavel: formData.origem.responsavel || '',
-      origem_telefone: formData.origem.telefone || '',
-      origem_observacao: formData.origem.observacao || '',
-      
-      gerador_nome: formData.gerador.nome,
-      gerador_cpf_cnpj: formData.gerador.cpfCnpj,
-      gerador_endereco: formData.gerador.endereco || '',
-      gerador_bairro: formData.gerador.bairro || '',
-      gerador_cidade: formData.gerador.cidade || '',
-      gerador_uf: formData.gerador.uf || null,
-      gerador_responsavel: formData.gerador.responsavel || '',
-      gerador_telefone: formData.gerador.telefone || '',
-      
-      transportador_nome: formData.transportador.nome,
-      transportador_cpf_cnpj: formData.transportador.cpfCnpj,
-      transportador_inscricao: formData.transportador.inscricao || '',
-      transportador_telefone: formData.transportador.telefone || '',
-      
-      destinatario_nome: localDescarte.nome,
-      destinatario_cpf_cnpj: localDescarte.cnpj || '',
-      destinatario_endereco: `${localDescarte.rua}${localDescarte.numero ? ', ' + localDescarte.numero : ''}`,
-      destinatario_bairro: localDescarte.bairro || '',
-      destinatario_cidade: localDescarte.cidade,
-      destinatario_uf: localDescarte.uf,
-      destinatario_tipo_local: localDescarte.tipoLocal || null,
-      destinatario_licenca: localDescarte.licenca || '',
-      
-      residuo_classe: formData.residuo.classe || null,
-      residuo_descricao: formData.residuo.descricao,
-      residuo_acondicionamento: formData.residuo.acondicionamento || '',
-      residuo_quantidade: formData.residuo.quantidade,
-      residuo_unidade: formData.residuo.unidade,
-      
-      declaracao_transportador_nome: formData.declaracoes.transportador.nome || '',
-      declaracao_transportador_assinatura: formData.declaracoes.transportador.assinatura || null,
-      declaracao_recebedor_nome: formData.declaracoes.recebedor.nome || '',
-      declaracao_recebedor_assinatura: formData.declaracoes.recebedor.assinatura || null,
-      declaracao_recebedor_data_hora: formData.declaracoes.recebedor.dataHora || null,
-      declaracao_recebedor_carimbo: formData.declaracoes.recebedor.carimbo || null,
-      declaracao_recebedor_observacao: formData.declaracoes.recebedor.observacao || null,
-      
-      status: 'emitido',
-      local_descarte_id: localDescarte.id,
-      created_at: now,
-      updated_at: now,
-    };
-
-    const { data: ctrResult, error: ctrError } = await supabase
-      .from('ctrs')
-      .insert(ctrData)
-      .select()
-      .single();
-
-    if (ctrError) throw new Error(`Erro ao criar CTR: ${ctrError.message}`);
-    
-    const ctr = this.mapDBToCTR(ctrResult);
-
     const itens = alugueis.map(aluguel => {
       const cliente = clientes.find(c => c.id === aluguel.clienteId);
       return {
-        ctr_id: ctr.id,
-        aluguel_id: aluguel.id!,
-        cliente_id: aluguel.clienteId,
-        snapshot_dados: {
+        aluguelId: aluguel.id!,
+        clienteId: aluguel.clienteId,
+        snapshot: {
           clienteNome: cliente?.nome || 'Não identificado',
           clienteCpfCnpj: cliente?.cpfCnpj || '',
           enderecoObra: aluguel.enderecoObra,
           dataRetirada: aluguel.dataRetirada,
         },
-        created_at: now,
       };
     });
 
-    if (itens.length > 0) {
-      const { error: itensError } = await supabase
-        .from('ctr_itens')
-        .insert(itens);
+    const { data: ctrResult, error: ctrError } = await supabase.functions.invoke('emitir-ctr', {
+      body: {
+        p_usuario_id: this.usuarioId,
+        p_data: formData.data,
+        p_hora_saida: formData.horaSaida,
+        p_tipo_operacao: formData.tipoOperacao,
+        
+        p_origem_endereco: formData.origem.endereco,
+        p_origem_bairro: formData.origem.bairro || '',
+        p_origem_cidade: formData.origem.cidade,
+        p_origem_uf: formData.origem.uf,
+        p_origem_responsavel: formData.origem.responsavel || '',
+        p_origem_telefone: formData.origem.telefone || '',
+        p_origem_observacao: formData.origem.observacao || '',
+        
+        p_gerador_nome: formData.gerador.nome,
+        p_gerador_cpf_cnpj: formData.gerador.cpfCnpj,
+        p_gerador_endereco: formData.gerador.endereco || '',
+        p_gerador_bairro: formData.gerador.bairro || '',
+        p_gerador_cidade: formData.gerador.cidade || '',
+        p_gerador_uf: formData.gerador.uf || 'SP',
+        p_gerador_responsavel: formData.gerador.responsavel || '',
+        p_gerador_telefone: formData.gerador.telefone || '',
+        
+        p_transportador_nome: formData.transportador.nome,
+        p_transportador_cpf_cnpj: formData.transportador.cpfCnpj,
+        p_transportador_inscricao: formData.transportador.inscricao || '',
+        p_transportador_telefone: formData.transportador.telefone || '',
+        
+        p_destinatario_nome: localDescarte.nome,
+        p_destinatario_cpf_cnpj: localDescarte.cnpj || '',
+        p_destinatario_endereco: `${localDescarte.rua}${localDescarte.numero ? ', ' + localDescarte.numero : ''}`,
+        p_destinatario_bairro: localDescarte.bairro || '',
+        p_destinatario_cidade: localDescarte.cidade,
+        p_destinatario_uf: localDescarte.uf,
+        p_destinatario_tipo_local: localDescarte.tipoLocal || null,
+        p_destinatario_licenca: localDescarte.licenca || '',
+        
+        p_residuo_classe: formData.residuo.classe || null,
+        p_residuo_descricao: formData.residuo.descricao,
+        p_residuo_acondicionamento: formData.residuo.acondicionamento || '',
+        p_residuo_quantidade: formData.residuo.quantidade,
+        p_residuo_unidade: formData.residuo.unidade,
+        
+        p_declaracao_transportador_nome: formData.declaracoes.transportador.nome || '',
+        p_declaracao_transportador_assinatura: formData.declaracoes.transportador.assinatura || null,
+        p_declaracao_recebedor_nome: formData.declaracoes.recebedor.nome || '',
+        p_declaracao_recebedor_assinatura: formData.declaracoes.recebedor.assinatura || null,
+        p_declaracao_recebedor_data_hora: formData.declaracoes.recebedor.dataHora || null,
+        p_declaracao_recebedor_carimbo: formData.declaracoes.recebedor.carimbo || null,
+        p_declaracao_recebedor_observacao: formData.declaracoes.recebedor.observacao || null,
+        
+        p_local_descarte_id: localDescarte.id,
+        p_itens: itens,
+      },
+    });
 
-      if (itensError) throw new Error(`Erro ao criar itens do CTR: ${itensError.message}`);
-    }
-
-    return ctr;
+    if (ctrError) throw new Error(`Erro ao criar CTR: ${ctrError.message}`);
+    if (!ctrResult) throw new Error('CTR não foi criado');
+    
+    return this.mapDBToCTR(ctrResult);
   }
 
   async deleteCTR(id: string): Promise<void> {

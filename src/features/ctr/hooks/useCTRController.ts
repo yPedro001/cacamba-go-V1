@@ -3,7 +3,6 @@ import { useAppStore, useClientes, useLocacoes, usePerfil, useLocaisDescarte, us
 import { CTRService } from '@/core/application/ctr-service';
 import { ctrDocumentService } from '@/infrastructure/services/ctr-document-service';
 import { CTRFormData, CTRConflito, CTRPayload, LocalDescarte } from '@/core/domain/ctr-types';
-import { gerarNumeroCTR } from '@/core/domain/ctr-schemas';
 import { Locacao } from '@/core/domain/types';
 
 export function useCTRController() {
@@ -161,16 +160,15 @@ export function useCTRController() {
     }
   }, [ctrAtual, updateCTRAtual]);
 
-  const previewDocument = useCallback(() => {
-    if (ctrAtual && localDescarteSelecionado) {
-      // Gerar número temporário para preview (6 dígitos do timestamp)
-      const numeroTemp = Date.now().toString().slice(-6);
+  const previewDocument = useCallback(async () => {
+    if (ctrAtual && localDescarteSelecionado && service) {
+      const numeroTemp = await service.getProximoNumeroCTR();
       const payload = ctrDocumentService.generatePayload(ctrAtual, localDescarteSelecionado, perfil, numeroTemp);
       setPayloadPreview(payload);
       return payload;
     }
     return null;
-  }, [ctrAtual, localDescarteSelecionado, perfil]);
+  }, [ctrAtual, localDescarteSelecionado, service, perfil]);
 
   const handleEmitCTR = useCallback(async () => {
     if (!service || !ctrAtual || !localDescarteSelecionado) {
@@ -188,7 +186,6 @@ export function useCTRController() {
     setError(null);
 
     try {
-      const numeroCTR = gerarNumeroCTR();
       const novoCTR = await service.createCTR(
         ctrAtual,
         localDescarteSelecionado,

@@ -13,7 +13,6 @@ import { ConflitosAlert } from '@/features/ctr/components/ConflitosAlert';
 import { ctrDocumentService } from '@/infrastructure/services/ctr-document-service';
 import { CTR, CTRPayload, LocalDescarte } from '@/core/domain/ctr-types';
 import { FileText, Plus, Loader2, AlertCircle } from 'lucide-react';
-import { gerarNumeroCTR } from '@/core/domain/ctr-schemas';
 
 export default function CTRPage() {
   const ctrController = useCTRController();
@@ -62,9 +61,9 @@ export default function CTRPage() {
     }
   }, [error, setError]);
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     if (ctrAtual && localDescarteSelecionado) {
-      const payload = previewDocument();
+      const payload = await previewDocument();
       if (payload) {
         setPreviewPayload(payload);
         setShowPreview(true);
