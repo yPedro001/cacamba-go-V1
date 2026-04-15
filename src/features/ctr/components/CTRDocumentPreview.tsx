@@ -50,7 +50,7 @@ export function CTRDocumentPreview({
 
       <div 
         ref={containerRef}
-        className="bg-white rounded-xl overflow-hidden shadow-lg"
+        className="bg-white rounded-xl overflow-hidden shadow-lg [&_*]:!text-slate-900 [&_*]:!bg-transparent"
       >
         <div 
           dangerouslySetInnerHTML={{ 
