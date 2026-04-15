@@ -54,3 +54,38 @@ export const cepMask = (value: string) => {
     .replace(/(\d{5})(\d)/, "$1-$2")
     .replace(/(-\d{3})\d+?$/, "$1");
 };
+
+/**
+ * Dados de endereço retornados pela API de CEP
+ */
+export interface CEPData {
+  logradouro: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+}
+
+/**
+ * Busca dados de endereço pelo CEP usando ViaCEP
+ */
+export const fetchCEPData = async (cep: string): Promise<CEPData | null> => {
+  const cleanCEP = cep.replace(/\D/g, "");
+  if (cleanCEP.length !== 8) return null;
+  
+  try {
+    const response = await fetch(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    if (data.erro) return null;
+    
+    return {
+      logradouro: data.logradouro || '',
+      bairro: data.bairro || '',
+      cidade: data.localidade || '',
+      uf: data.uf || '',
+    };
+  } catch {
+    return null;
+  }
+};

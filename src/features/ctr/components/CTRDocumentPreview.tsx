@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CTRPayload } from '@/core/domain/ctr-types';
 import { ctrDocumentService } from '@/infrastructure/services/ctr-document-service';
@@ -18,7 +18,21 @@ export function CTRDocumentPreview({
   onDownloadWord, 
   onPrint 
 }: CTRDocumentPreviewProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [iframeKey, setIframeKey] = useState(0);
+
+  useEffect(() => {
+    if (iframeRef.current) {
+      const iframe = iframeRef.current;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(ctrDocumentService.renderToHTML(payload));
+        doc.close();
+      }
+    }
+    setIframeKey(prev => prev + 1);
+  }, [payload]);
 
   return (
     <div className="space-y-4">
@@ -48,15 +62,13 @@ export function CTRDocumentPreview({
         </Button>
       </div>
 
-      <div 
-        ref={containerRef}
-        className="bg-white rounded-xl overflow-hidden shadow-lg [&_*]:!text-slate-900 [&_*]:!bg-transparent"
-      >
-        <div 
-          dangerouslySetInnerHTML={{ 
-            __html: ctrDocumentService.renderToHTML(payload) 
-          }}
-          className="ctr-document-preview"
+      <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-slate-200">
+        <iframe
+          key={iframeKey}
+          ref={iframeRef}
+          className="w-full h-[600px]"
+          title="CTR Preview"
+          sandbox="allow-same-origin"
         />
       </div>
     </div>

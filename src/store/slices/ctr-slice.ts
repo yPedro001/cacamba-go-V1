@@ -93,6 +93,7 @@ export const createCTRSlice: StateCreator<CTRSlice> = (set, get) => ({
       tipoOperacao: 'coleta' as const,
       
       origem: {
+        cep: '',
         endereco: '',
         bairro: '',
         cidade: '',
@@ -105,6 +106,7 @@ export const createCTRSlice: StateCreator<CTRSlice> = (set, get) => ({
       gerador: {
         nome: '',
         cpfCnpj: '',
+        cep: '',
         endereco: '',
         bairro: '',
         cidade: '',

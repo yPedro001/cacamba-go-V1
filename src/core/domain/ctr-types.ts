@@ -28,6 +28,7 @@ export interface CTRFormData {
   tipoOperacao: TipoOperacao;
   
   origem: {
+    cep?: string;
     endereco: string;
     bairro: string;
     cidade: string;
@@ -40,6 +41,7 @@ export interface CTRFormData {
   gerador: {
     nome: string;
     cpfCnpj: string;
+    cep?: string;
     endereco: string;
     bairro: string;
     cidade: string;

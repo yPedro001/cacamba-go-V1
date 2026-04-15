@@ -1,12 +1,12 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CTRFormData, CTRConflito, LocalDescarte } from '@/core/domain/ctr-types';
-import { cpfCnpjMask, phoneMask, cepMask } from '@/lib/masks';
+import { cpfCnpjMask, phoneMask, cepMask, fetchCEPData } from '@/lib/masks';
 import { UFEnum, TipoOperacaoEnum, ResiduoClasseEnum, ResiduoUnidadeEnum, TipoLocalDescarteEnum } from '@/core/domain/ctr-schemas';
-import { AlertTriangle, Check, User, Truck, MapPin, FileText, Package } from 'lucide-react';
+import { AlertTriangle, Check, User, Truck, MapPin, FileText, Package, Loader2 } from 'lucide-react';
 
 interface CTRFormProps {
   formData: CTRFormData;
@@ -170,6 +170,34 @@ export function CTRForm({
 
       <FormSection title="1. Origem do Resíduo" icon={MapPin}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              CEP
+            </label>
+            <CEPInput
+              value={formData.origem.cep || ''}
+              onChange={(cep) => onUpdateOrigem({ cep })}
+              onComplete={(data) => {
+                if (data) {
+                  onUpdateOrigem({ 
+                    endereco: data.logradouro,
+                    cidade: data.cidade,
+                    uf: data.uf as any,
+                  });
+                }
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              Responsável
+            </label>
+            <Input 
+              value={formData.origem.responsavel}
+              onChange={e => onUpdateOrigem({ responsavel: e.target.value })}
+              className="h-10 rounded-xl"
+            />
+          </div>
           <div className="space-y-2 md:col-span-2">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
               Endereço de Origem *
@@ -178,16 +206,6 @@ export function CTRForm({
               value={formData.origem.endereco}
               onChange={e => onUpdateOrigem({ endereco: e.target.value })}
               placeholder="Rua, número - Cidade - UF"
-              className="h-10 rounded-xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-              Bairro
-            </label>
-            <Input 
-              value={formData.origem.bairro}
-              onChange={e => onUpdateOrigem({ bairro: e.target.value })}
               className="h-10 rounded-xl"
             />
           </div>
@@ -214,16 +232,6 @@ export function CTRForm({
                 <option key={u} value={u}>{u}</option>
               ))}
             </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-              Responsável
-            </label>
-            <Input 
-              value={formData.origem.responsavel}
-              onChange={e => onUpdateOrigem({ responsavel: e.target.value })}
-              className="h-10 rounded-xl"
-            />
           </div>
           <div className="space-y-2 md:col-span-2">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
@@ -262,6 +270,34 @@ export function CTRForm({
               className="h-10 rounded-xl font-mono"
             />
           </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              CEP
+            </label>
+            <CEPInput
+              value={formData.gerador.cep || ''}
+              onChange={(cep) => onUpdateGerador({ cep })}
+              onComplete={(data) => {
+                if (data) {
+                  onUpdateGerador({ 
+                    endereco: data.logradouro,
+                    cidade: data.cidade,
+                    uf: data.uf as any,
+                  });
+                }
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              Responsável
+            </label>
+            <Input 
+              value={formData.gerador.responsavel}
+              onChange={e => onUpdateGerador({ responsavel: e.target.value })}
+              className="h-10 rounded-xl"
+            />
+          </div>
           <div className="space-y-2 md:col-span-2">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
               Endereço
@@ -295,16 +331,6 @@ export function CTRForm({
                 <option key={u} value={u}>{u}</option>
               ))}
             </select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-              Responsável
-            </label>
-            <Input 
-              value={formData.gerador.responsavel}
-              onChange={e => onUpdateGerador({ responsavel: e.target.value })}
-              className="h-10 rounded-xl"
-            />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
@@ -556,6 +582,41 @@ export function CTRForm({
           </div>
         </div>
       </FormSection>
+    </div>
+  );
+}
+
+interface CEPInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onComplete?: (data: { logradouro: string; bairro: string; cidade: string; uf: string } | null) => void;
+}
+
+function CEPInput({ value, onChange, onComplete }: CEPInputProps) {
+  const [loading, setLoading] = useState(false);
+
+  const handleBlur = async () => {
+    const cleanCEP = value.replace(/\D/g, '');
+    if (cleanCEP.length === 8 && onComplete) {
+      setLoading(true);
+      const data = await fetchCEPData(value);
+      onComplete(data);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <Input 
+        value={value}
+        onChange={e => onChange(cepMask(e.target.value))}
+        onBlur={handleBlur}
+        placeholder="00000-000"
+        className="h-10 rounded-xl font-mono pr-10"
+      />
+      {loading && (
+        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+      )}
     </div>
   );
 }
