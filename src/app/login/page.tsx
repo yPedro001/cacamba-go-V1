@@ -204,7 +204,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[#020617] px-4 relative overflow-hidden">
       {/* Background Decor */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/10 rounded-full blur-[120px]"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]"></div>
@@ -220,7 +220,7 @@ export default function LoginPage() {
           <p className="text-slate-400 text-sm mt-1">Gestão inteligente de resíduos</p>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900/50 backdrop-blur-xl shadow-2xl">
+        <Card className="border-slate-800/50 bg-slate-900/80 backdrop-blur-xl shadow-2xl">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-white">
               {viewState === 'LOGIN' && 'Bem-vindo de volta'}
@@ -249,7 +249,7 @@ export default function LoginPage() {
                     <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                     <Input 
                       placeholder="Nome Completo" 
-                      className="pl-10 bg-slate-800/50 border-slate-700 text-white focus:ring-accent"
+                      className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:ring-accent"
                       value={form.nome}
                       onChange={e => setForm({...form, nome: e.target.value})}
                       disabled={isLoading}
@@ -266,7 +266,7 @@ export default function LoginPage() {
                     <Input 
                       type="email" 
                       placeholder="email@empresa.com" 
-                      className="pl-10 bg-slate-800/50 border-slate-700 text-white focus:ring-accent"
+                      className="pl-10 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:ring-accent"
                       value={form.email}
                       onChange={e => setForm({...form, email: e.target.value})}
                       disabled={isLoading}
@@ -281,7 +281,7 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <PasswordInput 
                       placeholder={viewState === 'LOGIN' ? "Sua senha secreta" : "Crie uma senha forte"}
-                      className="bg-slate-800/50 border-slate-700 text-white focus:ring-accent"
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:ring-accent"
                       value={form.senha}
                       onChange={e => setForm({...form, senha: e.target.value})}
                       disabled={isLoading}
@@ -292,7 +292,7 @@ export default function LoginPage() {
                     <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
                       <PasswordInput 
                         placeholder="Confirme sua senha" 
-                        className="bg-slate-800/50 border-slate-700 text-white focus:ring-accent"
+                        className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:ring-accent"
                         value={form.confirmarSenha}
                         onChange={e => setForm({...form, confirmarSenha: e.target.value})}
                         disabled={isLoading}
@@ -324,7 +324,7 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <PasswordInput 
                       placeholder="Nova senha secreta" 
-                      className="bg-slate-800/50 border-slate-700 text-white focus:ring-accent"
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:ring-accent"
                       value={form.senha}
                       onChange={e => setForm({...form, senha: e.target.value})}
                       disabled={isLoading}
@@ -333,7 +333,7 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <PasswordInput 
                       placeholder="Confirme a nova senha" 
-                      className="bg-slate-800/50 border-slate-700 text-white focus:ring-accent"
+                      className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 focus:ring-accent"
                       value={form.confirmarSenha}
                       onChange={e => setForm({...form, confirmarSenha: e.target.value})}
                       disabled={isLoading}
@@ -347,7 +347,7 @@ export default function LoginPage() {
               {success && <p className="text-green-500 text-sm font-medium animate-in slide-in-from-top-1">{success}</p>}
 
               {/* BOTAO PRIMARIO */}
-              <Button type="submit" disabled={isLoading} className="w-full bg-accent hover:bg-accent-dark text-white font-bold h-11 shadow-lg shadow-accent/20 group">
+              <Button type="submit" disabled={isLoading} className="w-full bg-accent hover:bg-primary/90 text-white font-bold h-11 shadow-lg shadow-accent/20 group">
                 {isLoading ? 'Aguarde...' : (
                   <>
                     {viewState === 'LOGIN' && 'Entrar Agora'}

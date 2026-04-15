@@ -67,7 +67,7 @@ export function NotificationBell() {
                       }`}
                     >
                       <div className="mt-0.5">
-                        <div className={`p-1.5 rounded-full ${!not.lida ? 'bg-red-100 text-red-600' : 'bg-muted text-muted-foreground'}`}>
+                        <div className={`p-1.5 rounded-full ${!not.lida ? 'bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-muted text-muted-foreground'}`}>
                           <CalendarClock size={16} />
                         </div>
                       </div>

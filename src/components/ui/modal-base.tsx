@@ -14,6 +14,7 @@ export interface ModalBaseProps {
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full';
   className?: string;
   hideCloseButton?: boolean;
+  theme?: 'auto' | 'light' | 'dark';
 }
 
 const maxWidthMap = {
@@ -38,48 +39,85 @@ export function ModalBase({
   maxWidth = '2xl',
   className,
   hideCloseButton = false,
+  theme = 'auto',
 }: ModalBaseProps) {
+  const overlayClass = theme === 'dark' 
+    ? 'bg-slate-950/60'
+    : theme === 'light'
+    ? 'bg-black/40'
+    : 'bg-slate-950/60 dark:bg-black/60';
+
+  const contentClass = theme === 'dark'
+    ? 'bg-slate-900 text-slate-50'
+    : theme === 'light'
+    ? 'bg-white text-slate-900 border-slate-200'
+    : 'bg-card text-card-foreground border-border';
+
+  const headerBgClass = theme === 'dark'
+    ? 'bg-slate-900/50 border-white/5'
+    : theme === 'light'
+    ? 'bg-slate-50 border-slate-200'
+    : 'bg-card/50 border-border';
+
+  const bodyBgClass = theme === 'dark'
+    ? 'bg-slate-900/30'
+    : theme === 'light'
+    ? 'bg-slate-100/50'
+    : 'bg-card/30';
+
+  const footerBgClass = theme === 'dark'
+    ? 'bg-slate-900/50 border-white/5'
+    : theme === 'light'
+    ? 'bg-slate-50 border-slate-200'
+    : 'bg-card/50 border-border';
+
+  const subtitleClass = theme === 'dark'
+    ? 'text-slate-500'
+    : theme === 'light'
+    ? 'text-slate-500'
+    : 'text-muted-foreground';
+
+  const closeButtonClass = theme === 'dark'
+    ? 'hover:bg-white/10 text-slate-400 hover:text-white'
+    : theme === 'light'
+    ? 'hover:bg-slate-100 text-slate-500 hover:text-slate-900'
+    : 'hover:bg-accent/10 text-muted-foreground hover:text-foreground';
+
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
-        {/* Overlay com padding para garantir margem visível ao redor do modal */}
-        <Dialog.Overlay className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <Dialog.Overlay className={cn(
+          "fixed inset-0 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 transition-all data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          overlayClass
+        )} />
 
         <Dialog.Content
           className={cn(
-            // Posicionamento centralizado absoluto
             "fixed left-[50%] top-[50%] z-[10000]",
             "translate-x-[-50%] translate-y-[-50%]",
-            // Dimensionamento seguro: margens em mobile e máximo controlado
             "w-[calc(100vw-2rem)]",
             "max-h-[calc(100dvh-2rem)]",
-            // Layout interno
-            "flex flex-col",
-            "gap-0",
-            // Visual
-            "border border-white/10",
-            "bg-slate-900 text-slate-50",
-            "shadow-[0_32px_64px_-15px_rgba(0,0,0,0.7)]",
-            // Animações Radix
+            "flex flex-col gap-0",
+            "border shadow-[0_32px_64px_-15px_rgba(0,0,0,0.5)]",
             "duration-200",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
             "data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]",
             "data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
-            // Arredondamento
             "rounded-[28px] sm:rounded-[32px]",
-            // Overflow: apenas o body faz scroll
             "overflow-hidden",
-            // Largura máxima por variante
             maxWidthMap[maxWidth],
+            contentClass,
             className
           )}
           aria-describedby={undefined}
         >
-          {/* Header — fixo no topo, não faz scroll */}
           {(title || subtitle || !hideCloseButton) && (
-            <div className="flex flex-col space-y-1.5 px-6 sm:px-8 py-5 sm:py-6 border-b border-white/5 bg-slate-900/50 shrink-0">
+            <div className={cn(
+              "flex flex-col space-y-1.5 px-6 sm:px-8 py-5 sm:py-6 border-b shrink-0",
+              headerBgClass
+            )}>
               <div className="flex justify-between items-start gap-3">
                 <div className="flex-1 min-w-0">
                   {title && (
@@ -90,7 +128,10 @@ export function ModalBase({
                     </Dialog.Title>
                   )}
                   {subtitle && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-2 flex items-center gap-1.5 font-mono">
+                    <p className={cn(
+                      "text-[10px] font-bold uppercase tracking-[0.2em] mt-2 flex items-center gap-1.5 font-mono",
+                      subtitleClass
+                    )}>
                       {subtitle}
                     </p>
                   )}
@@ -100,7 +141,10 @@ export function ModalBase({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-10 w-10 shrink-0 rounded-full hover:bg-white/10 transition-colors ml-2 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-slate-900 border-none"
+                      className={cn(
+                        "h-10 w-10 shrink-0 rounded-full transition-colors ml-2 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 border-none",
+                        closeButtonClass
+                      )}
                     >
                       <X className="h-5 w-5 pointer-events-none" />
                       <span className="sr-only">Fechar</span>
@@ -111,14 +155,18 @@ export function ModalBase({
             </div>
           )}
 
-          {/* Body — única área com scroll, cresce dentro do max-h */}
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-slate-900/30 px-6 sm:px-8 py-6 sm:py-8">
+          <div className={cn(
+            "flex-1 min-h-0 overflow-y-auto custom-scrollbar px-6 sm:px-8 py-6 sm:py-8",
+            bodyBgClass
+          )}>
             {children}
           </div>
 
-          {/* Footer — fixo na base, não faz scroll */}
           {footer && (
-            <div className="px-6 sm:px-8 py-4 sm:py-6 border-t border-white/5 bg-slate-900/50 flex flex-col-reverse sm:flex-row justify-end gap-3 shrink-0">
+            <div className={cn(
+              "px-6 sm:px-8 py-4 sm:py-6 border-t flex flex-col-reverse sm:flex-row justify-end gap-3 shrink-0",
+              footerBgClass
+            )}>
               {footer}
             </div>
           )}

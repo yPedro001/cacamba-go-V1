@@ -211,7 +211,7 @@ export default function MapaView() {
                 <div className="w-1.5 h-5 bg-indigo-600 rounded-full shadow-[0_0_10px_rgba(79,70,229,0.5)]" />
                 Itinerário Operacional
                 {itinerario.length > 0 && (
-                  <span className="ml-auto text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 px-2.5 py-0.5 rounded-full border border-red-200 dark:border-red-900/50 shadow-sm">
+                  <span className="ml-auto text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 px-2.5 py-0.5 rounded-full border border-red-200 dark:border-red-900/50 shadow-sm">
                     {itinerario.length} Pendente{itinerario.length !== 1 ? 's' : ''}
                   </span>
                 )}
@@ -220,7 +220,7 @@ export default function MapaView() {
             <CardContent className="pt-4">
               {itinerario.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground bg-background/50 rounded-xl border border-dashed border-border/40 flex flex-col items-center justify-center">
-                   <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-xl flex items-center justify-center mb-3 border border-green-200 dark:border-green-800/30">
+                   <div className="w-10 h-10 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center mb-3 border border-green-200 dark:border-green-800/30">
                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                      </svg>
@@ -240,9 +240,9 @@ export default function MapaView() {
                     >
                       <div className="flex justify-between items-center mb-2.5">
                          <span className={cn(
-                            "text-[9px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-md",
-                            loc.status === 'vencida' ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400" : "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
-                         )}>
+                             "text-[9px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-md",
+                             loc.status === 'vencida' ? "bg-red-50 text-red-800 dark:bg-red-900/40 dark:text-red-400" : "bg-blue-50 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400"
+                          )}>
                             {loc.status === 'vencida' ? 'Retirada' : 'Entrega'}
                          </span>
                       </div>
@@ -256,9 +256,9 @@ export default function MapaView() {
                         <p className="text-[10px] font-bold text-foreground/60 flex items-center gap-1.5">
                           {loc.status === 'vencida' ? 'Venceu ' : 'Para '}
                           <span className={cn(
-                            "px-1.5 py-0.5 rounded text-[10px] font-black",
-                            loc.status === 'vencida' ? "bg-red-50 text-red-600 dark:bg-red-900/20" : "bg-blue-50 text-blue-600 dark:bg-blue-900/20"
-                          )}>
+                             "px-1.5 py-0.5 rounded text-[10px] font-black",
+                             loc.status === 'vencida' ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400" : "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
+                           )}>
                              {new Date(loc.dataRetirada + 'T00:00:00').toLocaleDateString('pt-BR')}
                           </span>
                         </p>
