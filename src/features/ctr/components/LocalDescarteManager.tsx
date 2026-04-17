@@ -7,15 +7,21 @@ import { ModalBase } from '@/components/ui/modal-base';
 import { LocalDescarte } from '@/core/domain/ctr-types';
 import { cpfCnpjMask, phoneMask, cepMask } from '@/lib/masks';
 import { UFEnum, TipoLocalDescarteEnum } from '@/core/domain/ctr-schemas';
-import { Plus, Trash2, Edit, Star, MapPin, Building2, Phone, FileText } from 'lucide-react';
-import { UnsavedChangesConfirmDialog } from '@/components/ui/unsaved-changes';
 
-interface LocalDescarteManagerProps {
-  locais: LocalDescarte[];
-  onAdd: (local: Omit<LocalDescarte, 'id' | 'createdAt' | 'usuarioId'>) => void;
-  onUpdate: (id: string, updates: Partial<LocalDescarte>) => void;
-  onDelete: (id: string) => void;
-  onSetPadrao: (id: string) => void;
+interface LocalFormData {
+  nome: string;
+  cnpj: string;
+  telefone: string;
+  rua: string;
+  numero: string;
+  bairro: string;
+  cidade: string;
+  uf: typeof UFEnum.options[number];
+  cep: string;
+  tipoLocal: string;
+  licenca: string;
+  observacoes: string;
+  isPadrao: boolean;
 }
 
 const ufs = UFEnum.options;
@@ -27,22 +33,6 @@ const tiposLocal = [
   { value: 'disposicao_final', label: 'Disposição Final' },
   { value: 'outro', label: 'Outro' },
 ];
-
-interface LocalFormData {
-  nome: string;
-  cnpj: string;
-  telefone: string;
-  rua: string;
-  numero: string;
-  bairro: string;
-  cidade: string;
-  uf: string;
-  cep: string;
-  tipoLocal: string;
-  licenca: string;
-  observacoes: string;
-  isPadrao: boolean;
-}
 
 const emptyForm: LocalFormData = {
   nome: '',
@@ -145,11 +135,11 @@ export function LocalDescarteManager({
 
   const handleSave = () => {
     if (editingId) {
-      onUpdate(editingId, form as any);
+      onUpdate(editingId, form);
     } else {
-      onAdd(form as any);
+      onAdd(form);
     }
-    setSavedForm(form); // Atualiza o estado salvo
+    setSavedForm(form);
     setIsModalOpen(false);
     resetForm();
   };
