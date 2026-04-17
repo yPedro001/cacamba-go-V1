@@ -269,7 +269,7 @@ export default function PerfilPage() {
           {/* Locais de Descarte */}
           <LocalDescarteManager
             locais={useLocaisDescarte()}
-            onAdd={(local) => ctrController.addNovoLocalDescarte(local)}
+            onAdd={(local) => ctrController.addNovoLocalDescarte(local as any)}
             onUpdate={(id, updates) => ctrController.updateLocalDescarteById(id, updates)}
             onDelete={(id) => ctrController.deleteLocalDescarteById(id)}
             onSetPadrao={(id) => ctrController.setLocalDescartePadraoById(id)}
