@@ -145,9 +145,9 @@ export function LocalDescarteManager({
 
   const handleSave = () => {
     if (editingId) {
-      onUpdate(editingId, form);
+      onUpdate(editingId, form as any);
     } else {
-      onAdd(form);
+      onAdd(form as any);
     }
     setSavedForm(form);
     setIsModalOpen(false);
