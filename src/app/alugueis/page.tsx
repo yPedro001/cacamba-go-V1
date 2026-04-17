@@ -11,6 +11,7 @@ import { Locacao, MetodoPagamento, Cliente } from '@/core/domain/types'
 import { ReciboModal } from '@/components/ReciboModal'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { LocacaoModalWithGuard } from '@/features/rentals'
+import { useRentalsController } from '@/features/rentals/hooks/useRentalsController'
 import { getClientName } from '@/lib/business-utils'
 import { useSearchParams } from 'next/navigation'
 import { useDataActions } from '@/core/application/useDataActions'
@@ -47,6 +48,14 @@ export default function AlugueisPage() {
   // Estado para exclusão
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [locacaoIdToDelete, setLocacaoIdToDelete] = useState<string | null>(null)
+
+  // Controller de rentals para edição
+  const rentalsController = useRentalsController()
+
+  // Função para abrir locação para edição
+  const handleEditLocacao = (locacao: Locacao) => {
+    rentalsController.handleOpenModal(locacao)
+  }
 
   const handleDelete = (id: string) => {
     if (configuracoes.pularConfirmacaoExclusao) {
@@ -153,6 +162,16 @@ export default function AlugueisPage() {
                   <TableCell>{getStatusBadge(locacao.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1 items-center">
+                      {/* Botão de editar - disponível para qualquer status */}
+                      <Button 
+                        onClick={() => handleEditLocacao(locacao)} 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                        title="Editar locação"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
                       {locacao.status !== 'pago' && (
                         <Button 
                           onClick={() => advanceRentalStatus(locacao.id!)} 

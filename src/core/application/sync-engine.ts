@@ -47,10 +47,10 @@ class SyncEngine {
       const today = new Date();
       
       // Criar cache de notificações para busca O(1)
-      const notificacaoIds = new Set(state.notificacoes.map((n: Notificacao) => n.id));
+      const notificacaoIds = new Set(state.notificacoes.map((n) => n.id));
       
       // Criar mapa de caçambas por ID para busca O(1)
-      const cacambasMap = new Map<string, Cacamba>(state.cacambas.map((c: Cacamba) => [c.id, c]));
+      const cacambasMap = new Map<string, Cacamba>(state.cacambas.map((c) => [c.id, c]));
 
       this.checkOverdue(state, today, notificacaoIds);
       this.checkNearExpiry(state, today, notificacaoIds);

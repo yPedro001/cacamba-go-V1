@@ -35,10 +35,11 @@ export type MapColor = 'verde' | 'amarelo' | 'vermelho' | 'cinza' | 'azul';
 export type Notificacao = {
   id: string;
   titulo: string;
-  mensagem: string;
+  mensagem?: string;
   dataCriacao: string;
   lida: boolean;
   locacaoId?: string;
+  tipo?: 'info' | 'success' | 'warning' | 'error';
 };
 
 export type UserData = {

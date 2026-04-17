@@ -3,10 +3,11 @@ import { StateCreator } from 'zustand';
 export type Notificacao = {
   id: string;
   titulo: string;
-  mensagem: string;
+  mensagem?: string;
   locacaoId?: string;
   lida: boolean;
   dataCriacao: string;
+  tipo?: 'info' | 'success' | 'warning' | 'error';
 };
 
 export type Configuracoes = {
@@ -24,6 +25,7 @@ export interface UISlice {
   addNotificacao: (n: Omit<Notificacao, 'id' | 'dataCriacao'>) => void;
   marcarNotificacaoLida: (id: string) => void;
   marcarTodasLidas: () => void;
+  removeNotificacao: (id: string) => void;
   setSidebarOpen: (open: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
@@ -46,15 +48,44 @@ export const createUISlice: StateCreator<UISlice> = (set) => ({
     notificacoes: [{ 
       ...n, 
       id: Date.now().toString() + Math.random().toString(), 
-      dataCriacao: new Date().toISOString() 
+      dataCriacao: new Date().toISOString(),
+      lida: false,
     }, ...state.notificacoes]
   })),
-  marcarNotificacaoLida: (id) => set((state) => ({
-    notificacoes: state.notificacoes.map(n => n.id === id ? { ...n, lida: true } : n)
+  
+  // Marca como lida e agenda remoção após 30 segundos
+  marcarNotificacaoLida: (id) => {
+    // Primeiro marca como lida
+    set((state) => ({
+      notificacoes: state.notificacoes.map(n => 
+        n.id === id ? { ...n, lida: true } : n
+      )
+    }));
+    
+    // Após 30 segundos, remove permanentemente
+    setTimeout(() => {
+      set((state) => ({
+        notificacoes: state.notificacoes.filter(n => n.id !== id)
+      }));
+    }, 30000);
+  },
+  
+  marcarTodasLidas: () => set((state) => {
+    const now = Date.now();
+    // Agenda remoção de todas após 30 segundos
+    setTimeout(() => {
+      set({ notificacoes: [] });
+    }, 30000);
+    
+    return {
+      notificacoes: state.notificacoes.map(n => ({ ...n, lida: true }))
+    };
+  }),
+  
+  removeNotificacao: (id) => set((state) => ({
+    notificacoes: state.notificacoes.filter(n => n.id !== id)
   })),
-  marcarTodasLidas: () => set((state) => ({
-    notificacoes: state.notificacoes.map(n => ({ ...n, lida: true }))
-  })),
+  
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),

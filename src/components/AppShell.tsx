@@ -7,6 +7,7 @@ import { Header } from '@/components/Header'
 import { Loader2 } from 'lucide-react'
 import { BackgroundSyncProvider } from '@/shared/providers/BackgroundSyncProvider'
 import { cn } from '@/lib/utils'
+import { Toaster } from '@/components/ui/Toaster'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -53,6 +54,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <BackgroundSyncProvider>
+      {/* Toasts globais - renderizado uma vez */}
+      <Toaster />
       {/* O uso de overflow-clip no lugar de overflow-hidden previne scroll horizontal sem quebrar o position: sticky do Header */}
       <div className="min-h-screen bg-background text-foreground flex relative overflow-clip">
         {/* Mobile Overlay */}

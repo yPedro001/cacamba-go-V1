@@ -470,16 +470,6 @@ export function CTRForm({
               ))}
             </select>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-              Licença/Cadastro
-            </label>
-            <Input 
-              value={formData.destinatario.licenca || ''}
-              onChange={e => onUpdateDestinatario({ licenca: e.target.value })}
-              className="h-10 rounded-xl"
-            />
-          </div>
         </div>
       </FormSection>
 

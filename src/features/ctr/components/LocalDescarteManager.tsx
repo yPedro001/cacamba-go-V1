@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModalBase } from '@/components/ui/modal-base';
 import { LocalDescarte } from '@/core/domain/ctr-types';
-import { cpfCnpjMask, phoneMask, cepMask } from '@/lib/masks';
+import { cpfCnpjMask, phoneMask, cepMask, fetchCEPData } from '@/lib/masks';
+import { geocodeService } from '@/infrastructure/api/geocode-service';
+import { Loader2 } from 'lucide-react';
 import { UFEnum, TipoLocalDescarteEnum } from '@/core/domain/ctr-schemas';
 import { Plus, Trash2, Edit, Star, MapPin, Building2, Phone, FileText } from 'lucide-react';
 import { UnsavedChangesConfirmDialog } from '@/components/ui/unsaved-changes';
@@ -72,6 +74,8 @@ export function LocalDescarteManager({
   const [form, setForm] = useState<LocalFormData>(emptyForm);
   const [savedForm, setSavedForm] = useState<LocalFormData>(emptyForm);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [reverseCepLoading, setReverseCepLoading] = useState(false);
 
   // Verifica se há alterações não salvas
   const hasUnsavedChanges = JSON.stringify(form) !== JSON.stringify(savedForm);
@@ -161,6 +165,53 @@ export function LocalDescarteManager({
   };
 
   const localPadrao = locais.find(l => l.isPadrao);
+
+  // Busca automática de CEP
+  const handleCepBlur = async () => {
+    const cleanCEP = form.cep.replace(/\D/g, '');
+    if (cleanCEP.length === 8) {
+      setCepLoading(true);
+      const data = await fetchCEPData(form.cep);
+      if (data) {
+        setForm(prev => ({
+          ...prev,
+          rua: data.logradouro || prev.rua,
+          cidade: data.cidade || prev.cidade,
+          uf: data.uf || prev.uf,
+        }));
+      }
+      setCepLoading(false);
+    }
+  };
+
+  // Busca reversa de CEP (endereço → CEP)
+  const handleAddressBlur = async () => {
+    // Só busca se não tiver CEP preenchido E tiver informações de endereço suficientes
+    if (form.cep || !form.rua || !form.cidade || !form.uf) return;
+    
+    if (form.rua.length < 3 || form.cidade.length < 3) return;
+    
+    setReverseCepLoading(true);
+    const result = await geocodeService.fetchCepByAddress(form.rua, form.cidade, form.uf);
+    if (result && result.confidence >= 0.5) {
+      // Formata o CEP com máscara
+      const formattedCep = `${result.cep.slice(0,5)}-${result.cep.slice(5)}`;
+      setForm(prev => ({
+        ...prev,
+        cep: formattedCep
+      }));
+    }
+    setReverseCepLoading(false);
+  };
+
+  // Handler para atualizar rua com busca reversa
+  const handleRuaChange = (value: string) => {
+    setForm(prev => ({ ...prev, rua: value }));
+  };
+
+  const handleRuaBlur = () => {
+    handleAddressBlur();
+  };
 
   return (
     <>
@@ -332,35 +383,18 @@ export function LocalDescarteManager({
               <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                 Rua / Endereço *
               </label>
-              <Input
-                value={form.rua}
-                onChange={e => setForm({ ...form, rua: e.target.value })}
-                placeholder="Rua, avenida..."
-                className="h-11 rounded-xl"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                Número
-              </label>
-              <Input
-                value={form.numero}
-                onChange={e => setForm({ ...form, numero: e.target.value })}
-                placeholder="S/N"
-                className="h-11 rounded-xl"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                Bairro
-              </label>
-              <Input
-                value={form.bairro}
-                onChange={e => setForm({ ...form, bairro: e.target.value })}
-                className="h-11 rounded-xl"
-              />
+              <div className="relative">
+                <Input
+                  value={form.rua}
+                  onChange={e => handleRuaChange(e.target.value)}
+                  onBlur={handleRuaBlur}
+                  placeholder="Rua, avenida..."
+                  className="h-11 rounded-xl"
+                />
+                {reverseCepLoading && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -370,6 +404,7 @@ export function LocalDescarteManager({
               <Input
                 value={form.cidade}
                 onChange={e => setForm({ ...form, cidade: e.target.value })}
+                onBlur={handleAddressBlur}
                 className="h-11 rounded-xl"
               />
             </div>
@@ -381,6 +416,7 @@ export function LocalDescarteManager({
               <select
                 value={form.uf}
                 onChange={e => setForm({ ...form, uf: e.target.value })}
+                onBlur={handleAddressBlur}
                 className="w-full h-11 px-4 rounded-xl border border-input bg-background font-bold"
               >
                 {ufs.map(u => (
@@ -393,12 +429,18 @@ export function LocalDescarteManager({
               <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
                 CEP
               </label>
-              <Input
-                value={form.cep}
-                onChange={e => setForm({ ...form, cep: cepMask(e.target.value) })}
-                placeholder="00000-000"
-                className="h-11 rounded-xl font-mono"
-              />
+              <div className="relative">
+                <Input
+                  value={form.cep}
+                  onChange={e => setForm({ ...form, cep: cepMask(e.target.value) })}
+                  onBlur={handleCepBlur}
+                  placeholder="00000-000"
+                  className="h-11 rounded-xl font-mono pr-10"
+                />
+                {cepLoading && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -415,18 +457,6 @@ export function LocalDescarteManager({
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                Licença / Cadastro
-              </label>
-              <Input
-                value={form.licenca}
-                onChange={e => setForm({ ...form, licenca: e.target.value })}
-                placeholder="Número da licença ambiental"
-                className="h-11 rounded-xl"
-              />
             </div>
 
             <div className="space-y-2 md:col-span-2">
