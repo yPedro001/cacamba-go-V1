@@ -7,8 +7,18 @@ import { ModalBase } from '@/components/ui/modal-base';
 import { LocalDescarte } from '@/core/domain/ctr-types';
 import { cpfCnpjMask, phoneMask, cepMask } from '@/lib/masks';
 import { UFEnum, TipoLocalDescarteEnum } from '@/core/domain/ctr-schemas';
+import { Plus, Trash2, Edit, Star, MapPin, Building2, Phone, FileText } from 'lucide-react';
+import { UnsavedChangesConfirmDialog } from '@/components/ui/unsaved-changes';
 
-interface LocalFormData {
+export interface LocalDescarteManagerProps {
+  locais: LocalDescarte[];
+  onAdd: (local: Omit<LocalDescarte, 'id' | 'createdAt' | 'usuarioId'>) => void;
+  onUpdate: (id: string, updates: Partial<LocalDescarte>) => void;
+  onDelete: (id: string) => void;
+  onSetPadrao: (id: string) => void;
+}
+
+export interface LocalFormData {
   nome: string;
   cnpj: string;
   telefone: string;
@@ -16,7 +26,7 @@ interface LocalFormData {
   numero: string;
   bairro: string;
   cidade: string;
-  uf: typeof UFEnum.options[number];
+  uf: string;
   cep: string;
   tipoLocal: string;
   licenca: string;
