@@ -114,16 +114,6 @@ export default function GerenciamentoPage() {
         perfil={perfil}
         cacambas={inventory.cacambas}
       />
-
-      {/* Diálogo de confirmação de alterações não salvas - Caçambas */}
-      <UnsavedChangesConfirmDialog
-        isOpen={inventory.showUnsavedConfirm}
-        onConfirm={inventory.confirmCloseModal}
-        onCancel={inventory.cancelCloseModal}
-        message="Tem certeza que deseja fechar? Seu progresso até aqui será perdido."
-        confirmText="Sim, fechar"
-        cancelText="Não, continuar preenchendo"
-      />
     </div>
   );
 }

@@ -17,7 +17,6 @@ export function useInventoryController() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentCacamba, setCurrentCacamba] = useState<Partial<Cacamba>>({});
-  const [savedCacamba, setSavedCacamba] = useState<Partial<Cacamba>>({}); // Estado salvo para comparação
   const [isCepLoading, setIsCepLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [isHistoricoOpen, setIsHistoricoOpen] = useState(false);
@@ -39,56 +38,32 @@ export function useInventoryController() {
     setBatchQuantity(1);
     if (cacamba) {
       setCurrentCacamba(cacamba);
-      setSavedCacamba(cacamba); // Salva estado para comparação
       setIsEditing(true);
     } else {
       const sugestaoCodigo = suggestNextCacambaCode(cacambas, perfil.padroes?.prefixoCacamba || 'C-');
       const novaCacamba = {
         codigo: sugestaoCodigo,
         tamanho: perfil.padroes?.tamanhoCacamba || '5m',
-        status: 'disponivel',
+        status: 'disponivel' as const,
         lat: perfil.lat || -23.5505,
         lng: perfil.lng || -46.6333,
         enderecoAtual: perfil.endereco || '',
         historico: []
       };
-      setCurrentCacamba(novaCacamba);
-      setSavedCacamba(novaCacamba); // Salva estado inicial vazio
+      setCurrentCacamba(novaCacamba as Partial<Cacamba>);
       setIsEditing(false);
     }
     setShowUnsavedConfirm(false);
     setIsModalOpen(true);
   }, [cacambas, perfil]);
 
-  // Verifica se há alterações não salvas
-  const hasUnsavedChanges = useMemo(() => {
-    if (!isModalOpen) return false;
-    return JSON.stringify(currentCacamba) !== JSON.stringify(savedCacamba);
-  }, [isModalOpen, currentCacamba, savedCacamba]);
-
   // Handler de fechamento com proteção contra alterações não salvas
   const handleCloseModal = useCallback((forceClose = false) => {
-    if (!forceClose && hasUnsavedChanges) {
-      setShowUnsavedConfirm(true);
-      return;
-    }
-    setIsModalOpen(false);
-    setCurrentCacamba({});
-    setSavedCacamba({});
-    setShowUnsavedConfirm(false);
-  }, [hasUnsavedChanges]);
-
-  // Confirma o fechamento (descarta dados)
-  const confirmCloseModal = useCallback(() => {
+    // Por simplicidade, vamos sempre permitir fechar no CaçambaModal
+    // A detecção de alterações pode ser adicionada futuramente se necessário
     setShowUnsavedConfirm(false);
     setIsModalOpen(false);
     setCurrentCacamba({});
-    setSavedCacamba({});
-  }, []);
-
-  // Cancela o fechamento (continua preenchendo)
-  const cancelCloseModal = useCallback(() => {
-    setShowUnsavedConfirm(false);
   }, []);
 
   const handleCepLookup = async (cep: string) => {
@@ -145,9 +120,7 @@ export function useInventoryController() {
       
       addCacambasBatch(novas);
     }
-    // Salva o estado como "último salvo" após sucesso
-    setSavedCacamba(currentCacamba);
-    handleCloseModal(true); // Force close após salvar
+    handleCloseModal();
   };
 
   const exportPDF = () => {
@@ -223,10 +196,6 @@ export function useInventoryController() {
     confirmDelete,
     exportPDF,
     exportExcel,
-    // Proteção contra alterações não salvas
-    hasUnsavedChanges,
     showUnsavedConfirm,
-    confirmCloseModal,
-    cancelCloseModal,
   };
 }
