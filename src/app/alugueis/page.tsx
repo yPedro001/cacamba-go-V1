@@ -11,7 +11,6 @@ import { Locacao, MetodoPagamento, Cliente } from '@/core/domain/types'
 import { ReciboModal } from '@/components/ReciboModal'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { LocacaoModalWithGuard } from '@/features/rentals'
-import { useRentalsController } from '@/features/rentals/hooks/useRentalsController'
 import { getClientName } from '@/lib/business-utils'
 import { useSearchParams } from 'next/navigation'
 import { useDataActions } from '@/core/application/useDataActions'
@@ -49,12 +48,17 @@ export default function AlugueisPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [locacaoIdToDelete, setLocacaoIdToDelete] = useState<string | null>(null)
 
-  // Controller de rentals para edição
-  const rentalsController = useRentalsController()
+  // Estado para edição de locação
+  const [locacaoParaEditar, setLocacaoParaEditar] = useState<Partial<Locacao> | undefined>(undefined)
 
   // Função para abrir locação para edição
   const handleEditLocacao = (locacao: Locacao) => {
-    rentalsController.handleOpenModal(locacao)
+    setLocacaoParaEditar(locacao)
+  }
+
+  // Função para fechar modal de edição
+  const handleCloseEditModal = () => {
+    setLocacaoParaEditar(undefined)
   }
 
   const handleDelete = (id: string) => {
@@ -212,6 +216,8 @@ export default function AlugueisPage() {
         clientes={clientes}
         perfil={perfil}
         cacambas={cacambas}
+        locacaoParaEditar={locacaoParaEditar}
+        onOpenModal={setLocacaoParaEditar}
       />
 
       {reciboLocacao && <ReciboModal locacao={reciboLocacao} onClose={() => setReciboLocacao(null)} />}
