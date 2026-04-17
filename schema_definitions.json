@@ -1,0 +1,379 @@
+{
+  "cacambas": {
+    "required": [
+      "id",
+      "identificador",
+      "status"
+    ],
+    "properties": {
+      "id": {
+        "default": "extensions.uuid_generate_v4()",
+        "description": "Note:\nThis is a Primary Key.<pk/>",
+        "format": "uuid",
+        "type": "string"
+      },
+      "identificador": {
+        "format": "text",
+        "type": "string"
+      },
+      "status": {
+        "default": "disponivel",
+        "format": "text",
+        "type": "string"
+      },
+      "created_at": {
+        "default": "now()",
+        "format": "timestamp with time zone",
+        "type": "string"
+      },
+      "codigo": {
+        "format": "text",
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "alugueis": {
+    "required": [
+      "id",
+      "endereco_obra",
+      "valor",
+      "data_retirada",
+      "data_devolucao_prevista",
+      "status"
+    ],
+    "properties": {
+      "id": {
+        "default": "extensions.uuid_generate_v4()",
+        "description": "Note:\nThis is a Primary Key.<pk/>",
+        "format": "uuid",
+        "type": "string"
+      },
+      "cliente_id": {
+        "description": "Note:\nThis is a Foreign Key to `clientes.id`.<fk table='clientes' column='id'/>",
+        "format": "uuid",
+        "type": "string"
+      },
+      "cacamba_id": {
+        "description": "Note:\nThis is a Foreign Key to `cacambas.id`.<fk table='cacambas' column='id'/>",
+        "format": "uuid",
+        "type": "string"
+      },
+      "endereco_obra": {
+        "format": "text",
+        "type": "string"
+      },
+      "valor": {
+        "format": "numeric",
+        "type": "number"
+      },
+      "data_retirada": {
+        "format": "date",
+        "type": "string"
+      },
+      "data_devolucao_prevista": {
+        "format": "date",
+        "type": "string"
+      },
+      "status": {
+        "default": "em_uso",
+        "format": "text",
+        "type": "string"
+      },
+      "created_at": {
+        "default": "now()",
+        "format": "timestamp with time zone",
+        "type": "string"
+      },
+      "quantidade_cacambas": {
+        "default": 1,
+        "format": "integer",
+        "type": "integer"
+      },
+      "valor_bruto": {
+        "format": "numeric",
+        "type": "number"
+      },
+      "taxa_cartao_percent": {
+        "format": "numeric",
+        "type": "number"
+      },
+      "juros_parcelas_percent": {
+        "format": "numeric",
+        "type": "number"
+      },
+      "valor_taxa": {
+        "format": "numeric",
+        "type": "number"
+      },
+      "valor_liquido": {
+        "format": "numeric",
+        "type": "number"
+      },
+      "pago": {
+        "default": false,
+        "format": "boolean",
+        "type": "boolean"
+      },
+      "valor_pago": {
+        "format": "numeric",
+        "type": "number"
+      },
+      "latitude": {
+        "format": "numeric",
+        "type": "number"
+      },
+      "longitude": {
+        "format": "numeric",
+        "type": "number"
+      },
+      "local_endereco": {
+        "format": "text",
+        "type": "string"
+      },
+      "data_inicio": {
+        "format": "timestamp with time zone",
+        "type": "string"
+      },
+      "data_fim_prevista": {
+        "format": "timestamp with time zone",
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "profiles": {
+    "required": [
+      "id",
+      "email",
+      "role",
+      "status"
+    ],
+    "properties": {
+      "id": {
+        "description": "Note:\nThis is a Primary Key.<pk/>",
+        "format": "uuid",
+        "type": "string"
+      },
+      "full_name": {
+        "format": "text",
+        "type": "string"
+      },
+      "email": {
+        "format": "text",
+        "type": "string"
+      },
+      "role": {
+        "default": "user",
+        "enum": [
+          "user",
+          "admin"
+        ],
+        "format": "public.user_role",
+        "type": "string"
+      },
+      "status": {
+        "default": "active",
+        "enum": [
+          "active",
+          "suspended",
+          "deleted"
+        ],
+        "format": "public.account_status",
+        "type": "string"
+      },
+      "access_count": {
+        "default": 0,
+        "format": "integer",
+        "type": "integer"
+      },
+      "last_login_at": {
+        "format": "timestamp with time zone",
+        "type": "string"
+      },
+      "updated_at": {
+        "default": "now()",
+        "format": "timestamp with time zone",
+        "type": "string"
+      },
+      "created_at": {
+        "default": "now()",
+        "format": "timestamp with time zone",
+        "type": "string"
+      },
+      "cor_primaria": {
+        "default": "#ff6b00",
+        "format": "character varying",
+        "maxLength": 7,
+        "type": "string"
+      },
+      "chave_pix": {
+        "format": "text",
+        "type": "string"
+      },
+      "sync_status": {
+        "default": "synced",
+        "format": "text",
+        "type": "string"
+      },
+      "last_access_at": {
+        "default": "now()",
+        "format": "timestamp with time zone",
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "clientes": {
+    "required": [
+      "id",
+      "nome"
+    ],
+    "properties": {
+      "id": {
+        "default": "extensions.uuid_generate_v4()",
+        "description": "Note:\nThis is a Primary Key.<pk/>",
+        "format": "uuid",
+        "type": "string"
+      },
+      "nome": {
+        "format": "text",
+        "type": "string"
+      },
+      "cpfcnpj": {
+        "format": "text",
+        "type": "string"
+      },
+      "telefone": {
+        "format": "text",
+        "type": "string"
+      },
+      "email": {
+        "format": "text",
+        "type": "string"
+      },
+      "endereco": {
+        "format": "text",
+        "type": "string"
+      },
+      "created_at": {
+        "default": "now()",
+        "format": "timestamp with time zone",
+        "type": "string"
+      },
+      "bairro": {
+        "format": "text",
+        "type": "string"
+      },
+      "cidade": {
+        "format": "text",
+        "type": "string"
+      },
+      "uf": {
+        "format": "character varying",
+        "maxLength": 2,
+        "type": "string"
+      },
+      "cep": {
+        "format": "character varying",
+        "maxLength": 10,
+        "type": "string"
+      },
+      "documento": {
+        "format": "text",
+        "type": "string"
+      },
+      "tipo": {
+        "format": "text",
+        "type": "string"
+      },
+      "cpf_cnpj": {
+        "format": "text",
+        "type": "string"
+      },
+      "empresa": {
+        "format": "text",
+        "type": "string"
+      },
+      "nome_contato": {
+        "format": "text",
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "user_login_history": {
+    "required": [
+      "id"
+    ],
+    "properties": {
+      "id": {
+        "default": "extensions.uuid_generate_v4()",
+        "description": "Note:\nThis is a Primary Key.<pk/>",
+        "format": "uuid",
+        "type": "string"
+      },
+      "user_id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "ip_address": {
+        "format": "text",
+        "type": "string"
+      },
+      "user_agent": {
+        "format": "text",
+        "type": "string"
+      },
+      "created_at": {
+        "default": "now()",
+        "format": "timestamp with time zone",
+        "type": "string"
+      }
+    },
+    "type": "object"
+  },
+  "admin_audit_logs": {
+    "required": [
+      "id",
+      "action_type",
+      "reason"
+    ],
+    "properties": {
+      "id": {
+        "default": "extensions.uuid_generate_v4()",
+        "description": "Note:\nThis is a Primary Key.<pk/>",
+        "format": "uuid",
+        "type": "string"
+      },
+      "admin_id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "target_user_id": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "action_type": {
+        "format": "text",
+        "type": "string"
+      },
+      "previous_value": {
+        "format": "jsonb"
+      },
+      "new_value": {
+        "format": "jsonb"
+      },
+      "reason": {
+        "format": "text",
+        "type": "string"
+      },
+      "created_at": {
+        "default": "now()",
+        "format": "timestamp with time zone",
+        "type": "string"
+      }
+    },
+    "type": "object"
+  }
+}

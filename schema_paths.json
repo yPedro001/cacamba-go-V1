@@ -1,0 +1,1258 @@
+{
+  "/": {
+    "get": {
+      "produces": [
+        "application/openapi+json",
+        "application/json"
+      ],
+      "responses": {
+        "200": {
+          "description": "OK"
+        }
+      },
+      "summary": "OpenAPI description (this document)",
+      "tags": [
+        "Introspection"
+      ]
+    }
+  },
+  "/cacambas": {
+    "get": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.identificador"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.codigo"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/order"
+        },
+        {
+          "$ref": "#/parameters/range"
+        },
+        {
+          "$ref": "#/parameters/rangeUnit"
+        },
+        {
+          "$ref": "#/parameters/offset"
+        },
+        {
+          "$ref": "#/parameters/limit"
+        },
+        {
+          "$ref": "#/parameters/preferCount"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "schema": {
+            "items": {
+              "$ref": "#/definitions/cacambas"
+            },
+            "type": "array"
+          }
+        },
+        "206": {
+          "description": "Partial Content"
+        }
+      },
+      "tags": [
+        "cacambas"
+      ]
+    },
+    "post": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/body.cacambas"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/preferPost"
+        }
+      ],
+      "responses": {
+        "201": {
+          "description": "Created"
+        }
+      },
+      "tags": [
+        "cacambas"
+      ]
+    },
+    "delete": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.identificador"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.codigo"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "cacambas"
+      ]
+    },
+    "patch": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.identificador"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.cacambas.codigo"
+        },
+        {
+          "$ref": "#/parameters/body.cacambas"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "cacambas"
+      ]
+    }
+  },
+  "/alugueis": {
+    "get": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.cliente_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.cacamba_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.endereco_obra"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_retirada"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_devolucao_prevista"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.quantidade_cacambas"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_bruto"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.taxa_cartao_percent"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.juros_parcelas_percent"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_taxa"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_liquido"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.pago"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_pago"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.latitude"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.longitude"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.local_endereco"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_inicio"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_fim_prevista"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/order"
+        },
+        {
+          "$ref": "#/parameters/range"
+        },
+        {
+          "$ref": "#/parameters/rangeUnit"
+        },
+        {
+          "$ref": "#/parameters/offset"
+        },
+        {
+          "$ref": "#/parameters/limit"
+        },
+        {
+          "$ref": "#/parameters/preferCount"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "schema": {
+            "items": {
+              "$ref": "#/definitions/alugueis"
+            },
+            "type": "array"
+          }
+        },
+        "206": {
+          "description": "Partial Content"
+        }
+      },
+      "tags": [
+        "alugueis"
+      ]
+    },
+    "post": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/body.alugueis"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/preferPost"
+        }
+      ],
+      "responses": {
+        "201": {
+          "description": "Created"
+        }
+      },
+      "tags": [
+        "alugueis"
+      ]
+    },
+    "delete": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.cliente_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.cacamba_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.endereco_obra"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_retirada"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_devolucao_prevista"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.quantidade_cacambas"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_bruto"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.taxa_cartao_percent"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.juros_parcelas_percent"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_taxa"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_liquido"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.pago"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_pago"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.latitude"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.longitude"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.local_endereco"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_inicio"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_fim_prevista"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "alugueis"
+      ]
+    },
+    "patch": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.cliente_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.cacamba_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.endereco_obra"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_retirada"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_devolucao_prevista"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.quantidade_cacambas"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_bruto"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.taxa_cartao_percent"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.juros_parcelas_percent"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_taxa"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_liquido"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.pago"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.valor_pago"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.latitude"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.longitude"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.local_endereco"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_inicio"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.alugueis.data_fim_prevista"
+        },
+        {
+          "$ref": "#/parameters/body.alugueis"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "alugueis"
+      ]
+    }
+  },
+  "/profiles": {
+    "get": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.profiles.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.full_name"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.email"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.role"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.access_count"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.last_login_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.updated_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.cor_primaria"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.chave_pix"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.sync_status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.last_access_at"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/order"
+        },
+        {
+          "$ref": "#/parameters/range"
+        },
+        {
+          "$ref": "#/parameters/rangeUnit"
+        },
+        {
+          "$ref": "#/parameters/offset"
+        },
+        {
+          "$ref": "#/parameters/limit"
+        },
+        {
+          "$ref": "#/parameters/preferCount"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "schema": {
+            "items": {
+              "$ref": "#/definitions/profiles"
+            },
+            "type": "array"
+          }
+        },
+        "206": {
+          "description": "Partial Content"
+        }
+      },
+      "tags": [
+        "profiles"
+      ]
+    },
+    "post": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/body.profiles"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/preferPost"
+        }
+      ],
+      "responses": {
+        "201": {
+          "description": "Created"
+        }
+      },
+      "tags": [
+        "profiles"
+      ]
+    },
+    "delete": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.profiles.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.full_name"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.email"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.role"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.access_count"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.last_login_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.updated_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.cor_primaria"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.chave_pix"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.sync_status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.last_access_at"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "profiles"
+      ]
+    },
+    "patch": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.profiles.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.full_name"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.email"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.role"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.access_count"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.last_login_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.updated_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.cor_primaria"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.chave_pix"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.sync_status"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.profiles.last_access_at"
+        },
+        {
+          "$ref": "#/parameters/body.profiles"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "profiles"
+      ]
+    }
+  },
+  "/clientes": {
+    "get": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.clientes.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.nome"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cpfcnpj"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.telefone"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.email"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.endereco"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.bairro"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cidade"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.uf"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cep"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.documento"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.tipo"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cpf_cnpj"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.empresa"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.nome_contato"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/order"
+        },
+        {
+          "$ref": "#/parameters/range"
+        },
+        {
+          "$ref": "#/parameters/rangeUnit"
+        },
+        {
+          "$ref": "#/parameters/offset"
+        },
+        {
+          "$ref": "#/parameters/limit"
+        },
+        {
+          "$ref": "#/parameters/preferCount"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "schema": {
+            "items": {
+              "$ref": "#/definitions/clientes"
+            },
+            "type": "array"
+          }
+        },
+        "206": {
+          "description": "Partial Content"
+        }
+      },
+      "tags": [
+        "clientes"
+      ]
+    },
+    "post": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/body.clientes"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/preferPost"
+        }
+      ],
+      "responses": {
+        "201": {
+          "description": "Created"
+        }
+      },
+      "tags": [
+        "clientes"
+      ]
+    },
+    "delete": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.clientes.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.nome"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cpfcnpj"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.telefone"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.email"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.endereco"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.bairro"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cidade"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.uf"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cep"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.documento"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.tipo"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cpf_cnpj"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.empresa"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.nome_contato"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "clientes"
+      ]
+    },
+    "patch": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.clientes.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.nome"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cpfcnpj"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.telefone"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.email"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.endereco"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.created_at"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.bairro"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cidade"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.uf"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cep"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.documento"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.tipo"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.cpf_cnpj"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.empresa"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.clientes.nome_contato"
+        },
+        {
+          "$ref": "#/parameters/body.clientes"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "clientes"
+      ]
+    }
+  },
+  "/user_login_history": {
+    "get": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.user_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.ip_address"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.user_agent"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.created_at"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/order"
+        },
+        {
+          "$ref": "#/parameters/range"
+        },
+        {
+          "$ref": "#/parameters/rangeUnit"
+        },
+        {
+          "$ref": "#/parameters/offset"
+        },
+        {
+          "$ref": "#/parameters/limit"
+        },
+        {
+          "$ref": "#/parameters/preferCount"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "schema": {
+            "items": {
+              "$ref": "#/definitions/user_login_history"
+            },
+            "type": "array"
+          }
+        },
+        "206": {
+          "description": "Partial Content"
+        }
+      },
+      "tags": [
+        "user_login_history"
+      ]
+    },
+    "post": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/body.user_login_history"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/preferPost"
+        }
+      ],
+      "responses": {
+        "201": {
+          "description": "Created"
+        }
+      },
+      "tags": [
+        "user_login_history"
+      ]
+    },
+    "delete": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.user_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.ip_address"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.user_agent"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.created_at"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "user_login_history"
+      ]
+    },
+    "patch": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.user_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.ip_address"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.user_agent"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.user_login_history.created_at"
+        },
+        {
+          "$ref": "#/parameters/body.user_login_history"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "user_login_history"
+      ]
+    }
+  },
+  "/admin_audit_logs": {
+    "get": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.admin_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.target_user_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.action_type"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.previous_value"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.new_value"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.reason"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.created_at"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/order"
+        },
+        {
+          "$ref": "#/parameters/range"
+        },
+        {
+          "$ref": "#/parameters/rangeUnit"
+        },
+        {
+          "$ref": "#/parameters/offset"
+        },
+        {
+          "$ref": "#/parameters/limit"
+        },
+        {
+          "$ref": "#/parameters/preferCount"
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "OK",
+          "schema": {
+            "items": {
+              "$ref": "#/definitions/admin_audit_logs"
+            },
+            "type": "array"
+          }
+        },
+        "206": {
+          "description": "Partial Content"
+        }
+      },
+      "tags": [
+        "admin_audit_logs"
+      ]
+    },
+    "post": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/body.admin_audit_logs"
+        },
+        {
+          "$ref": "#/parameters/select"
+        },
+        {
+          "$ref": "#/parameters/preferPost"
+        }
+      ],
+      "responses": {
+        "201": {
+          "description": "Created"
+        }
+      },
+      "tags": [
+        "admin_audit_logs"
+      ]
+    },
+    "delete": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.admin_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.target_user_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.action_type"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.previous_value"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.new_value"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.reason"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.created_at"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "admin_audit_logs"
+      ]
+    },
+    "patch": {
+      "parameters": [
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.admin_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.target_user_id"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.action_type"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.previous_value"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.new_value"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.reason"
+        },
+        {
+          "$ref": "#/parameters/rowFilter.admin_audit_logs.created_at"
+        },
+        {
+          "$ref": "#/parameters/body.admin_audit_logs"
+        },
+        {
+          "$ref": "#/parameters/preferReturn"
+        }
+      ],
+      "responses": {
+        "204": {
+          "description": "No Content"
+        }
+      },
+      "tags": [
+        "admin_audit_logs"
+      ]
+    }
+  },
+  "/rpc/check_is_admin": {
+    "post": {
+      "parameters": [
+        {
+          "in": "body",
+          "name": "args",
+          "required": true,
+          "schema": {
+            "type": "object"
+          }
+        },
+        {
+          "$ref": "#/parameters/preferParams"
+        }
+      ],
+      "produces": [
+        "application/json",
+        "application/vnd.pgrst.object+json;nulls=stripped",
+        "application/vnd.pgrst.object+json"
+      ],
+      "responses": {
+        "200": {
+          "description": "OK"
+        }
+      },
+      "tags": [
+        "(rpc) check_is_admin"
+      ]
+    }
+  }
+}

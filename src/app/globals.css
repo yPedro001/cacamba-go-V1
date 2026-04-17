@@ -1,0 +1,279 @@
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap');
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #f8fafc;
+    --foreground: #020617;
+    --card: #ffffff;
+    --card-foreground: #020617;
+    --popover: #ffffff;
+    --popover-foreground: #020617;
+    --primary: #6366f1;
+    --primary-foreground: #ffffff;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --accent: #6366f1;
+    --accent-foreground: #ffffff;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #6366f1;
+    --radius: 0.75rem;
+    
+    /* Leaflet Map Theme Variables */
+    --map-background: #f8fafc;
+    --map-popup-bg: #ffffff;
+    --map-popup-text: #1e2937;
+    --map-popup-border: #e2e8f0;
+    --map-popup-header-bg: #f1f5f9;
+    --user-pin: #3b82f6;
+    --user-pin-ring: #60a5fa;
+    
+    /* Scrollbar Theme Variables */
+    --scrollbar-thumb: #94a3b8;
+    --scrollbar-thumb-hover: #64748b;
+  }
+
+  .dark {
+    --background: #020617;
+    --foreground: #f8fafc;
+    --card: #0f172a;
+    --card-foreground: #f8fafc;
+    --popover: #0f172a;
+    --popover-foreground: #f8fafc;
+    --primary: #818cf8;
+    --primary-foreground: #ffffff;
+    --secondary: #1e293b;
+    --secondary-foreground: #f8fafc;
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+    --accent: #818cf8;
+    --accent-foreground: #ffffff;
+    --destructive: #f87171;
+    --destructive-foreground: #ffffff;
+    --border: #1e293b;
+    --input: #1e293b;
+    --ring: #818cf8;
+    
+    /* Leaflet Map Theme Variables - Dark */
+    --map-background: #0f172a;
+    --map-popup-bg: #1e293b;
+    --map-popup-text: #f8fafc;
+    --map-popup-border: #334155;
+    --map-popup-header-bg: #0f172a;
+    --user-pin: #60a5fa;
+    --user-pin-ring: #3b82f6;
+    
+    /* Scrollbar Theme Variables - Dark */
+    --scrollbar-thumb: #475569;
+    --scrollbar-thumb-hover: #64748b;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* ==========================================================================
+   Leaflet Map Custom Markers & Popups
+   ========================================================================== */
+
+.cacamba-marker-pin {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  background-color: var(--pin-bg);
+  border: 2px solid var(--pin-ring);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cacamba-marker-pin::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--pin-ring);
+}
+
+.cacamba-blink {
+  animation: blinkFast 1s infinite alternate;
+}
+@keyframes blinkFast {
+  0% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 rgba(239,68,68,0); }
+  100% { opacity: 0.8; transform: scale(1.05); box-shadow: 0 0 15px rgba(239,68,68,0.8); }
+}
+
+.user-pin {
+  width: 20px;
+  height: 20px;
+  background: var(--user-pin);
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(59,130,246,0.8);
+  position: relative;
+}
+.user-pin-ring {
+  position: absolute;
+  top: -10px; left: -10px; right: -10px; bottom: -10px;
+  border: 2px solid var(--user-pin-ring);
+  border-radius: 50%;
+  animation: pingUser 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes pingUser {
+  75%, 100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* Custom Popup Styles inside Leaflet */
+.cacamba-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25) !important;
+}
+.cacamba-popup .leaflet-popup-content {
+  margin: 0 !important;
+}
+.cacamba-popup-inner {
+  display: flex;
+  flex-direction: column;
+  color: var(--map-popup-text);
+  font-family: inherit;
+  width: 100%;
+}
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--map-popup-header-bg);
+  border-bottom: 1px solid var(--map-popup-border);
+}
+.popup-code {
+  font-size: 1.1rem;
+  color: var(--map-popup-text);
+}
+.popup-status-badge {
+  color: white;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+/* Estilos Globais Premium */
+@layer utilities {
+  .glass {
+    @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/20 dark:border-slate-800/20 shadow-xl;
+  }
+  
+  .glass-dark {
+    @apply bg-slate-950/40 backdrop-blur-xl border border-white/5 shadow-2xl;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500;
+  }
+  
+  /* Premium dark surfaces - Design decision: these are intentionally dark for visual hierarchy */
+  .premium-dark {
+    @apply bg-slate-900 text-white;
+  }
+  .premium-dark-surface {
+    @apply bg-slate-900/50 text-white;
+  }
+}
+
+/* Scrollbar Customizada */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Animações de Entrada */
+.animate-in {
+  animation-duration: 0.5s;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in { animation-name: fadeIn; }
+.slide-up { animation-name: slideUp; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Melhorias no Leaflet */
+.leaflet-container {
+  @apply font-sans !important;
+  background-color: var(--map-background) !important;
+  z-index: 1 !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.leaflet-pane {
+  z-index: 10 !important;
+}
+
+.leaflet-tile-pane {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.leaflet-tile {
+  filter: none !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.cacamba-marker-pin {
+  @apply transition-transform duration-200 hover:scale-125 items-center justify-center font-black !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+  z-index: 1000 !important;
+}
