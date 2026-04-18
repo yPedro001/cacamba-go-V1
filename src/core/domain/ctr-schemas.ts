@@ -233,6 +233,7 @@ export const CTRFormDataSchema = z.object({
   tipoOperacao: TipoOperacaoEnum,
   
   origem: z.object({
+    cep: z.string().optional(),
     endereco: z.string().min(1),
     bairro: z.string().optional(),
     cidade: z.string().min(1),
@@ -245,6 +246,7 @@ export const CTRFormDataSchema = z.object({
   gerador: z.object({
     nome: z.string().min(1),
     cpfCnpj: z.string().min(1),
+    cep: z.string().optional(),
     endereco: z.string().optional(),
     bairro: z.string().optional(),
     cidade: z.string().optional(),
@@ -254,8 +256,8 @@ export const CTRFormDataSchema = z.object({
   }),
   
   transportador: z.object({
-    nome: z.string().min(1),
-    cpfCnpj: z.string().min(1),
+    nome: z.string().optional().default(''),
+    cpfCnpj: z.string().optional().default(''),
     inscricao: z.string().optional(),
     telefone: z.string().optional(),
   }),
