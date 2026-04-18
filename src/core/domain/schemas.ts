@@ -58,6 +58,7 @@ export const LocacaoSchema = z.object({
   dataDevolucaoPrevista: z.string(),
   status: LocacaoStatusSchema,
   enderecoObra: z.string(),
+  cep: z.string().optional(),
   lat: z.number().optional().nullable(),
   lng: z.number().optional().nullable(),
   valor: z.number().min(0),
