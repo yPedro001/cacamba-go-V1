@@ -5,7 +5,25 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+// Helper para resposta com CORS
+function corsResponse(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 Deno.serve(async (req) => {
+  // Handle preflight CORS
+  if (req.method === 'OPTIONS') {
+    return corsResponse({ ok: true });
+  }
+
   const { 
     p_usuario_id, p_data, p_hora_saida, p_tipo_operacao,
     p_origem_cep, p_origem_endereco, p_origem_bairro, p_origem_cidade, p_origem_uf, p_origem_responsavel, p_origem_telefone, p_origem_observacao,
@@ -19,7 +37,6 @@ Deno.serve(async (req) => {
 
   try {
     // Usar função atômica do banco para garantir integridade
-    // Isso evita race conditions na geração de número CTR
     const { data: ctr, error: ctrError } = await supabase.rpc('emitir_ctr_atomico', {
       p_usuario_id,
       p_data,
@@ -79,22 +96,17 @@ Deno.serve(async (req) => {
 
     if (ctrError) {
       console.error('Erro ao chamar função atômica:', ctrError)
-      throw new Error(`Erro ao criar CTR: ${ctrError.message}`)
+      return corsResponse({ error: `Erro ao criar CTR: ${ctrError.message}` }, 500);
     }
 
     if (!ctr) {
-      throw new Error('CTR não foi criado pela função atômica')
+      return corsResponse({ error: 'CTR não foi criado pela função atômica' }, 500);
     }
 
-    return new Response(JSON.stringify(ctr), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 200,
-    })
+    console.log('CTR criado com sucesso:', ctr.id, ctr.numero);
+    return corsResponse(ctr);
   } catch (error) {
     console.error('Erro na Edge Function emitir-ctr:', error)
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 500,
-    })
+    return corsResponse({ error: error.message }, 500);
   }
 })
