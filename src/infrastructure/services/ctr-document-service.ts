@@ -40,9 +40,16 @@ const LABELS_UNIDADE: Record<string, string> = {
 function formatCTRNumber(numero: string): string {
   if (!numero) return '-';
   if (numero.startsWith('FALLBACK-')) {
-    return `N°${numero.replace('FALLBACK-', '')}`;
+    // Extrai apenas o timestamp do FALLBACK
+    const clean = numero.replace('FALLBACK-', '').split('-')[0];
+    return `N°${clean}`;
   }
   return `N°${numero.padStart(7, '0')}`;
+}
+
+function toTitleCase(str: string): string {
+  if (!str) return '';
+  return str.toLowerCase().replace(/(?:^|\s)\w/g, c => c.toUpperCase());
 }
 
 export class CTRDocumentService {
@@ -62,6 +69,7 @@ export class CTRDocumentService {
         tipoOperacao: formData.tipoOperacao,
       },
       origem: {
+        cep: formData.origem.cep || '',
         endereco: formData.origem.endereco,
         bairro: undefined,
         cidade: formData.origem.cidade,
@@ -73,6 +81,7 @@ export class CTRDocumentService {
       gerador: {
         nome: formData.gerador.nome,
         cpfCnpj: formData.gerador.cpfCnpj,
+        cep: formData.gerador.cep || '',
         endereco: formData.gerador.endereco || '',
         bairro: undefined,
         cidade: formData.gerador.cidade || '',
@@ -87,14 +96,15 @@ export class CTRDocumentService {
         telefone: formData.transportador.telefone || '',
       },
       destinatario: {
-        nome: localDescarte.nome,
-        cpfCnpj: localDescarte.cnpj || '',
-        endereco: `${localDescarte.rua}${localDescarte.numero ? ', ' + localDescarte.numero : ''}`,
+        nome: formData.destinatario.nome || localDescarte.nome,
+        cpfCnpj: formData.destinatario.cpfCnpj || localDescarte.cnpj || '',
+        endereco: formData.destinatario.endereco || `${localDescarte.rua}${localDescarte.numero ? ', ' + localDescarte.numero : ''}`,
         bairro: undefined,
-        cidade: localDescarte.cidade,
-        uf: localDescarte.uf as any,
-        tipoLocal: localDescarte.tipoLocal,
-        licenca: undefined,
+        cidade: formData.destinatario.cidade || localDescarte.cidade,
+        uf: (formData.destinatario.uf || localDescarte.uf) as any,
+        // Priorizar valor do formulário (edição manual) vs valor do local de descarte
+        tipoLocal: formData.destinatario.tipoLocal || localDescarte.tipoLocal || 'outro',
+        licenca: formData.destinatario.licenca || localDescarte.licenca || '',
       },
       residuo: {
         classe: formData.residuo.classe,
@@ -139,6 +149,12 @@ export class CTRDocumentService {
 
   private getDocumentStyles(): string {
     return `
+      @font-face {
+        font-family: 'Playwrite Colombia Guides';
+        src: url('/fonts/PlaywriteCOGuides-Regular.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+      }
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { font-family: Arial, sans-serif; font-size: 11px; color: #333; padding: 20px; }
       .container { max-width: 800px; margin: 0 auto; }
@@ -154,17 +170,40 @@ export class CTRDocumentService {
       .cell.value { width: 65%; }
       .cell.full { width: 100%; }
       .signature-area { margin-top: 30px; page-break-inside: avoid; }
-      .signature-line { border-top: 1px solid #333; margin-top: 40px; padding-top: 5px; text-align: center; font-size: 10px; }
+      .signature-line { border-top: 1px solid #666; margin-top: 35px; padding-top: 5px; text-align: center; font-size: 9px; }
       .signature-grid { display: table; width: 100%; }
-      .signature-cell { display: table-cell; width: 33.33%; text-align: center; padding: 10px; }
+      .signature-cell { display: table-cell; width: 50%; text-align: center; padding: 10px; }
       .footer { margin-top: 30px; font-size: 9px; color: #888; text-align: center; border-top: 1px solid #ddd; padding-top: 10px; }
       table { width: 100%; border-collapse: collapse; }
       th, td { border: 1px solid #333; padding: 6px 8px; text-align: left; font-size: 10px; }
       th { background: #f0f0f0; font-weight: bold; }
       .highlight { background: #fffde7; }
-      .signature-name { font-family: 'Brush Script MT', 'Lucida Handwriting', 'Segoe Script', cursive; font-size: 28px; color: #1e3a5f; text-align: center; margin-bottom: 5px; }
-      @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
-      .signature-name { font-family: 'Great Vibes', 'Brush Script MT', cursive; font-size: 32px; color: #1e3a5f; }
+      .signature-name { 
+        font-family: 'Playwrite Colombia Guides', cursive; 
+        font-size: 16px; 
+        color: #1e3a5f; 
+        text-align: center;
+        margin-bottom: 3px;
+        line-height: 1;
+        letter-spacing: 0.5px;
+        text-rendering: geometricPrecision;
+        font-variant: normal;
+        font-weight: normal;
+      }
+      /* Linha para assinatura manual */
+      .signature-manual-line {
+        border-top: 1px solid #999;
+        width: 70%;
+        margin: 25px auto 5px auto;
+      }
+      /* Container híbrido para assinatura digital + área manual */
+      .signature-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        min-height: 60px;
+      }
     `;
   }
 
@@ -194,6 +233,12 @@ export class CTRDocumentService {
       <div class="section">
         <div class="section-title">1. ORIGEM DO RESÍDUO</div>
         <div class="grid">
+          ${payload.origem.cep ? `
+          <div class="row">
+            <div class="cell label">CEP:</div>
+            <div class="cell value">${payload.origem.cep}</div>
+          </div>
+          ` : ''}
           <div class="row">
             <div class="cell label">Endereço:</div>
             <div class="cell value">${payload.origem.endereco}</div>
@@ -224,6 +269,12 @@ export class CTRDocumentService {
             <div class="cell label">CPF/CNPJ:</div>
             <div class="cell value">${payload.gerador.cpfCnpj}</div>
           </div>
+          ${payload.gerador.cep ? `
+          <div class="row">
+            <div class="cell label">CEP:</div>
+            <div class="cell value">${payload.gerador.cep}</div>
+          </div>
+          ` : ''}
           <div class="row">
             <div class="cell label">Endereço:</div>
             <div class="cell value">${payload.gerador.endereco || '-'}</div>
@@ -284,6 +335,12 @@ export class CTRDocumentService {
             <div class="cell label">Tipo do Local:</div>
             <div class="cell value">${tipoLocalLabel}</div>
           </div>
+          ${payload.destinatario.licenca ? `
+          <div class="row">
+            <div class="cell label">Licença Operacional:</div>
+            <div class="cell value">${payload.destinatario.licenca}</div>
+          </div>
+          ` : ''}
         </div>
       </div>
 
@@ -317,17 +374,17 @@ export class CTRDocumentService {
         <div class="signature-area" style="margin-top: 25px;">
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
-              <td style="width: 50%; text-align: center; padding: 15px; vertical-align: top;">
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 75px;">
-                  <span class="signature-name">${payload.declaracoes.transportador.assinatura || payload.metadados.empresa.nome}</span>
+              <td style="width: 50%; text-align: center; padding: 10px; vertical-align: top;">
+                <div class="signature-container">
+                  <span class="signature-name">${toTitleCase(payload.declaracoes.transportador.assinatura || payload.metadados.empresa.nome)}</span>
                 </div>
-                <div style="border-top: 1px solid #333; padding-top: 8px; margin-top: 5px;">
+                <div style="border-top: 1px solid #999; padding-top: 8px; margin-top: 5px;">
                   <p style="font-size: 9px; font-weight: bold; margin: 0;">${payload.declaracoes.transportador.nome || '_________________'}</p>
                   <p style="font-size: 8px; color: #666; margin: 2px 0 0 0;">ASSINATURA DO TRANSPORTADOR</p>
                 </div>
               </td>
-              <td style="width: 50%; text-align: center; padding: 15px; vertical-align: bottom;">
-                <div style="border-top: 1px solid #333; padding-top: 8px; min-height: 80px; display: flex; flex-direction: column; justify-content: flex-end;">
+              <td style="width: 50%; text-align: center; padding: 10px; vertical-align: bottom;">
+                <div style="border-top: 1px solid #999; padding-top: 8px; min-height: 65px; display: flex; flex-direction: column; justify-content: flex-end;">
                   <p style="font-size: 9px; font-weight: bold; margin: 0;">${payload.declaracoes.recebedor.nome || '_________________'}</p>
                   <p style="font-size: 8px; color: #666; margin: 2px 0 0 0;">RECEBEDOR NO DESTINO</p>
                 </div>
@@ -427,9 +484,19 @@ export class CTRDocumentService {
     return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
   }
 
+  private cleanNumeroForFilename(numero: string): string {
+    if (!numero) return '0000000';
+    if (numero.startsWith('FALLBACK-')) {
+      return numero.replace('FALLBACK-', '').split('-')[0];
+    }
+    return numero.padStart(7, '0');
+  }
+
   private generateCTRFilename(payload: CTRPayload, extension: string): string {
     const nomeCliente = this.sanitizeFilename(payload.gerador.nome || 'Cliente');
-    return `CTR-N°${payload.identificacao.numero}-${nomeCliente}.${extension}`;
+    const numeroLimpo = this.cleanNumeroForFilename(payload.identificacao.numero);
+    // Formato: Pedro Oliveira-CTR-N°56776567
+    return `${nomeCliente}-CTR-N°${numeroLimpo}.${extension}`;
   }
 
   async downloadPDF(payload: CTRPayload, _filename?: string): Promise<void> {

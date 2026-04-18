@@ -234,7 +234,7 @@ export function LocalDescarteManager({
         </CardHeader>
         <CardContent className="p-6">
           {locais.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
+            <div className="text-center py-12 text-foreground/90">
               <MapPin size={40} className="mx-auto mb-3 opacity-20" />
               <p className="font-bold">Nenhum local de descarte cadastrado</p>
               <p className="text-sm mt-1">Cadastre um local para emitir CTRs</p>
@@ -266,11 +266,11 @@ export function LocalDescarteManager({
                           <Star size={14} className="text-accent fill-accent shrink-0" />
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">
+                      <p className="text-sm text-foreground/90 truncate">
                         {local.rua}{local.numero ? ', ' + local.numero : ''} - {local.cidade}/{local.uf}
                       </p>
                       {local.cnpj && (
-                        <p className="text-xs text-muted-foreground font-mono mt-1">
+                        <p className="text-xs text-foreground/90 font-mono mt-1">
                           CNPJ: {local.cnpj}
                         </p>
                       )}
@@ -344,7 +344,7 @@ export function LocalDescarteManager({
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2 md:col-span-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
                 Nome / Razão Social *
               </label>
               <Input
@@ -356,7 +356,7 @@ export function LocalDescarteManager({
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
                 CNPJ
               </label>
               <Input
@@ -368,7 +368,7 @@ export function LocalDescarteManager({
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
                 Telefone
               </label>
               <Input
@@ -380,7 +380,7 @@ export function LocalDescarteManager({
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
                 Rua / Endereço *
               </label>
               <div className="relative">
@@ -392,13 +392,13 @@ export function LocalDescarteManager({
                   className="h-11 rounded-xl"
                 />
                 {reverseCepLoading && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-foreground/90" />
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
                 Cidade *
               </label>
               <Input
@@ -410,7 +410,7 @@ export function LocalDescarteManager({
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
                 UF *
               </label>
               <select
@@ -426,7 +426,7 @@ export function LocalDescarteManager({
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
                 CEP
               </label>
               <div className="relative">
@@ -438,13 +438,13 @@ export function LocalDescarteManager({
                   className="h-11 rounded-xl font-mono pr-10"
                 />
                 {cepLoading && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-foreground/90" />
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
                 Tipo do Local
               </label>
               <select
@@ -459,8 +459,20 @@ export function LocalDescarteManager({
               </select>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
+                Licença Operacional
+              </label>
+              <Input
+                value={form.licenca}
+                onChange={e => setForm({ ...form, licenca: e.target.value })}
+                placeholder="Número da licença operacional"
+                className="h-11 rounded-xl"
+              />
+            </div>
+
             <div className="space-y-2 md:col-span-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
                 Observações
               </label>
               <Input

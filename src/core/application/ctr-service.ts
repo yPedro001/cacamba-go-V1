@@ -159,6 +159,7 @@ export class CTRService {
         p_hora_saida: formData.horaSaida,
         p_tipo_operacao: formData.tipoOperacao,
         
+        p_origem_cep: formData.origem.cep || '',
         p_origem_endereco: formData.origem.endereco,
         p_origem_bairro: formData.origem.bairro || '',
         p_origem_cidade: formData.origem.cidade,
@@ -169,6 +170,7 @@ export class CTRService {
         
         p_gerador_nome: formData.gerador.nome,
         p_gerador_cpf_cnpj: formData.gerador.cpfCnpj,
+        p_gerador_cep: formData.gerador.cep || '',
         p_gerador_endereco: formData.gerador.endereco || '',
         p_gerador_bairro: formData.gerador.bairro || '',
         p_gerador_cidade: formData.gerador.cidade || '',
@@ -279,6 +281,7 @@ export class CTRService {
       tipoOperacao: 'coleta',
       
       origem: {
+        cep: primeiroAluguel.cep || localDescarte.cep || '',
         endereco: primeiroAluguel.enderecoObra || '',
         bairro: '',
         cidade: cidadeOrigem,
@@ -291,6 +294,7 @@ export class CTRService {
       gerador: {
         nome: cliente?.nome || '',
         cpfCnpj: cliente?.cpfCnpj || '',
+        cep: localDescarte.cep || '',
         endereco: cliente?.endereco || primeiroAluguel.enderecoObra || '',
         bairro: '',
         cidade: cidadeCliente || cidadeOrigem,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { Bell, Check, X, Trash2, CalendarClock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAppStore } from '@/store/useAppStore'
@@ -8,8 +8,26 @@ export function NotificationBell() {
   const router = useRouter()
   const { notificacoes, marcarNotificacaoLida, marcarTodasLidas } = useAppStore()
   const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const unreadCount = notificacoes.filter(n => !n.lida).length
+
+  // Fechar ao clicar fora do componente
+  const handleClickOutside = (event: MouseEvent) => {
+    if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      setIsOpen(false)
+    }
+  }
+
+  // Adicionar/remover listener
+  React.useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
 
   const handleNotificacaoClick = (id: string, locacaoId?: string) => {
     marcarNotificacaoLida(id)
@@ -20,7 +38,7 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted"

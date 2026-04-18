@@ -75,6 +75,7 @@ export const CTRSchema = z.object({
   horaSaida: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'Hora inválida'),
   tipoOperacao: TipoOperacaoEnum,
   
+  origemCep: z.string().optional(),
   origemEndereco: z.string().min(1, 'Endereço de origem é obrigatório'),
   origemBairro: z.string().optional().default(''),
   origemCidade: z.string().min(1, 'Cidade de origem é obrigatória'),
@@ -85,6 +86,7 @@ export const CTRSchema = z.object({
   
   geradorNome: z.string().min(1, 'Nome do gerador é obrigatório'),
   geradorCpfCnpj: z.string().min(1, 'CPF/CNPJ do gerador é obrigatório'),
+  geradorCep: z.string().optional(),
   geradorEndereco: z.string().optional().default(''),
   geradorBairro: z.string().optional().default(''),
   geradorCidade: z.string().optional().default(''),
@@ -152,6 +154,7 @@ export const CTRPayloadSchema = z.object({
     tipoOperacao: TipoOperacaoEnum,
   }),
   origem: z.object({
+    cep: z.string().optional(),
     endereco: z.string(),
     bairro: z.string().optional(),
     cidade: z.string(),
@@ -163,6 +166,7 @@ export const CTRPayloadSchema = z.object({
   gerador: z.object({
     nome: z.string(),
     cpfCnpj: z.string(),
+    cep: z.string().optional(),
     endereco: z.string(),
     bairro: z.string().optional(),
     cidade: z.string(),

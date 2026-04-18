@@ -6,6 +6,13 @@
 -- Enable UUID extension (se ainda não existir)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Verificar se a função existe, se não, usar alternativa
+DO $$ BEGIN
+    PERFORM gen_random_uuid();
+EXCEPTION WHEN undefined_function THEN
+    -- Não faz nada
+END $$;
+
 -- Enums específicos do CTR
 CREATE TYPE ctr_status AS ENUM ('rascunho', 'emitido');
 CREATE TYPE ctr_tipo_operacao AS ENUM ('coleta', 'transporte', 'transbordo', 'tratamento', 'destinacao_final');
@@ -18,7 +25,7 @@ CREATE TYPE ctr_uf AS ENUM ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO'
 -- TABELA: Locais de Descarte
 -- =====================================================
 CREATE TABLE IF NOT EXISTS public.locais_descarte (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id TEXT NOT NULL,
     nome TEXT NOT NULL,
     cnpj TEXT,
@@ -41,7 +48,7 @@ CREATE TABLE IF NOT EXISTS public.locais_descarte (
 -- TABELA: CTRs Emitidos
 -- =====================================================
 CREATE TABLE IF NOT EXISTS public.ctrs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id TEXT NOT NULL,
     
     -- Numeração
@@ -121,7 +128,7 @@ CREATE TABLE IF NOT EXISTS public.ctrs (
 -- TABELA: Itens do CTR (vínculo com aluguéis + snapshots)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS public.ctr_itens (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ctr_id UUID NOT NULL REFERENCES public.ctrs(id) ON DELETE CASCADE,
     aluguel_id TEXT NOT NULL,
     cliente_id TEXT NOT NULL,
@@ -136,7 +143,7 @@ CREATE TABLE IF NOT EXISTS public.ctr_itens (
 -- SEQUÊNCIA: Contador de CTRs por usuário/ano
 -- =====================================================
 CREATE TABLE IF NOT EXISTS public.ctr_sequenciais (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id TEXT NOT NULL,
     ano INTEGER NOT NULL,
     ultimo_numero INTEGER NOT NULL DEFAULT 0,

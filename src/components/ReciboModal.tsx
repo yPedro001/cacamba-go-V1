@@ -312,8 +312,8 @@ export function ReciboModal({ locacao, onClose }: ReciboModalProps) {
 
 {/* Assinatura */}
             <div className="pt-2 flex flex-col items-center text-center">
-              <div className="relative w-[320px] mb-1">
-                <svg width="320" height="90" viewBox="0 0 520 110" xmlns="http://www.w3.org/2000/svg">
+              <div className="relative w-[280px] mb-1">
+                <svg width="280" height="60" viewBox="0 0 320 70" xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <style>{`
                       @font-face {
@@ -322,15 +322,15 @@ export function ReciboModal({ locacao, onClose }: ReciboModalProps) {
                       }
                     `}</style>
                   </defs>
-                  <g fill="none" stroke="#000080" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M50 80 C150 70 370 60 470 50" opacity="0.08" />
+                  <g fill="none" stroke="#000080" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M40 55 C100 48 220 40 280 35" opacity="0.06" />
                   </g>
                   <text
                     x="50%"
-                    y="74"
+                    y="50"
                     textAnchor="middle"
                     fontFamily="'PlaywriteCOGuides', cursive"
-                    fontSize="46"
+                    fontSize="32"
                     fontWeight="400"
                     fill="#1e3a5f"
                     stroke="none"
@@ -339,9 +339,9 @@ export function ReciboModal({ locacao, onClose }: ReciboModalProps) {
                   </text>
                 </svg>
               </div>
-              <div className="w-[180px] border-t-2 border-slate-900 pt-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900">Assinatura</p>
-                <p className="text-[8px] text-muted-foreground font-bold uppercase mt-1 tracking-wider">Responsável Autorizado</p>
+              <div className="w-[160px] border-t border-slate-700 pt-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-900">Assinatura</p>
+                <p className="text-[7px] text-muted-foreground font-bold uppercase mt-0.5 tracking-wider">Responsável Autorizado</p>
               </div>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CTRFormData, CTRConflito, LocalDescarte } from '@/core/domain/ctr-types';
 import { cpfCnpjMask, phoneMask, cepMask, fetchCEPData } from '@/lib/masks';
+import { geocodeService } from '@/infrastructure/api/geocode-service';
 import { UFEnum, TipoOperacaoEnum, ResiduoClasseEnum, ResiduoUnidadeEnum, TipoLocalDescarteEnum } from '@/core/domain/ctr-schemas';
 import { AlertTriangle, Check, User, Truck, MapPin, FileText, Package, Loader2 } from 'lucide-react';
 
@@ -120,7 +121,7 @@ export function CTRForm({
       <FormSection title="Identificação do CTR" icon={FileText}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Número CTR
             </label>
             <Input 
@@ -130,7 +131,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Data *
             </label>
             <Input 
@@ -141,7 +142,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Hora Saída *
             </label>
             <Input 
@@ -152,7 +153,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Tipo Operação *
             </label>
             <select 
@@ -171,7 +172,7 @@ export function CTRForm({
       <FormSection title="1. Origem do Resíduo" icon={MapPin}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               CEP
             </label>
             <CEPInput
@@ -189,7 +190,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Responsável
             </label>
             <Input 
@@ -199,18 +200,20 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Endereço de Origem *
             </label>
-            <Input 
+            <EnderecoInput 
+              label="Endereço de Origem"
               value={formData.origem.endereco}
-              onChange={e => onUpdateOrigem({ endereco: e.target.value })}
-              placeholder="Rua, número - Cidade - UF"
-              className="h-10 rounded-xl"
+              onChange={e => onUpdateOrigem({ endereco: e })}
+              onCepFound={(cep) => onUpdateOrigem({ cep })} // Preenche CEP automaticamente
+              ufValue={formData.origem.uf}
+              cidadeValue={formData.origem.cidade}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Cidade *
             </label>
             <Input 
@@ -220,7 +223,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               UF *
             </label>
             <select 
@@ -234,7 +237,7 @@ export function CTRForm({
             </select>
           </div>
           <div className="space-y-2 md:col-span-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Telefone
             </label>
             <Input 
@@ -250,7 +253,7 @@ export function CTRForm({
       <FormSection title="2. Dados do Gerador" icon={User}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Nome/Razão Social *
             </label>
             <Input 
@@ -260,7 +263,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               CPF/CNPJ *
             </label>
             <Input 
@@ -271,7 +274,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               CEP
             </label>
             <CEPInput
@@ -289,7 +292,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Responsável
             </label>
             <Input 
@@ -299,17 +302,20 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Endereço
             </label>
-            <Input 
+            <EnderecoInput 
+              label="Endereço do Gerador"
               value={formData.gerador.endereco}
-              onChange={e => onUpdateGerador({ endereco: e.target.value })}
-              className="h-10 rounded-xl"
+              onChange={e => onUpdateGerador({ endereco: e })}
+              onCepFound={(cep) => onUpdateGerador({ cep })} // Preenche CEP automaticamente
+              ufValue={formData.gerador.uf}
+              cidadeValue={formData.gerador.cidade}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Cidade
             </label>
             <Input 
@@ -319,7 +325,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               UF
             </label>
             <select 
@@ -333,7 +339,7 @@ export function CTRForm({
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Telefone
             </label>
             <Input 
@@ -348,7 +354,7 @@ export function CTRForm({
       <FormSection title="3. Dados do Transportador" icon={Truck}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Empresa *
             </label>
             <Input 
@@ -358,7 +364,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               CNPJ/CPF *
             </label>
             <Input 
@@ -368,8 +374,8 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-              Inscrição Estadual
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
+              Licença Operacional
             </label>
             <Input 
               value={formData.transportador.inscricao || ''}
@@ -378,7 +384,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Telefone
             </label>
             <Input 
@@ -395,14 +401,14 @@ export function CTRForm({
           <div className="p-3 bg-accent/5 rounded-xl border border-accent/10 mb-4">
             <p className="text-xs font-bold text-accent">Local Selecionado:</p>
             <p className="text-sm font-bold">{localDescarte.nome}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-foreground/90">
               {localDescarte.rua}, {localDescarte.cidade} - {localDescarte.uf}
             </p>
           </div>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Nome/Razão Social *
             </label>
             <Input 
@@ -412,7 +418,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               CNPJ
             </label>
             <Input 
@@ -422,7 +428,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Endereço *
             </label>
             <Input 
@@ -432,7 +438,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Cidade *
             </label>
             <Input 
@@ -442,7 +448,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               UF *
             </label>
             <select 
@@ -456,7 +462,7 @@ export function CTRForm({
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Tipo do Local
             </label>
             <select 
@@ -476,7 +482,7 @@ export function CTRForm({
       <FormSection title="5. Descrição do Resíduo" icon={Package}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Classe/Tipo
             </label>
             <select 
@@ -491,7 +497,7 @@ export function CTRForm({
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Acondicionamento
             </label>
             <Input 
@@ -502,7 +508,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Descrição do Resíduo *
             </label>
             <Input 
@@ -512,7 +518,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Quantidade *
             </label>
             <Input 
@@ -525,7 +531,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Unidade *
             </label>
             <select 
@@ -542,12 +548,12 @@ export function CTRForm({
       </FormSection>
 
       <FormSection title="6. Declarações e Assinaturas" icon={FileText}>
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="text-xs text-foreground/90 mb-4">
           Declaro que as informações acima são verídicas e que o transporte dos resíduos será realizado de acordo com as normas ambientais vigentes.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Responsável - Transportador
             </label>
             <Input 
@@ -559,7 +565,7 @@ export function CTRForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+            <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
               Responsável - Recebedor
             </label>
             <Input 
@@ -605,7 +611,54 @@ function CEPInput({ value, onChange, onComplete }: CEPInputProps) {
         className="h-10 rounded-xl font-mono pr-10"
       />
       {loading && (
-        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-foreground/90" />
+      )}
+    </div>
+  );
+}
+
+// Componente de Input de Endereço com busca reversa de CEP (endereço → CEP)
+interface EnderecoInputProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onCepFound?: (cep: string) => void;
+  ufValue?: string;
+  cidadeValue?: string;
+}
+
+function EnderecoInput({ label, value, onChange, onCepFound, ufValue, cidadeValue }: EnderecoInputProps) {
+  const [loading, setLoading] = useState(false);
+
+  const handleBlur = async () => {
+    // Só busca se tiver valor, não tiver CEP anteriormente (implícito), e tiver UF + Cidade
+    if (!value || value.length < 3 || !ufValue || !cidadeValue) return;
+
+    setLoading(true);
+    try {
+      const result = await geocodeService.fetchCepByAddress(value, cidadeValue, ufValue);
+      if (result && result.confidence >= 0.5 && onCepFound) {
+        // Formata CEP como XXXXX-XXX
+        const formattedCep = `${result.cep.slice(0,5)}-${result.cep.slice(5)}`;
+        onCepFound(formattedCep);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP por endereço:', error);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="relative">
+      <Input 
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onBlur={handleBlur}
+        placeholder="Rua, número - Cidade - UF"
+        className="h-10 rounded-xl"
+      />
+      {loading && (
+        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-foreground/90" />
       )}
     </div>
   );

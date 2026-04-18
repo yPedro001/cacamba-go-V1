@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ModalBase } from '@/components/ui/modal-base';
+import { UnsavedChangesConfirmDialog } from '@/components/ui/unsaved-changes';
 import { useCTRController } from '@/features/ctr/hooks/useCTRController';
 import { CTRForm } from '@/features/ctr/components/CTRForm';
 import { CTRDocumentPreview } from '@/features/ctr/components/CTRDocumentPreview';
@@ -56,6 +57,34 @@ export default function CTRPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewPayload, setPreviewPayload] = useState<CTRPayload | null>(null);
   const [viewCTR, setViewCTR] = useState<CTR | null>(null);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
+  // Detectar se há alterações não salvas
+  const hasUnsavedChanges = ctrAtual && (
+    ctrAtual.origem.endereco.length > 0 || 
+    ctrAtual.gerador.nome.length > 0 ||
+    ctrAtual.residuo.descricao.length > 0
+  );
+
+  // Handler para confirmar fechamento
+  const handleConfirmClose = () => {
+    setShowCloseConfirm(false);
+    closeModal();
+  };
+
+  // Handler para cancelar fechamento
+  const handleCancelClose = () => {
+    setShowCloseConfirm(false);
+  };
+
+  // Wrapper para o onClose do modal
+  const handleModalClose = () => {
+    if (hasUnsavedChanges) {
+      setShowCloseConfirm(true);
+    } else {
+      closeModal();
+    }
+  };
 
   useEffect(() => {
     if (error) {
@@ -219,7 +248,7 @@ export default function CTRPage() {
       {/* Modal de Emissão de CTR */}
       <ModalBase
         isOpen={isModalOpen}
-        onClose={closeModal}
+        onClose={handleModalClose}
         title="Emitir CTR"
         maxWidth="full"
         className="max-h-[95vh]"
@@ -227,7 +256,7 @@ export default function CTRPage() {
           <div className="flex gap-3 w-full">
             <Button
               variant="ghost"
-              onClick={closeModal}
+              onClick={handleModalClose}
               className="h-11 px-6 rounded-xl font-bold"
             >
               Cancelar
@@ -370,6 +399,16 @@ export default function CTRPage() {
           </div>
         )}
       </ModalBase>
+
+      {/* Diálogo de confirmação de fechamento */}
+      <UnsavedChangesConfirmDialog
+        isOpen={showCloseConfirm}
+        onConfirm={handleConfirmClose}
+        onCancel={handleCancelClose}
+        message="Tem certeza que deseja fechar? Seu progresso até aqui será perdido."
+        confirmText="Sim, fechar"
+        cancelText="Não, continuar preenchendo"
+      />
     </div>
   );
 }

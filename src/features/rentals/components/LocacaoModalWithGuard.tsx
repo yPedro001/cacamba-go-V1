@@ -11,6 +11,7 @@ interface LocacaoModalWrapperProps {
   triggerButton?: React.ReactNode;
   locacaoParaEditar?: Partial<Locacao>;
   onOpenModal?: (loc?: Partial<Locacao>) => void;
+  onSaveLocacao?: (data: Partial<Locacao> & { salvarEndereco?: boolean, nomeEndereco?: string, enderecoDetalhes?: any }) => Promise<boolean>;
 }
 
 export function LocacaoModalWithGuard({
@@ -19,12 +20,16 @@ export function LocacaoModalWithGuard({
   perfil,
   triggerButton,
   locacaoParaEditar,
-  onOpenModal
+  onOpenModal,
+  onSaveLocacao
 }: LocacaoModalWrapperProps) {
   // Se passar locacaoParaEditar, usa ele. Se não, cria própria instância
   const rentalsController = onOpenModal 
     ? null 
     : useRentalsController();
+
+  // Se temos onSaveLocacao externo, usa ele. Se não, usa o do controller
+  const saveCallback = onSaveLocacao || rentalsController?.handleSave;
 
   // Se temos locacaoParaEditar, usamos o controller passado via props
   const handleOpenModal = () => {
@@ -35,12 +40,20 @@ export function LocacaoModalWithGuard({
     }
   };
 
+  // Função wrapper para salvar - fecha o modal após salvar
+  const handleSaveWrapper = async (data: Partial<Locacao> & { salvarEndereco?: boolean, nomeEndereco?: string, enderecoDetalhes?: any }) => {
+    const result = await saveCallback?.(data);
+    // Fecha o modal após salvar
+    if (onOpenModal) {
+      onOpenModal(undefined);
+    }
+    return result;
+  };
+
   // Obtém os métodos do controller passado ou da instância local
   const isOpen = onOpenModal ? locacaoParaEditar !== undefined : rentalsController?.isModalOpen;
   const handleClose = onOpenModal ? () => onOpenModal(undefined) : rentalsController?.handleCloseModal;
   const editingLocacao = onOpenModal ? locacaoParaEditar : rentalsController?.editingLocacao;
-  const handleSave = onOpenModal ? undefined : rentalsController?.handleSave;
-  const handleAddClienteAndSave = onOpenModal ? undefined : rentalsController?.handleAddClienteAndSave;
 
   return (
     <>
@@ -54,8 +67,8 @@ export function LocacaoModalWithGuard({
         isOpen={isOpen || false}
         onClose={handleClose || (() => {})}
         locacao={editingLocacao}
-        onSave={handleSave || (async () => {})}
-        onAddClienteAndSave={handleAddClienteAndSave || (async () => {})}
+        onSave={handleSaveWrapper || (async () => {})}
+        onAddClienteAndSave={rentalsController?.handleAddClienteAndSave || (async () => {})}
         clientes={clientes}
         perfil={perfil}
         cacambas={cacambas}

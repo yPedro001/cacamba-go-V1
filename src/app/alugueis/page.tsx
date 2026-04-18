@@ -35,7 +35,7 @@ export default function AlugueisPage() {
   const cacambas = useCacambas()
   const configuracoes = useConfiguracoes()
   const perfil = usePerfil()
-  const { removeLocacao, advanceRentalStatus } = useDataActions()
+  const { removeLocacao, advanceRentalStatus, updateLocacao } = useDataActions()
   const [filter, setFilter] = useState<'todos' | 'entrega_pendente' | 'em_uso' | 'vencida' | 'pago'>('todos')
   
   // Capturando search params de forma segura
@@ -54,6 +54,17 @@ export default function AlugueisPage() {
   // Função para abrir locação para edição
   const handleEditLocacao = (locacao: Locacao) => {
     setLocacaoParaEditar(locacao)
+  }
+
+  // Função para salvar locação editada
+  const handleSaveLocacao = async (data: Partial<Locacao> & { salvarEndereco?: boolean, nomeEndereco?: string, enderecoDetalhes?: any }) => {
+    if (data.id) {
+      // Limpar campos auxiliares
+      const { salvarEndereco, nomeEndereco, enderecoDetalhes, ...locacaoData } = data;
+      updateLocacao(data.id, locacaoData as Locacao);
+      return true;
+    }
+    return false;
   }
 
   // Função para fechar modal de edição
@@ -218,6 +229,7 @@ export default function AlugueisPage() {
         cacambas={cacambas}
         locacaoParaEditar={locacaoParaEditar}
         onOpenModal={setLocacaoParaEditar}
+        onSaveLocacao={handleSaveLocacao}
       />
 
       {reciboLocacao && <ReciboModal locacao={reciboLocacao} onClose={() => setReciboLocacao(null)} />}
