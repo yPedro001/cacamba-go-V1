@@ -399,6 +399,7 @@ export class CTRService {
       horaSaida: db.hora_saida,
       tipoOperacao: db.tipo_operacao,
       
+      origemCep: db.origem_cep || '',
       origemEndereco: db.origem_endereco,
       origemBairro: db.origem_bairro || '',
       origemCidade: db.origem_cidade,
@@ -409,6 +410,7 @@ export class CTRService {
       
       geradorNome: db.gerador_nome,
       geradorCpfCnpj: db.gerador_cpf_cnpj,
+      geradorCep: db.gerador_cep || '',
       geradorEndereco: db.gerador_endereco || '',
       geradorBairro: db.gerador_bairro || '',
       geradorCidade: db.gerador_cidade || '',
@@ -425,14 +427,14 @@ export class CTRService {
       transportadorLicenca: db.transportador_licenca || undefined,
       transportadorTelefone: db.transportador_telefone || '',
       
-      destinatarioNome: db.destinario_nome,
-      destinatarioCpfCnpj: db.destinario_cpf_cnpj || '',
-      destinatarioEndereco: db.destinario_endereco,
-      destinatarioBairro: db.destinario_bairro || '',
-      destinatarioCidade: db.destinario_cidade,
-      destinatarioUF: db.destinario_uf,
-      destinatarioTipoLocal: db.destinario_tipo_local || undefined,
-      destinatarioLicenca: db.destinario_licenca || '',
+      destinatarioNome: db.destinatario_nome,
+      destinatarioCpfCnpj: db.destinatario_cpf_cnpj || '',
+      destinatarioEndereco: db.destinatario_endereco,
+      destinatarioBairro: db.destinatario_bairro || '',
+      destinatarioCidade: db.destinatario_cidade,
+      destinatarioUF: db.destinatario_uf,
+      destinatarioTipoLocal: db.destinatario_tipo_local || undefined,
+      destinatarioLicenca: db.destinatario_licenca || '',
       
       residuoClasse: db.residuo_classe || undefined,
       residuoDescricao: db.residuo_descricao,
