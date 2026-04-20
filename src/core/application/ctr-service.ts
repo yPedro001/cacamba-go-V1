@@ -47,12 +47,28 @@ export class CTRService {
     console.log('Creating local with usuarioId:', usuarioId);
     console.log('Local data:', local);
     
+    // Criar objeto de insert apenas com campos必需
+    const insertData: any = {
+      nome: local.nome,
+      rua: local.rua || '',
+      cidade: local.cidade || '',
+      uf: local.uf || 'SP',
+      usuario_id: usuarioId,
+    };
+    
+    // Só adicionar campos opcionais se tiverem valor
+    if (local.cnpj) insertData.cnpj = local.cnpj;
+    if (local.telefone) insertData.telefone = local.telefone;
+    if (local.bairro) insertData.bairro = local.bairro;
+    if (local.cep) insertData.cep = local.cep;
+    if (local.tipoLocal) insertData.tipo_local = local.tipoLocal;
+    if (local.isPadrao) insertData.is_padrao = local.isPadrao;
+    
+    console.log('Insert data:', insertData);
+    
     const { data, error } = await supabase
       .from('locais_descarte')
-      .insert({
-        ...this.mapLocalDescarteToDB(local),
-        usuario_id: usuarioId,
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -402,21 +418,27 @@ export class CTRService {
   }
 
   private mapLocalDescarteToDB(local: Partial<LocalDescarte>): any {
-    return {
+    // Remover campos que podem não existir no banco para evitar erro
+    const result: any = {
       nome: local.nome,
-      cnpj: local.cnpj,
-      telefone: local.telefone,
-      rua: local.rua,
-      numero: local.numero,
-      bairro: local.bairro,
-      cidade: local.cidade,
-      uf: local.uf,
-      cep: local.cep,
-      tipo_local: local.tipoLocal,
-      licenca: local.licenca,
-      observacoes: local.observacoes,
-      is_padrao: local.isPadrao,
+      cnpj: local.cnpj || '',
+      telefone: local.telefone || '',
+      rua: local.rua || '',
+      bairro: local.bairro || '',
+      cidade: local.cidade || '',
+      uf: local.uf || 'SP',
+      cep: local.cep || '',
+      tipo_local: local.tipoLocal || 'outro',
+      licenca: local.licenca || '',
+      is_padrao: local.isPadrao || false,
     };
+    
+    // Só incluir numero se existir no objeto
+    if (local.numero) {
+      result.numero = local.numero;
+    }
+    
+    return result;
   }
 
   private mapDBToCTR(db: any): CTR {
