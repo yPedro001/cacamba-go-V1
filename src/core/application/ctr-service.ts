@@ -15,27 +15,43 @@ export class CTRService {
   }
 
   async getLocaisDescarte(): Promise<LocalDescarte[]> {
+    // Fallback para ID se não estiver disponível
+    const usuarioId = this.usuarioId || 'default-user';
+    
     const { data, error } = await supabase
       .from('locais_descarte')
       .select('*')
-      .eq('usuario_id', this.usuarioId)
+      .eq('usuario_id', usuarioId)
       .order('is_padrao', { ascending: false })
       .order('created_at', { ascending: true });
 
-    if (error) throw new Error(`Erro ao buscar locais de descarte: ${error.message}`);
+    if (error) {
+      console.warn('Erro ao buscar locais, tentando sem filtro:', error);
+      // Tentar buscar todos os locais se falhar com filtro
+      const { data: allData, error: allError } = await supabase
+        .from('locais_descarte')
+        .select('*')
+        .order('is_padrao', { ascending: false });
+      
+      if (allError) throw new Error(`Erro ao buscar locais de descarte: ${allError.message}`);
+      return (allData || []).map(this.mapDBToLocalDescarte);
+    }
     
     return (data || []).map(this.mapDBToLocalDescarte);
   }
 
   async createLocalDescarte(local: Omit<LocalDescarte, 'id' | 'createdAt' | 'usuarioId'>): Promise<LocalDescarte> {
-    console.log('Creating local with usuarioId:', this.usuarioId);
+    // Fallback para ID se não estiver disponível
+    const usuarioId = this.usuarioId || 'default-user';
+    
+    console.log('Creating local with usuarioId:', usuarioId);
     console.log('Local data:', local);
     
     const { data, error } = await supabase
       .from('locais_descarte')
       .insert({
         ...this.mapLocalDescarteToDB(local),
-        usuario_id: this.usuarioId,
+        usuario_id: usuarioId,
       })
       .select()
       .single();
