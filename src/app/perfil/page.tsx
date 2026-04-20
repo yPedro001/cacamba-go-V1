@@ -30,8 +30,12 @@ export default function PerfilPage() {
 
   // Carregar dados do CTR (locais de descarte) ao montar o componente
   useEffect(() => {
-    ctrController.loadData();
-  }, []);
+    // O hook useCTRController já carrega dados automaticamente quando o service está pronto
+    // Mas garantimos que seja chamado novamente para atualizar
+    if (ctrController.loadData) {
+      ctrController.loadData();
+    }
+  }, [ctrController]);
 
   const [form, setForm] = useState({
     nomeEmpresa: perfil.nomeEmpresa,
