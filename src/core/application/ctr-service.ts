@@ -111,20 +111,13 @@ export class CTRService {
   }
 
   async getProximoNumeroCTR(): Promise<string> {
-    // Usar RPC diretamente - mais confiável que Edge Function
-    const { data, error } = await supabase.rpc('gerar_proximo_numero_ctr', {
-      p_usuario_id: this.usuarioId,
-    });
-
-    if (error || !data) {
-      console.error('Erro ao gerar número CTR:', error);
-      // Fallback local se RPC falhar
-      const ano = new Date().getFullYear();
-      const timestamp = Date.now().toString().slice(-4);
-      return `${ano}${timestamp}`;
-    }
-
-    return data;
+    // Gerar número CTR diretamente no código (sem依赖 função RPC problemática)
+    const ano = new Date().getFullYear();
+    const timestamp = Date.now().toString().slice(-6);
+    const numero = `${ano}${timestamp}`;
+    
+    console.log('Número CTR gerado:', numero);
+    return numero;
   }
 
   async getCTRItems(ctrId: string): Promise<CTRItem[]> {
