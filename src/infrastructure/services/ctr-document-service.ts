@@ -156,34 +156,34 @@ export class CTRDocumentService {
         font-style: normal;
       }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: Arial, sans-serif; font-size: 11px; color: #333; padding: 20px; }
-      .container { max-width: 800px; margin: 0 auto; }
-      .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px; }
-      .header h1 { font-size: 18px; margin-bottom: 5px; }
-      .header .subtitle { font-size: 12px; color: #666; }
-      .section { margin-bottom: 15px; }
-      .section-title { font-size: 12px; font-weight: bold; background: #f0f0f0; padding: 5px 10px; margin-bottom: 8px; border-left: 3px solid #333; }
+      body { font-family: Arial, sans-serif; font-size: 9px; color: #333; padding: 10px; }
+      .container { max-width: 750px; margin: 0 auto; }
+      .header { text-align: center; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 8px; }
+      .header h1 { font-size: 14px; margin-bottom: 3px; }
+      .header .subtitle { font-size: 10px; color: #666; }
+      .section { margin-bottom: 8px; }
+      .section-title { font-size: 10px; font-weight: bold; background: #f0f0f0; padding: 3px 6px; margin-bottom: 5px; border-left: 2px solid #333; }
       .grid { display: table; width: 100%; }
       .row { display: table-row; }
-      .cell { display: table-cell; padding: 4px 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
-      .cell.label { font-weight: bold; width: 35%; background: #fafafa; }
-      .cell.value { width: 65%; }
+      .cell { display: table-cell; padding: 2px 4px; border-bottom: 1px solid #ddd; vertical-align: top; }
+      .cell.label { font-weight: bold; width: 30%; background: #fafafa; }
+      .cell.value { width: 70%; }
       .cell.full { width: 100%; }
-      .signature-area { margin-top: 30px; page-break-inside: avoid; }
-      .signature-line { border-top: 1px solid #666; margin-top: 35px; padding-top: 5px; text-align: center; font-size: 9px; }
+      .signature-area { margin-top: 15px; page-break-inside: avoid; }
+      .signature-line { border-top: 1px solid #666; margin-top: 20px; padding-top: 3px; text-align: center; font-size: 8px; }
       .signature-grid { display: table; width: 100%; }
-      .signature-cell { display: table-cell; width: 50%; text-align: center; padding: 10px; }
-      .footer { margin-top: 30px; font-size: 9px; color: #888; text-align: center; border-top: 1px solid #ddd; padding-top: 10px; }
+      .signature-cell { display: table-cell; width: 50%; text-align: center; padding: 5px; }
+      .footer { margin-top: 15px; font-size: 8px; color: #888; text-align: center; border-top: 1px solid #ddd; padding-top: 5px; }
       table { width: 100%; border-collapse: collapse; }
-      th, td { border: 1px solid #333; padding: 6px 8px; text-align: left; font-size: 10px; }
+      th, td { border: 1px solid #333; padding: 3px 5px; text-align: left; font-size: 9px; }
       th { background: #f0f0f0; font-weight: bold; }
       .highlight { background: #fffde7; }
       .signature-name { 
         font-family: 'Playwrite Colombia Guides', cursive; 
-        font-size: 16px; 
+        font-size: 12px; 
         color: #1e3a5f; 
         text-align: center;
-        margin-bottom: 3px;
+        margin-bottom: 2px;
         line-height: 1;
         letter-spacing: 0.5px;
         text-rendering: geometricPrecision;
@@ -194,7 +194,7 @@ export class CTRDocumentService {
       .signature-manual-line {
         border-top: 1px solid #999;
         width: 70%;
-        margin: 25px auto 5px auto;
+        margin: 15px auto 3px auto;
       }
       /* Container híbrido para assinatura digital + área manual */
       .signature-container {
@@ -202,7 +202,7 @@ export class CTRDocumentService {
         flex-direction: column;
         align-items: center;
         justify-content: flex-end;
-        min-height: 60px;
+        min-height: 40px;
       }
     `;
   }
@@ -442,7 +442,7 @@ export class CTRDocumentService {
     container.style.position = 'absolute';
     container.style.left = '-9999px';
     container.style.top = '0';
-    container.style.width = '800px';
+    container.style.width = '700px';
     container.style.background = 'white';
     document.body.appendChild(container);
 
