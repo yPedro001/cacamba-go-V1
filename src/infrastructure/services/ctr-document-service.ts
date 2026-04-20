@@ -156,31 +156,31 @@ export class CTRDocumentService {
         font-style: normal;
       }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: Arial, sans-serif; font-size: 9px; color: #333; padding: 10px; }
-      .container { max-width: 750px; margin: 0 auto; }
-      .header { text-align: center; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 8px; }
-      .header h1 { font-size: 14px; margin-bottom: 3px; }
-      .header .subtitle { font-size: 10px; color: #666; }
-      .section { margin-bottom: 8px; }
-      .section-title { font-size: 10px; font-weight: bold; background: #f0f0f0; padding: 3px 6px; margin-bottom: 5px; border-left: 2px solid #333; }
+      body { font-family: Arial, sans-serif; font-size: 8px; color: #333; padding: 5px; }
+      .container { max-width: 650px; margin: 0 auto; }
+      .header { text-align: center; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+      .header h1 { font-size: 12px; margin-bottom: 2px; }
+      .header .subtitle { font-size: 9px; color: #666; }
+      .section { margin-bottom: 5px; }
+      .section-title { font-size: 9px; font-weight: bold; background: #f0f0f0; padding: 2px 4px; margin-bottom: 3px; border-left: 2px solid #333; }
       .grid { display: table; width: 100%; }
       .row { display: table-row; }
-      .cell { display: table-cell; padding: 2px 4px; border-bottom: 1px solid #ddd; vertical-align: top; }
-      .cell.label { font-weight: bold; width: 30%; background: #fafafa; }
-      .cell.value { width: 70%; }
+      .cell { display: table-cell; padding: 1px 3px; border-bottom: 1px solid #ddd; vertical-align: top; }
+      .cell.label { font-weight: bold; width: 28%; background: #fafafa; }
+      .cell.value { width: 72%; }
       .cell.full { width: 100%; }
-      .signature-area { margin-top: 15px; page-break-inside: avoid; }
-      .signature-line { border-top: 1px solid #666; margin-top: 20px; padding-top: 3px; text-align: center; font-size: 8px; }
+      .signature-area { margin-top: 10px; page-break-inside: avoid; }
+      .signature-line { border-top: 1px solid #666; margin-top: 12px; padding-top: 2px; text-align: center; font-size: 7px; }
       .signature-grid { display: table; width: 100%; }
-      .signature-cell { display: table-cell; width: 50%; text-align: center; padding: 5px; }
-      .footer { margin-top: 15px; font-size: 8px; color: #888; text-align: center; border-top: 1px solid #ddd; padding-top: 5px; }
+      .signature-cell { display: table-cell; width: 50%; text-align: center; padding: 3px; }
+      .footer { margin-top: 10px; font-size: 7px; color: #888; text-align: center; border-top: 1px solid #ddd; padding-top: 3px; }
       table { width: 100%; border-collapse: collapse; }
-      th, td { border: 1px solid #333; padding: 3px 5px; text-align: left; font-size: 9px; }
+      th, td { border: 1px solid #333; padding: 2px 4px; text-align: left; font-size: 8px; }
       th { background: #f0f0f0; font-weight: bold; }
       .highlight { background: #fffde7; }
       .signature-name { 
         font-family: 'Playwrite Colombia Guides', cursive; 
-        font-size: 12px; 
+        font-size: 10px; 
         color: #1e3a5f; 
         text-align: center;
         margin-bottom: 2px;
@@ -194,7 +194,7 @@ export class CTRDocumentService {
       .signature-manual-line {
         border-top: 1px solid #999;
         width: 70%;
-        margin: 15px auto 3px auto;
+        margin: 10px auto 2px auto;
       }
       /* Container híbrido para assinatura digital + área manual */
       .signature-container {
@@ -202,7 +202,7 @@ export class CTRDocumentService {
         flex-direction: column;
         align-items: center;
         justify-content: flex-end;
-        min-height: 40px;
+        min-height: 30px;
       }
     `;
   }
@@ -442,7 +442,7 @@ export class CTRDocumentService {
     container.style.position = 'absolute';
     container.style.left = '-9999px';
     container.style.top = '0';
-    container.style.width = '700px';
+    container.style.width = '600px';
     container.style.background = 'white';
     document.body.appendChild(container);
 
@@ -451,7 +451,7 @@ export class CTRDocumentService {
       const jsPDF = (await import('jspdf')).default;
 
       const canvas = await html2canvas(container, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
