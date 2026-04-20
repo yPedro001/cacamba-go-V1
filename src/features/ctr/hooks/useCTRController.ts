@@ -47,11 +47,12 @@ export function useCTRController() {
     return null;
   }, [usuarioAtual?.id]);
 
+  // Carregar dados quando o service estiver disponível
   useEffect(() => {
-    if (service) {
+    if (service && !locaisDescarte.length) {
       loadData();
     }
-  }, [service]);
+  }, [service, locaisDescarte.length]);
 
   const loadData = async () => {
     if (!service) return;

@@ -28,14 +28,7 @@ export default function PerfilPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
-  // Carregar dados do CTR (locais de descarte) ao montar o componente
-  useEffect(() => {
-    // O hook useCTRController já carrega dados automaticamente quando o service está pronto
-    // Mas garantimos que seja chamado novamente para atualizar
-    if (ctrController.loadData) {
-      ctrController.loadData();
-    }
-  }, [ctrController]);
+  // Os locais de descarte são carregados automaticamente pelo useCTRController hook
 
   const [form, setForm] = useState({
     nomeEmpresa: perfil.nomeEmpresa,
