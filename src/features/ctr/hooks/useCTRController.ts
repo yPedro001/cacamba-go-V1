@@ -300,9 +300,14 @@ export function useCTRController() {
       setIsLoading(true);
       try {
         const savedLocal = await service.createLocalDescarte(local);
+        // Se for o primeiro local, definir como padrão
+        if (locaisDescarte.length === 0 && savedLocal) {
+          await service.updateLocalDescarte(savedLocal.id, { isPadrao: true });
+        }
         addLocalDescarte(savedLocal);
         return savedLocal;
       } catch (err) {
+        console.error('Error creating local:', err);
         setError(err instanceof Error ? err.message : 'Erro ao criar local de descarte');
         addLocalDescarte(novoLocal);
         return novoLocal;
@@ -313,7 +318,7 @@ export function useCTRController() {
       addLocalDescarte(novoLocal);
       return novoLocal;
     }
-  }, [service, addLocalDescarte, usuarioAtual]);
+  }, [service, addLocalDescarte, locaisDescarte, usuarioAtual]);
 
   const updateLocalDescarteById = useCallback(async (id: string, updates: Partial<LocalDescarte>) => {
     if (service) {

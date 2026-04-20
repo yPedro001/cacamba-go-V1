@@ -28,6 +28,9 @@ export class CTRService {
   }
 
   async createLocalDescarte(local: Omit<LocalDescarte, 'id' | 'createdAt' | 'usuarioId'>): Promise<LocalDescarte> {
+    console.log('Creating local with usuarioId:', this.usuarioId);
+    console.log('Local data:', local);
+    
     const { data, error } = await supabase
       .from('locais_descarte')
       .insert({
@@ -37,8 +40,12 @@ export class CTRService {
       .select()
       .single();
 
-    if (error) throw new Error(`Erro ao criar local de descarte: ${error.message}`);
+    if (error) {
+      console.error('Error creating local:', error);
+      throw new Error(`Erro ao criar local de descarte: ${error.message}`);
+    }
     
+    console.log('Local created:', data);
     return this.mapDBToLocalDescarte(data);
   }
 
