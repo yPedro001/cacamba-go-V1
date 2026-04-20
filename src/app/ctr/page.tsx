@@ -23,6 +23,7 @@ export default function CTRPage() {
   const {
     ctrs,
     ctrAtual,
+    ctrNumeroPendente,
     locaisDescarte,
     localDescarteSelecionado,
     alugueisSelecionados,
@@ -57,6 +58,7 @@ export default function CTRPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewPayload, setPreviewPayload] = useState<CTRPayload | null>(null);
   const [viewCTR, setViewCTR] = useState<CTR | null>(null);
+  const [viewPayload, setViewPayload] = useState<CTRPayload | null>(null);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   // Detectar se há alterações não salvas
@@ -110,8 +112,91 @@ export default function CTRPage() {
     }
   };
 
+  // Gera o payload para visualização do CTR histórico
+  const generateViewPayload = (ctr: CTR): CTRPayload | null => {
+    const localDescarte = locaisDescarte.find(l => l.nome === ctr.destinatarioNome);
+    if (!localDescarte) return null;
+
+    return ctrDocumentService.generatePayload(
+      {
+        alugueisIds: [],
+        localDescarteId: localDescarte.id,
+        numero: ctr.numero,
+        data: ctr.data,
+        horaSaida: ctr.horaSaida,
+        tipoOperacao: ctr.tipoOperacao,
+        origem: {
+          endereco: ctr.origemEndereco,
+          bairro: ctr.origemBairro || '',
+          cidade: ctr.origemCidade,
+          uf: ctr.origemUF,
+          responsavel: ctr.origemResponsavel || '',
+          telefone: ctr.origemTelefone || '',
+          observacao: ctr.origemObservacao || '',
+        },
+        gerador: {
+          nome: ctr.geradorNome,
+          cpfCnpj: ctr.geradorCpfCnpj,
+          endereco: ctr.geradorEndereco || '',
+          bairro: ctr.geradorBairro || '',
+          cidade: ctr.geradorCidade || '',
+          uf: ctr.geradorUF || 'SP',
+          responsavel: ctr.geradorResponsavel || '',
+          telefone: ctr.geradorTelefone || '',
+        },
+        transportador: {
+          nome: ctr.transportadorNome,
+          cpfCnpj: ctr.transportadorCpfCnpj,
+          inscricao: ctr.transportadorInscricao || '',
+          telefone: ctr.transportadorTelefone || '',
+        },
+        destinatario: {
+          nome: ctr.destinatarioNome,
+          cpfCnpj: ctr.destinatarioCpfCnpj || '',
+          endereco: ctr.destinatarioEndereco,
+          bairro: ctr.destinatarioBairro || '',
+          cidade: ctr.destinatarioCidade,
+          uf: ctr.destinatarioUF,
+          tipoLocal: (ctr.destinatarioTipoLocal as any) || 'outro',
+          licenca: ctr.destinatarioLicenca || '',
+        },
+        residuo: {
+          classe: (ctr.residuoClasse as any) || 'A',
+          descricao: ctr.residuoDescricao,
+          acondicionamento: ctr.residuoAcondicionamento || '',
+          quantidade: ctr.residuoQuantidade,
+          unidade: ctr.residuoUnidade,
+        },
+        declaracoes: {
+          transportador: { nome: ctr.declaracaoTransportadorNome || '', assinatura: ctr.declaracaoTransportadorAssinatura },
+          recebedor: { nome: ctr.declaracaoRecebedorNome || '', assinatura: ctr.declaracaoRecebedorAssinatura, dataHora: ctr.declaracaoRecebedorDataHora, carimbo: ctr.declaracaoRecebedorCarimbo, observacao: ctr.declaracaoRecebedorObservacao },
+        },
+      },
+      localDescarte,
+      { nomeEmpresa: '', cnpj: '', telefone: '', endereco: '', logoUrl: undefined },
+      ctr.numero
+    );
+  };
+
+  // O histórico usa o número original do CTR - gera payload para visualização
   const handleViewCTR = (ctr: CTR) => {
+    const payload = generateViewPayload(ctr);
+    setViewPayload(payload);
     setViewCTR(ctr);
+  };
+
+  // Baixar PDF do CTR histórico
+  const handleDownloadHistoricPDF = async () => {
+    if (viewPayload) {
+      await downloadPDF(viewPayload);
+    }
+  };
+
+  // Imprimir CTR histórico
+  const handlePrintHistoricView = async () => {
+    if (viewPayload) {
+      await handlePrint(viewPayload);
+    }
   };
 
   const handlePrintHistoric = async (ctr: CTR) => {
@@ -270,6 +355,13 @@ export default function CTRPage() {
               >
                 Visualizar
               </Button>
+<Button
+                onClick={handlePreview}
+                className="h-11 px-6 rounded-xl font-bold"
+                disabled={!ctrAtual || !localDescarteSelecionado}
+              >
+                Visualizar
+              </Button>
               <Button
                 onClick={handleEmit}
                 className="h-11 px-8 rounded-xl font-bold bg-accent hover:bg-accent-dark"
@@ -375,14 +467,20 @@ export default function CTRPage() {
       {/* Modal de Visualização de CTR Histórico */}
       <ModalBase
         isOpen={!!viewCTR}
-        onClose={() => setViewCTR(null)}
+        onClose={() => {
+          setViewCTR(null);
+          setViewPayload(null);
+        }}
         title={`CTR - ${viewCTR?.numero || ''}`}
         maxWidth="full"
         footer={
           <div className="flex gap-3 w-full justify-end">
             <Button
               variant="ghost"
-              onClick={() => setViewCTR(null)}
+              onClick={() => {
+                setViewCTR(null);
+                setViewPayload(null);
+              }}
               className="h-11 px-6 rounded-xl font-bold"
             >
               Fechar
@@ -390,7 +488,17 @@ export default function CTRPage() {
           </div>
         }
       >
-        {viewCTR && (
+        {viewPayload && (
+          <div className="space-y-4">
+            <CTRDocumentPreview
+              payload={viewPayload}
+              onDownloadPDF={downloadPDF}
+              onDownloadWord={downloadWord}
+              onPrint={handlePrintHistoricView}
+            />
+          </div>
+        )}
+        {!viewPayload && viewCTR && (
           <div className="p-4 bg-muted/20 rounded-xl text-sm text-center">
             <p className="font-bold">CTR histórico - reimpressão</p>
             <p className="text-muted-foreground">

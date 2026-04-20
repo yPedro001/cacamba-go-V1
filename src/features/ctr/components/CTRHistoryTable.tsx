@@ -1,8 +1,9 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { UnsavedChangesConfirmDialog } from '@/components/ui/unsaved-changes';
 import { CTR } from '@/core/domain/ctr-types';
 import { Eye, Printer, Trash2, FileDown, FileText } from 'lucide-react';
 
@@ -14,6 +15,7 @@ interface CTRHistoryTableProps {
 }
 
 export function CTRHistoryTable({ ctrs, onView, onPrint, onDelete }: CTRHistoryTableProps) {
+  const [ctrToDelete, setCtrToDelete] = useState<{ id: string; numero: string } | null>(null);
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     const [year, month, day] = dateStr.split('-');
@@ -31,17 +33,36 @@ export function CTRHistoryTable({ ctrs, onView, onPrint, onDelete }: CTRHistoryT
 
   if (ctrs.length === 0) {
     return (
-      <div className="text-center py-16 text-muted-foreground">
-        <FileText size={48} className="mx-auto mb-4 opacity-20" />
-        <p className="font-bold text-lg">Nenhum CTR emitido</p>
-        <p className="text-sm mt-1">Os CTRs emitidos aparecerão aqui</p>
-      </div>
+      <>
+        <div className="text-center py-16 text-muted-foreground">
+          <FileText size={48} className="mx-auto mb-4 opacity-20" />
+          <p className="font-bold text-lg">Nenhum CTR emitido</p>
+          <p className="text-sm mt-1">Os CTRs emitidos aparecerão aqui</p>
+        </div>
+        {/* Dialog de confirmação de exclusão */}
+        <UnsavedChangesConfirmDialog
+          isOpen={!!ctrToDelete}
+          onConfirm={() => {
+            if (ctrToDelete) {
+              onDelete(ctrToDelete.id);
+              setCtrToDelete(null);
+            }
+          }}
+          onCancel={() => setCtrToDelete(null)}
+          title="Excluir CTR"
+          message={`Tem certeza que deseja excluir o CTR ${ctrToDelete?.numero}? Esta ação não pode ser desfeita.`}
+          confirmText="Sim, excluir"
+          cancelText="Cancelar"
+          autoCloseOnConfirm={true}
+        />
+      </>
     );
   }
 
   return (
-    <Table>
-      <TableHeader>
+    <>
+      <Table>
+        <TableHeader>
         <TableRow>
           <TableHead>Número</TableHead>
           <TableHead>Data</TableHead>
@@ -103,11 +124,7 @@ export function CTRHistoryTable({ ctrs, onView, onPrint, onDelete }: CTRHistoryT
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => {
-                    if (confirm('Tem certeza que deseja excluir este CTR?')) {
-                      onDelete(ctr.id);
-                    }
-                  }}
+                  onClick={() => setCtrToDelete({ id: ctr.id, numero: ctr.numero })}
                   className="h-8 w-8 text-red-500 hover:bg-red-500/10"
                   title="Excluir"
                 >
@@ -119,5 +136,23 @@ export function CTRHistoryTable({ ctrs, onView, onPrint, onDelete }: CTRHistoryT
         ))}
       </TableBody>
     </Table>
+
+    {/* Dialog de confirmação de exclusão */}
+    <UnsavedChangesConfirmDialog
+      isOpen={!!ctrToDelete}
+      onConfirm={() => {
+        if (ctrToDelete) {
+          onDelete(ctrToDelete.id);
+          setCtrToDelete(null);
+        }
+      }}
+      onCancel={() => setCtrToDelete(null)}
+      title="Excluir CTR"
+      message={`Tem certeza que deseja excluir o CTR ${ctrToDelete?.numero}? Esta ação não pode ser desfeita.`}
+      confirmText="Sim, excluir"
+      cancelText="Cancelar"
+      autoCloseOnConfirm={true}
+    />
+    </>
   );
 }

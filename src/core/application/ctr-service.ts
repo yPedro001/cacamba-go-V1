@@ -104,13 +104,17 @@ export class CTRService {
   }
 
   async getProximoNumeroCTR(): Promise<string> {
-    const { data, error } = await supabase.functions.invoke('gerar-numero-ctr', {
-      body: { p_usuario_id: this.usuarioId },
+    // Usar RPC diretamente - mais confiável que Edge Function
+    const { data, error } = await supabase.rpc('gerar_proximo_numero_ctr', {
+      p_usuario_id: this.usuarioId,
     });
 
     if (error || !data) {
       console.error('Erro ao gerar número CTR:', error);
-      return `FALLBACK-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      // Fallback local se RPC falhar
+      const ano = new Date().getFullYear();
+      const timestamp = Date.now().toString().slice(-4);
+      return `${ano}${timestamp}`;
     }
 
     return data;
@@ -131,12 +135,16 @@ export class CTRService {
     formData: CTRFormData,
     localDescarte: LocalDescarte,
     alugueis: Locacao[],
-    clientes: Cliente[]
+    clientes: Cliente[],
+    numeroCTR?: string // Parâmetro opcional para usar número específico (evita gerar novo número)
   ): Promise<CTR> {
     const validation = CTRFormDataSchema.safeParse(formData);
     if (!validation.success) {
       throw new Error(`Dados inválidos: ${validation.error.message}`);
     }
+
+    // Se não passou número, gerar um novo
+    const numeroFinal = numeroCTR || await this.getProximoNumeroCTR();
 
     const itens = alugueis.map(aluguel => {
       const cliente = clientes.find(c => c.id === aluguel.clienteId);
@@ -152,8 +160,20 @@ export class CTRService {
       };
     });
 
-    const { data: ctrResult, error: ctrError } = await supabase.functions.invoke('emitir-ctr', {
-      body: {
+    // Chamar diretamente a função RPC do banco (mais confiável que Edge Function)
+    // Se passou número específico, usar função que aceita número customizado
+    // Caso contrário, usar a função que gera número automaticamente
+    const functionName = numeroFinal 
+      ? 'emitir_ctr_com_numero' 
+      : 'emitir_ctr_atomico';
+    
+    const params = numeroFinal 
+      ? { p_numero: numeroFinal }
+      : {};
+    
+    const { data: ctrResult, error: ctrError } = await supabase
+      .rpc(functionName, {
+        ...params,
         p_usuario_id: this.usuarioId,
         p_data: formData.data,
         p_hora_saida: formData.horaSaida,
@@ -208,8 +228,9 @@ export class CTRService {
         
         p_local_descarte_id: localDescarte.id,
         p_itens: itens,
-      },
-    });
+      })
+      .select()
+      .single();
 
     if (ctrError) throw new Error(`Erro ao criar CTR: ${ctrError.message}`);
     if (!ctrResult) throw new Error('CTR não foi criado');
@@ -418,13 +439,15 @@ export class CTRService {
       geradorResponsavel: db.gerador_responsavel || '',
       geradorTelefone: db.gerador_telefone || '',
       
+      // Transportador - campos que existem na tabela
       transportadorNome: db.transportador_nome,
       transportadorCpfCnpj: db.transportador_cpf_cnpj,
       transportadorInscricao: db.transportador_inscricao || undefined,
-      transportadorMotorista: db.transportador_motorista,
-      transportadorPlaca: db.transportador_placa,
+      // Campos que NÃO existem na tabela - usar string vazia
+      transportadorMotorista: db.transportador_motorista || '',
+      transportadorPlaca: db.transportador_placa || '',
       transportadorTipoVeiculo: db.transportador_tipo_veiculo || '',
-      transportadorLicenca: db.transportador_licenca || undefined,
+      transportadorLicenca: db.transportador_licenca || '',
       transportadorTelefone: db.transportador_telefone || '',
       
       destinatarioNome: db.destinatario_nome,
@@ -442,8 +465,9 @@ export class CTRService {
       residuoQuantidade: db.residuo_quantidade,
       residuoUnidade: db.residuo_unidade,
       
-      declaracaoGeradorNome: db.declaracao_gerador_nome || '',
-      declaracaoGeradorAssinatura: db.declaracao_gerador_assinatura || undefined,
+      // Declarações - campos que existem na tabela
+      declaracaoGeradorNome: '', // Campo não existe na tabela
+      declaracaoGeradorAssinatura: undefined,
       declaracaoTransportadorNome: db.declaracao_transportador_nome || '',
       declaracaoTransportadorAssinatura: db.declaracao_transportador_assinatura || undefined,
       declaracaoRecebedorNome: db.declaracao_recebedor_nome || '',

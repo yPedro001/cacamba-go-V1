@@ -97,8 +97,9 @@ export const CTRSchema = z.object({
   transportadorNome: z.string().min(1, 'Nome do transportador é obrigatório'),
   transportadorCpfCnpj: z.string().min(1, 'CPF/CNPJ do transportador é obrigatório'),
   transportadorInscricao: z.string().optional(),
-  transportadorMotorista: z.string().min(1, 'Nome do motorista é obrigatório'),
-  transportadorPlaca: z.string().min(1, 'Placa do veículo é obrigatória'),
+  // Campos opcionais (não existem na tabela do banco, mas mantemos para compatibilidade)
+  transportadorMotorista: z.string().optional().default(''),
+  transportadorPlaca: z.string().optional().default(''),
   transportadorTipoVeiculo: z.string().optional().default(''),
   transportadorLicenca: z.string().optional(),
   transportadorTelefone: z.string().optional(),

@@ -115,6 +115,9 @@ export const useNotificacoes = () => useAppStore(s => s.notificacoes);
 export const useCTRs = () => useAppStore(s => s.ctrs);
 export const useCTRItems = () => useAppStore(s => s.ctrItems);
 export const useCTRAtual = () => useAppStore(s => s.ctrAtual);
+export const useCtrNumeroPendente = () => useAppStore(s => s.ctrNumeroPendente);
+export const useSetCtrNumeroPendente = () => useAppStore(s => s.setCtrNumeroPendente);
+export const useResetCTRForm = () => useAppStore(s => s.resetCTRForm);
 
 /**
  * Seletores para Locais de Descarte

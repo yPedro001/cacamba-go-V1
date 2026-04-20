@@ -16,6 +16,7 @@ export function useCTRController() {
   const {
     ctrs,
     ctrAtual,
+    ctrNumeroPendente,
     setCTRs,
     setCTRAtual,
     updateCTRAtual,
@@ -27,6 +28,8 @@ export function useCTRController() {
     updateLocalDescarte,
     removeLocalDescarte,
     setLocalPadrao,
+    setCtrNumeroPendente,
+    resetCTRForm,
   } = useAppStore();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -74,22 +77,23 @@ export function useCTRController() {
   const openEmitModal = useCallback(() => {
     const novoForm = generateNovoCTRForm();
     setCTRAtual(novoForm);
+    setCtrNumeroPendente(null); // Limpar número pendente ao iniciar novo CTR
     setAlugueisSelecionados([]);
     setLocalDescarteSelecionado(localDescartePadrao || null);
     setConflitos([]);
     setPayloadPreview(null);
     setIsModalOpen(true);
-  }, [generateNovoCTRForm, setCTRAtual, localDescartePadrao]);
+  }, [generateNovoCTRForm, setCTRAtual, setCtrNumeroPendente, localDescartePadrao]);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
-    setCTRAtual(null);
+    resetCTRForm(); // Limpa ctrAtual, ctrAtualId e ctrNumeroPendente
     setAlugueisSelecionados([]);
     setLocalDescarteSelecionado(null);
     setConflitos([]);
     setPayloadPreview(null);
     setError(null);
-  }, [setCTRAtual]);
+  }, [resetCTRForm]);
 
   const handleSelectAlugueis = useCallback((alugueis: Locacao[]) => {
     setAlugueisSelecionados(alugueis);
@@ -162,13 +166,19 @@ export function useCTRController() {
 
   const previewDocument = useCallback(async () => {
     if (ctrAtual && localDescarteSelecionado && service) {
-      const numeroTemp = await service.getProximoNumeroCTR();
+      // Se já tem número pendente, reutilizar; caso contrário, gerar novo
+      let numeroTemp = ctrNumeroPendente;
+      if (!numeroTemp) {
+        numeroTemp = await service.getProximoNumeroCTR();
+        setCtrNumeroPendente(numeroTemp); // Armazenar para reuse posterior
+      }
+      
       const payload = ctrDocumentService.generatePayload(ctrAtual, localDescarteSelecionado, perfil, numeroTemp);
       setPayloadPreview(payload);
       return payload;
     }
     return null;
-  }, [ctrAtual, localDescarteSelecionado, service, perfil]);
+  }, [ctrAtual, localDescarteSelecionado, service, perfil, ctrNumeroPendente, setCtrNumeroPendente]);
 
   const handleEmitCTR = useCallback(async () => {
     if (!service || !ctrAtual || !localDescarteSelecionado) {
@@ -186,11 +196,13 @@ export function useCTRController() {
     setError(null);
 
     try {
+      // Passar o número pendente para garantir que use o mesmo número
       const novoCTR = await service.createCTR(
         ctrAtual,
         localDescarteSelecionado,
         alugueisSelecionados,
-        clientes
+        clientes,
+        ctrNumeroPendente || undefined
       );
 
       addCTR(novoCTR);
@@ -202,7 +214,40 @@ export function useCTRController() {
     } finally {
       setIsLoading(false);
     }
-  }, [service, ctrAtual, localDescarteSelecionado, alugueisSelecionados, clientes, conflitos, addCTR, closeModal]);
+  }, [service, ctrAtual, localDescarteSelecionado, alugueisSelecionados, clientes, conflitos, addCTR, closeModal, ctrNumeroPendente]);
+
+  // Salvar CTR como rascunho (sem "emitir" formalmente)
+  const handleSalvarCTR = useCallback(async () => {
+    if (!service || !ctrAtual || !localDescarteSelecionado) {
+      setError('Dados incompletos para salvar CTR');
+      return false;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Usar o número pendente se existir, ou gerar novo
+      const numero = ctrNumeroPendente || await service.getProximoNumeroCTR();
+      
+      const novoCTR = await service.createCTR(
+        ctrAtual,
+        localDescarteSelecionado,
+        alugueisSelecionados,
+        clientes,
+        numero
+      );
+
+      addCTR(novoCTR);
+      closeModal();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar CTR');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [service, ctrAtual, localDescarteSelecionado, alugueisSelecionados, clientes, ctrNumeroPendente, closeModal]);
 
   const downloadPDF = useCallback(async (payload: CTRPayload) => {
     try {
@@ -327,6 +372,7 @@ export function useCTRController() {
   return {
     ctrs,
     ctrAtual,
+    ctrNumeroPendente,
     locaisDescarte,
     localDescartePadrao,
     localDescarteSelecionado,
@@ -353,6 +399,7 @@ export function useCTRController() {
     updateDeclaracoes,
     previewDocument,
     handleEmitCTR,
+    handleSalvarCTR,
     downloadPDF,
     downloadWord,
     handlePrint,

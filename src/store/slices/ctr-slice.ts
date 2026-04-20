@@ -6,6 +6,7 @@ export interface CTRSlice {
   ctrItems: CTRItem[];
   ctrAtual: CTRFormData | null;
   ctrAtualId: string | null;
+  ctrNumeroPendente: string | null; // Número do CTR em edição (não persistence no banco ainda)
   
   setCTRs: (ctrs: CTR[]) => void;
   addCTR: (ctr: CTR) => void;
@@ -19,6 +20,8 @@ export interface CTRSlice {
   
   setCTRAtual: (data: CTRFormData | null) => void;
   updateCTRAtual: (data: Partial<CTRFormData>) => void;
+  setCtrNumeroPendente: (numero: string | null) => void;
+  resetCTRForm: () => void;
   
   generateNovoCTRForm: () => CTRFormData;
   
@@ -32,6 +35,7 @@ export const createCTRSlice: StateCreator<CTRSlice> = (set, get) => ({
   ctrItems: [],
   ctrAtual: null,
   ctrAtualId: null,
+  ctrNumeroPendente: null,
   
   setCTRs: (ctrs) => set({ ctrs }),
   
@@ -80,6 +84,14 @@ export const createCTRSlice: StateCreator<CTRSlice> = (set, get) => ({
       set({ ctrAtual: { ...ctrAtual, ...data } as CTRFormData });
     }
   },
+  
+  setCtrNumeroPendente: (numero) => set({ ctrNumeroPendente: numero }),
+  
+  resetCTRForm: () => set({ 
+    ctrAtual: null, 
+    ctrAtualId: null, 
+    ctrNumeroPendente: null 
+  }),
   
   generateNovoCTRForm: () => {
     const now = new Date();
