@@ -149,11 +149,15 @@ export function LocalDescarteManager({
     setShowCloseConfirm(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editingId) {
-      onUpdate(editingId, form as any);
+      try {
+        await onUpdate(editingId, form as any);
+      } catch (err) {
+        console.error('Erro ao atualizar:', err);
+      }
     } else {
-      onAdd(form as any);
+      await onAdd(form as any);
     }
     setSavedForm(form);
     setIsModalOpen(false);
