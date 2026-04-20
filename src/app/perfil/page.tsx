@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +27,11 @@ export default function PerfilPage() {
   const [isCepLoading, setIsCepLoading] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
+
+  // Carregar dados do CTR (locais de descarte) ao montar o componente
+  useEffect(() => {
+    ctrController.loadData();
+  }, []);
 
   const [form, setForm] = useState({
     nomeEmpresa: perfil.nomeEmpresa,

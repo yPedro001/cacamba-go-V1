@@ -11,6 +11,8 @@ import { Loader2 } from 'lucide-react';
 import { UFEnum, TipoLocalDescarteEnum } from '@/core/domain/ctr-schemas';
 import { Plus, Trash2, Edit, Star, MapPin, Building2, Phone, FileText } from 'lucide-react';
 import { UnsavedChangesConfirmDialog } from '@/components/ui/unsaved-changes';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
+import { AddressSuggestion } from '@/lib/address-utils';
 
 export interface LocalDescarteManagerProps {
   locais: LocalDescarte[];
@@ -213,6 +215,19 @@ export function LocalDescarteManager({
     handleAddressBlur();
   };
 
+  // Handler para quando selecionar um endereço do autocomplete
+  // O onChange do AddressAutocomplete passa: display_name, lat, lon, addressDetails
+  const handleAddressSelect = (display: string, lat?: number, lon?: number, addrDetails?: AddressSuggestion['address']) => {
+    const addr = addrDetails;
+    setForm(prev => ({
+      ...prev,
+      rua: addr?.road || display.split(',')[0] || prev.rua,
+      bairro: addr?.suburb || prev.bairro,
+      cidade: addr?.city || addr?.town || prev.cidade,
+      cep: addr?.postcode || prev.cep,
+    }));
+  };
+
   return (
     <>
       <Card className="bg-card border-border">
@@ -380,14 +395,13 @@ export function LocalDescarteManager({
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
+<label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
                 Rua / Endereço *
               </label>
               <div className="relative">
-                <Input
+                <AddressAutocomplete
                   value={form.rua}
-                  onChange={e => handleRuaChange(e.target.value)}
-                  onBlur={handleRuaBlur}
+                  onChange={handleAddressSelect}
                   placeholder="Rua, avenida..."
                   className="h-11 rounded-xl"
                 />
@@ -395,6 +409,18 @@ export function LocalDescarteManager({
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-foreground/90" />
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-foreground/90 uppercase tracking-widest">
+                Bairro
+              </label>
+              <Input
+                value={form.bairro}
+                onChange={e => setForm({ ...form, bairro: e.target.value })}
+                placeholder="Bairro"
+                className="h-11 rounded-xl"
+              />
             </div>
 
             <div className="space-y-2">
