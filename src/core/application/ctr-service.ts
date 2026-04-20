@@ -161,19 +161,9 @@ export class CTRService {
     });
 
     // Chamar diretamente a função RPC do banco (mais confiável que Edge Function)
-    // Se passou número específico, usar função que aceita número customizado
-    // Caso contrário, usar a função que gera número automaticamente
-    const functionName = numeroFinal 
-      ? 'emitir_ctr_com_numero' 
-      : 'emitir_ctr_atomico';
-    
-    const params = numeroFinal 
-      ? { p_numero: numeroFinal }
-      : {};
-    
+    // A função emitir_ctr_atomico gera o número automaticamente
     const { data: ctrResult, error: ctrError } = await supabase
-      .rpc(functionName, {
-        ...params,
+      .rpc('emitir_ctr_atomico', {
         p_usuario_id: this.usuarioId,
         p_data: formData.data,
         p_hora_saida: formData.horaSaida,
