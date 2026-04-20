@@ -355,13 +355,6 @@ export default function CTRPage() {
               >
                 Visualizar
               </Button>
-<Button
-                onClick={handlePreview}
-                className="h-11 px-6 rounded-xl font-bold"
-                disabled={!ctrAtual || !localDescarteSelecionado}
-              >
-                Visualizar
-              </Button>
               <Button
                 onClick={handleEmit}
                 className="h-11 px-8 rounded-xl font-bold bg-accent hover:bg-accent-dark"
