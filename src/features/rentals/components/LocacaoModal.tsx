@@ -55,6 +55,7 @@ export function LocacaoModal({
   const [duplicateCheck, setDuplicateCheck] = useState<{ isOpen: boolean, client?: Cliente }>({ isOpen: false });
   const [selectedEnderecoId, setSelectedEnderecoId] = useState<string>('manual');
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [valorManual, setValorManual] = useState(false); // Rastrea se o usuário editou manualmente o valor
   
   // Função para tratar o fechamento - sempre pede confirmação
   const handleClose = () => {
@@ -95,6 +96,7 @@ export function LocacaoModal({
   const watchEndereco = watch('enderecoObra');
   const watchClienteId = watch('clienteId');
   const watchSalvarEndereco = watch('salvarEndereco');
+  const watchQuantidade = watch('quantidadeCacambas') || 1;
 
   const selectedClient = useMemo(() => 
     clientes.find(c => c.id === watchClienteId), 
@@ -133,9 +135,23 @@ export function LocacaoModal({
         });
         setIsNovoCliente(false);
         setSelectedEnderecoId('manual');
+        setValorManual(false); // Reset flag de edição manual quando abre nova locação
       }
     }
   }, [isOpen, locacao, reset, perfil]);
+
+  // Calcula automaticamente o valor quando a quantidade de caçambas muda
+  // Sempre recalcula (mesmo que tenha sido editado manualmente) ao mudar a quantidade
+  useEffect(() => {
+    if (!locacao?.id) {
+      const valorUnitario = perfil.padroes?.valorAluguel ?? 300;
+      const novoValor = valorUnitario * watchQuantidade;
+      setValue('valor', novoValor);
+      setValue('valorLiquido', novoValor);
+      // Reseta o flag para permitir nova edição manual após o cálculo
+      setValorManual(false);
+    }
+  }, [watchQuantidade, perfil.padroes?.valorAluguel, locacao?.id, setValue]);
 
   // Se o cliente selecionado tiver apenas 1 endereço, seleciona automaticamente
   useEffect(() => {
@@ -487,7 +503,9 @@ export function LocacaoModal({
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Valor Unitário</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">
+                    Valor Total {watchQuantidade > 1 && <span className="text-accent/60">({watchQuantidade} x {formatCurrency(perfil.padroes?.valorAluguel ?? 300)})</span>}
+                  </label>
                   <Controller
                     name="valor"
                     control={control}
@@ -496,7 +514,12 @@ export function LocacaoModal({
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-muted-foreground/50 z-10 pointer-events-none">R$</span>
                         <SmartCurrencyInput
                           value={field.value || 0}
-                          onChange={field.onChange}
+                          onChange={(val) => {
+                            field.onChange(val);
+                            if (!locacao?.id) {
+                              setValorManual(true); // Marca como edição manual
+                            }
+                          }}
                           className="h-11 rounded-2xl pl-10 font-black text-lg tabular-nums bg-background border-input text-foreground"
                           placeholder="0,00"
                         />
