@@ -1,60 +1,161 @@
 # Mapa da Arquitetura: CaçambaGo 🗺️
 
-Este documento fornece uma visão estruturada da organização do projeto, seguindo os princípios de Responsabilidade Única e Arquitetura Modular.
-
-## 1. Árvore de Diretórios
-
-```text
-/raiz-do-projeto
-  ├── src/
-  │   ├── app/                # Next.js App Router (Páginas e API)
-  │   ├── components/         # Componentes UI globais (Shadcn)
-  │   ├── core/               # Lógica de Negócio (Entidades e Casos de Uso)
-  │   ├── features/           # Módulos Funcionais (Map, Rentals, Customers)
-  │   ├── infrastructure/     # Conectores Externos (API, Supabase)
-  │   ├── lib/                # Funções utilitárias e configurações globais
-  │   ├── shared/             # Providers e componentes compartilhados
-  │   └── store/              # Gerenciamento de Estado Global (Zustand)
-  ├── supabase/               # Scripts SQL de Schema e Migrations
-  ├── docs/                   # Documentação do projeto (Email, Fluxos)
-  ├── next.config.mjs         # Configurações do Framework
-  ├── tailwind.config.ts      # Tokens de Design e Tematização
-  └── package.json            # Dependências e Scripts
-```
-
-## 2. Descrição Funcional da Estrutura
-
-### 📂 `src/app/`
-Responsável pelo roteamento e layout da aplicação.
-- `/mapa`: Centro de operações com mapa em tempo real.
-- `/alugueis`: Gestão de contratos e locações.
-- `/clientes`: Cadastro e histórico de clientes.
-- `/api/geocode`: Proxy para geolocalização de endereços.
-
-### 📂 `src/features/`
-Contém os módulos de negócio verticais. Cada pasta (`customers`, `rentals`, `map`) agrupa seus próprios componentes internos, hooks especializados e tipos.
-- `map/`: Lógica pesada de integração com **Leaflet** e renderização de markers.
-- `rentals/`: Formulários complexos de locação e cálculos de vencimento.
-
-### 📂 `src/core/`
-O coração do sistema, independente de frameworks.
-- `domain/`: Definição dos tipos (`types.ts`) que modelam o negócio (Cliente, Locacao, Caçamba).
-- `application/`: Actions e lógica de transformação de dados.
-
-### 📂 `src/infrastructure/`
-Camada de integração com o mundo externo.
-- `services/`: Cliente Supabase configurado e serviços de geocodificação.
-
-### 📂 `src/store/`
-Gerenciamento de estado reativo.
-- `useAppStore.ts`: Store centralizada onde os dados do Supabase são espelhados para acesso instantâneo pelos componentes.
-
-## 3. Arquivos Críticos
-
-- `next.config.mjs`: Contém o flag `reactStrictMode: false`, crítico para a estabilidade do Leaflet Map.
-- `src/app/globals.css`: Centraliza a importação do `leaflet.css` e tokens de cores do tema Premium.
-- `src/store/useAppStore.ts`: Ponto único de verdade para o estado da aplicação.
+> **Última Atualização:** 2026-04-29
+> **Status:** Em desenvolvimento ativo
+> **Stack:** Next.js 14 + Supabase + TypeScript + Shadcn/UI + Leaflet
 
 ---
 
-Este mapa foi gerado automaticamente para garantir consistência entre o código e a documentação.
+## 1. Visão Geral do Projeto
+
+Sistema SaaS de gestão de locação de caçambas com foco em:
+- **Gestão de Caçambas**: Controle de estoque, status e localização
+- **Locações**: Contratos, vencimentos, financeiro
+- **Clientes**: Cadastro, histórico, endereços múltiplos
+- **CTR (Controle de Transporte de Resíduos)**: Geração e gestão de documentos legais
+- **Mapa em Tempo Real**: Visualização de caçambas e entregas via Leaflet
+
+---
+
+## 2. Árvore de Diretórios
+
+```text
+/raiz-do-projeto
+├── src/
+│   ├── app/                    # Next.js App Router (Páginas e API)
+│   │   ├── pagina.tsx          # Dashboard principal
+│   │   ├── mapa/               # Mapa em tempo real (Leaflet)
+│   │   ├── alugueis/            # Gestão de locações
+│   │   ├── clientes/           # Cadastro de clientes
+│   │   ├── gerenciamento/      # Gestão de caçambas e inventário
+│   │   ├── ctr/                # Documentação CTR
+│   │   ├── relatorios/         # Relatórios e métricas
+│   │   ├── perfil/             # Configurações da empresa
+│   │   ├── login/              # Autenticação
+│   │   └── api/geocode/        # Proxy de geolocalização
+│   ├── components/             # Componentes UI globais (Shadcn)
+│   │   ├── ui/                 # Componentes base (Button, Input, Modal, etc.)
+│   │   ├── Sidebar.tsx         # Navegação lateral
+│   │   ├── Header.tsx          # Cabeçalho com notificações
+│   │   └── AddressAutocomplete.tsx  # Busca de endereços
+│   ├── core/                   # Lógica de Negócio
+│   │   ├── domain/
+│   │   │   ├── types.ts        # Definições de tipos (Cliente, Locacao, Cacamba)
+│   │   │   ├── schemas.ts      # Validação Zod
+│   │   │   ├── business-logic.ts  # Cálculos financeiros
+│   │   │   └── ctr-types.ts    # Tipos específicos de CTR
+│   │   └── application/        # Actions e transformações
+│   ├── features/               # Módulos Funcionais
+│   │   ├── map/                # Mapa Leaflet (componentes, hooks)
+│   │   ├── rentals/            # Locações (modal, resumo, recibo)
+│   │   ├── customers/          # Clientes (tabela, modal)
+│   │   ├── inventory/          # Inventário de caçambas
+│   │   └── ctr/                # Módulo CTR completo
+│   ├── infrastructure/         # Conectores Externos
+│   │   ├── api/                # Serviços (geocode)
+│   │   └── supabase/           # Cliente e config Supabase
+│   ├── lib/                    # Utilitários (masks, currency, utils)
+│   ├── shared/                 # Providers (BackgroundSync)
+│   └── store/                  # Zustand (useAppStore.ts)
+├── supabase/                   # Scripts SQL (migrations, schema)
+├── docs/                       # Documentação (email_templates.md)
+├── schema_definitions.json     # Schema das tabelas
+└── schema_paths.json           # Mapeamento de caminhos
+```
+
+---
+
+## 3. Principais Features
+
+### 🗺️ Mapa (Leaflet)
+- Visualização de caçambas no mapa
+- Marcadores por status (disponivel, locada, entrega_pendente, vencida)
+- Filtros por status
+- Overlay de informações
+
+### 📋 Locações (Rentals)
+- **LocacaoModal**: Formulário completo com:
+  - Cliente existente ou novo cadastro rápido
+  - Seleção de caçamba (específica ou automática)
+  - Endereço com autocomplete e geolocalização
+  - Cálculo automático: **valor × quantidade de caçambas**
+  - Financials: valor bruto, taxas, valor líquido
+  - Salvamento de endereço no cliente
+- **RentalsSummary**: Dashboard de locações ativas
+- **ReciboModal**: Geração de recibos
+
+### 👥 Clientes (Customers)
+- Cadastro com múltiplos endereços
+- Histórico de locações
+- Busca por CPF/CNPJ ou telefone
+
+### 📦 Inventário (Inventory)
+- Gestão de caçambas (código, status, tamanho)
+- Histórico de status
+- Modal de edição
+
+### 📄 CTR (Controle de Transporte de Resíduos)
+- **CTRForm**: Criação de documentos CTR
+- **CTRHistoryTable**: Histórico de documentos
+- **CTRDocumentPreview**: Visualização/impressão
+- **LocalDescarteManager**: Gestão de locais de descarte
+- **SelecaoAlugueis**: Seleção de locações vinculadas
+- **ConflitosAlert**: Alertas de inconsistências
+
+### ⚙️ Perfil
+- Configurações da empresa (nome, CNPJ, contato)
+- **Padrões Operacionais**:
+  - Valor padrão de aluguel
+  - Tamanho padrão de caçamba
+  - Taxa de maquininha padrão
+  - Juros de parcelamento
+
+---
+
+## 4. Stack Técnica
+
+| Categoria | Tecnologia |
+|-----------|------------|
+| Framework | Next.js 14 (App Router) |
+| Linguagem | TypeScript |
+| UI | Shadcn/UI + Tailwind CSS |
+| Mapa | Leaflet + React-Leaflet |
+| Estado | Zustand |
+| Banco | Supabase (PostgreSQL) |
+| Validação | Zod |
+| Icons | Lucide React |
+| Auth | Supabase Auth |
+
+---
+
+## 5. Banco de Dados (Principais Tabelas)
+
+| Tabela | Descrição |
+|--------|-----------|
+| `cacambas` | Estoque de caçambas (id, identificador, codigo, status) |
+| `alugueis` | Locações (clienteId, cacambaId, valor, datas, status) |
+| `clientes` | Cadastro de clientes (nome, cpfCnpj, telefone, endereços) |
+| `perfil` | Configurações da empresa |
+| `locais_descarte` | Locais de descarte para CTR |
+
+---
+
+## 6. Padrões de Código
+
+- **Arquitetura Modular**: Features isoladas em `src/features/`
+- **Validação com Zod**: Schema definido em `core/domain/schemas.ts`
+- **Estado Centralizado**: Zustand store em `src/store/useAppStore.ts`
+- **Componentes Shadcn**: UI base em `src/components/ui/`
+- **Nomenclatura**: PascalCase para componentes, camelCase para funções
+
+---
+
+## 7. Histórico de Mudanças Recentes
+
+### 2026-04-29
+- ✅ Cálculo automático do valor de aluguel baseado na quantidade de caçambas
+- ✅ Label atualizado showing "Valor Total (n × R$ valor)"
+
+---
+
+*Este documento deve ser atualizado a cada feature significativa.*
