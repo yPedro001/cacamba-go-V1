@@ -62,6 +62,8 @@ export const LocacaoSchema = z.object({
   lat: z.number().optional().nullable(),
   lng: z.number().optional().nullable(),
   valor: z.number().min(0),
+  /** Valor unitário do aluguel (para referência e edição facilitada) */
+  valorUnitario: z.number().optional().nullable(),
   metodoPagamento: MetodoPagamentoSchema.optional(),
   taxaCartaoPercent: z.number().optional().default(0),
   valorTaxa: z.number().optional().default(0),

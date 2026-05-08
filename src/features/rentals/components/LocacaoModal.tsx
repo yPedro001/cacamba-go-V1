@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, UserPlus, Users, MapPin, Save, Plus } from 'lucide-react';
@@ -19,6 +19,34 @@ import { SmartCurrencyInput } from '@/components/ui/smart-currency-input';
 import { cpfCnpjMask, phoneMask } from '@/lib/masks';
 import { ModalBase } from '@/components/ui/modal-base';
 
+// ================================================================
+// UTILIDADES DE CÁLCULO - CRÍTICO PARA EVITAR BUGS DE ARREDONDAMENTO
+// ================================================================
+
+/** Arredonda para 2 casas decimais, evitando floating point errors */
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+/**
+ * Calcula o valor total a partir do unitário e quantidade.
+ * Usa arredondamento para evitar: 300 * 3 = 900.0000000000001
+ */
+const calcularValorTotal = (valorUnitario: number, quantidade: number): number => {
+  return round2(valorUnitario * quantidade);
+};
+
+/**
+ * Deriva o valor unitário a partir do total e quantidade.
+ * Importante para quando o usuário edita o total manualmente.
+ */
+const derivarValorUnitario = (valorTotal: number, quantidade: number): number => {
+  if (quantidade <= 0) return 0;
+  return round2(valorTotal / quantidade);
+};
+
+// ================================================================
+// SCHEMA ESTENDIDO
+// ================================================================
+
 // Schema estendido para o form: clienteId é opcional quando isNovoCliente = true
 const LocacaoFormSchema = LocacaoSchema.extend({
   clienteId: z.string().optional().default(''),
@@ -31,6 +59,8 @@ const LocacaoFormSchema = LocacaoSchema.extend({
   salvarEndereco: z.boolean().optional().default(false),
   nomeEndereco: z.string().optional().default(''),
   enderecoDetalhes: z.any().optional(),
+  /** Valor unitário do aluguel (separado do total para permitir ajustes precisos) */
+  valorUnitario: z.number().optional().default(300),
 });
 
 type LocacaoFormData = z.infer<typeof LocacaoFormSchema>;
@@ -55,8 +85,22 @@ export function LocacaoModal({
   const [duplicateCheck, setDuplicateCheck] = useState<{ isOpen: boolean, client?: Cliente }>({ isOpen: false });
   const [selectedEnderecoId, setSelectedEnderecoId] = useState<string>('manual');
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
-  const [valorManual, setValorManual] = useState(false); // Rastrea se o usuário editou manualmente o valor
   
+  /**
+   * Flag que rastrea se o usuário fez edição MANUAL no valor total.
+   * Quando true, o cálculo automático NÃO sobrescreve o valor.
+   * 
+   * Fluxo:
+   * - Usuário abre modal (nova locação) → false (valor vem do padrão)
+   * - Usuário muda quantidade → false (recalcula automaticamente)
+   * - Usuário edita manualmente o valor total → true (protege a edição)
+   * - Usuário muda quantidade novamente → false (assume que quer recalcular)
+   */
+  const [valorTotalEditadoManualmente, setValorTotalEditadoManualmente] = useState(false);
+
+  // Valor padrão do aluguel (R$ 300,00)
+  const valorPadrao = perfil.padroes?.valorAluguel ?? 300;
+
   // Função para tratar o fechamento - sempre pede confirmação
   const handleClose = () => {
     setShowCloseConfirm(true);
@@ -70,17 +114,18 @@ export function LocacaoModal({
   const handleCancelClose = () => {
     setShowCloseConfirm(false);
   };
-  
+
   const { register, handleSubmit, setValue, watch, reset, control, formState: { errors } } = useForm<LocacaoFormData>({
     resolver: zodResolver(LocacaoFormSchema) as any,
     defaultValues: {
       quantidadeCacambas: 1,
       status: 'entrega_pendente',
       metodoPagamento: 'pix',
-      valor: perfil.padroes?.valorAluguel ?? 300,
+      valor: valorPadrao,
+      valorUnitario: valorPadrao,
       taxaCartaoPercent: perfil.padroes?.taxaMaquininhaPadrao ?? 0,
       valorTaxa: 0,
-      valorLiquido: perfil.padroes?.valorAluguel ?? 300,
+      valorLiquido: valorPadrao,
       parcelas: 1,
       jurosPercent: 0,
       salvarEndereco: false,
@@ -97,25 +142,32 @@ export function LocacaoModal({
   const watchClienteId = watch('clienteId');
   const watchSalvarEndereco = watch('salvarEndereco');
   const watchQuantidade = watch('quantidadeCacambas') || 1;
+  const watchValorUnitario = watch('valorUnitario') || valorPadrao;
 
   const selectedClient = useMemo(() => 
     clientes.find(c => c.id === watchClienteId), 
     [clientes, watchClienteId]
   );
 
-  // Sincroniza estado quando o modal abre
+  // ================================================================
+  // EFEITO: Sincroniza estado quando o modal abre
+  // ================================================================
   useEffect(() => {
     if (isOpen) {
       if (locacao?.id) {
+        // MODO EDIÇÃO: Carrega dados existentes
         reset(locacao as any);
         setIsNovoCliente(false);
         setSelectedEnderecoId('manual');
+        // NÃO recalcula automaticamente - mantém o valor que está no banco
+        setValorTotalEditadoManualmente(false);
       } else {
+        // MODO CRIAÇÃO: Inicializa com valores padrão
         const hoje = new Date().toISOString().split('T')[0];
         const daqui7 = new Date(); daqui7.setDate(daqui7.getDate() + 7);
         const devolucao = daqui7.toISOString().split('T')[0];
         
-        const defaultValor = perfil.padroes?.valorAluguel ?? 300;
+        const defaultValor = valorPadrao;
         reset({
           quantidadeCacambas: 1,
           dataRetirada: hoje,
@@ -123,9 +175,10 @@ export function LocacaoModal({
           status: 'entrega_pendente',
           metodoPagamento: 'pix',
           valor: defaultValor,
-          valorLiquido: defaultValor,
+          valorUnitario: defaultValor,
           taxaCartaoPercent: perfil.padroes?.taxaMaquininhaPadrao ?? 0,
           valorTaxa: 0,
+          valorLiquido: defaultValor,
           parcelas: 1,
           jurosPercent: 0,
           salvarEndereco: false,
@@ -135,23 +188,93 @@ export function LocacaoModal({
         });
         setIsNovoCliente(false);
         setSelectedEnderecoId('manual');
-        setValorManual(false); // Reset flag de edição manual quando abre nova locação
+        setValorTotalEditadoManualmente(false); // Nova locação começa sem edição manual
       }
     }
-  }, [isOpen, locacao, reset, perfil]);
+  }, [isOpen, locacao, reset, perfil, valorPadrao]);
 
-  // Calcula automaticamente o valor quando a quantidade de caçambas muda
-  // Sempre recalcula (mesmo que tenha sido editado manualmente) ao mudar a quantidade
+  // ================================================================
+  // EFEITO: Calcula valor total automaticamente quando quantidade muda
+  // 
+  // REGRAS:
+  // 1. EM CRIAÇÃO: Sempre recalcula (usuário pode mudar quantidade livremente)
+  // 2. EM EDIÇÃO: Só recalcula se o valor atual for exatamente o calculado
+  //    (isso significa que o usuário NÃO editou manualmente)
+  // ================================================================
   useEffect(() => {
-    if (!locacao?.id) {
-      const valorUnitario = perfil.padroes?.valorAluguel ?? 300;
-      const novoValor = valorUnitario * watchQuantidade;
-      setValue('valor', novoValor);
-      setValue('valorLiquido', novoValor);
-      // Reseta o flag para permitir nova edição manual após o cálculo
-      setValorManual(false);
+    if (!isOpen) return;
+    
+    const quantidade = watchQuantidade || 1;
+    const unitario = watchValorUnitario || valorPadrao;
+    
+    if (locacao?.id) {
+      // MODO EDIÇÃO: Verifica se o valor atual é "automático" ou "manual"
+      // Se o valor atual = unitário * quantidade, assume que é automático
+      // Se for diferente, o usuário editou manualmente e não deve ser sobrescrito
+      const valorEsperado = calcularValorTotal(unitario, quantidade);
+      const valorAtual = watchValor;
+      
+      // Tolerância de 0.01 para evitar problemas de floating point
+      const isAutomatico = Math.abs(valorAtual - valorEsperado) < 0.01;
+      
+      if (isAutomatico) {
+        // Recalcula automaticamente - o valor estava "limpo"
+        const novoTotal = calcularValorTotal(unitario, quantidade);
+        setValue('valor', novoTotal);
+        setValue('valorLiquido', novoTotal);
+        setValorTotalEditadoManualmente(false);
+      }
+      // Se isAutomatico=false, não faz nada - mantém valor manual
+    } else {
+      // MODO CRIAÇÃO: Sempre recalcula
+      const novoTotal = calcularValorTotal(unitario, quantidade);
+      setValue('valor', novoTotal);
+      setValue('valorLiquido', novoTotal);
+      setValorTotalEditadoManualmente(false);
     }
-  }, [watchQuantidade, perfil.padroes?.valorAluguel, locacao?.id, setValue]);
+  }, [isOpen, watchQuantidade, watchValorUnitario, locacao?.id, setValue, valorPadrao, watchValor]);
+
+  // ================================================================
+  // EFEITO: Calcula valor unitário quando o total é editado manualmente
+  // (Isso permite que o usuário edite o total e o unitário se ajuste)
+  // ================================================================
+  const handleValorTotalChange = useCallback((novoValor: number) => {
+    const quantidade = watchQuantidade || 1;
+    const unitarioDerivado = derivarValorUnitario(novoValor, quantidade);
+    
+    // Atualiza valor total
+    setValue('valor', novoValor);
+    
+    // Atualiza valor unitário derivado (para manter consistência visual)
+    setValue('valorUnitario', unitarioDerivado);
+    
+    // Marca como edição manual para proteger de sobrescrita
+    setValorTotalEditadoManualmente(true);
+  }, [setValue, watchQuantidade]);
+
+  // ================================================================
+  // EFEITO: Calcula valor total quando o unitário é editado manualmente
+  // ================================================================
+  const handleValorUnitarioChange = useCallback((novoUnitario: number) => {
+    const quantidade = watchQuantidade || 1;
+    const totalCalculado = calcularValorTotal(novoUnitario, quantidade);
+    
+    // Atualiza unitário
+    setValue('valorUnitario', novoUnitario);
+    
+    // Atualiza total baseado no novo unitário
+    setValue('valor', totalCalculado);
+    
+    // Recalcula líquido
+    const watchJuros = watch('jurosPercent') || 0;
+    const taxa = watchTaxaPercent || 0;
+    const { valorTaxa, valorLiquido } = calculateFinancials(totalCalculado, taxa, watchJuros);
+    setValue('valorTaxa', valorTaxa);
+    setValue('valorLiquido', valorLiquido);
+    
+    // Marca como edição manual do unitário (não deve ser sobrescrito pela quantidade)
+    setValorTotalEditadoManualmente(true);
+  }, [setValue, watchQuantidade, watchTaxaPercent, watch('jurosPercent')]);
 
   // Se o cliente selecionado tiver apenas 1 endereço, seleciona automaticamente
   useEffect(() => {
@@ -272,6 +395,9 @@ export function LocacaoModal({
 
   if (!isOpen) return null;
 
+  // ================================================================
+  // RENDER
+  // ================================================================
   return (
     <>
     <ModalBase
@@ -375,7 +501,7 @@ export function LocacaoModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Quantidade</label>
-                <Input className="h-11 rounded-2xl font-bold px-4 bg-background border-input text-foreground" type="number" {...register('quantidadeCacambas', { valueAsNumber: true })} />
+                <Input className="h-11 rounded-2xl font-bold px-4 bg-background border-input text-foreground" type="number" min={1} {...register('quantidadeCacambas', { valueAsNumber: true })} />
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Status Operacional</label>
@@ -501,10 +627,44 @@ export function LocacaoModal({
               )}
             </div>
 
+            {/* ================================================================ */}
+            {/* SEÇÃO DE VALORES - CÁLCULO AUTOMÁTICO COM FLEXIBILIDADE          */}
+            {/* ================================================================ */}
             <div className="grid grid-cols-2 gap-4">
+                {/* Valor Unitário */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">
-                    Valor Total {watchQuantidade > 1 && <span className="text-accent/60">({watchQuantidade} x {formatCurrency(perfil.padroes?.valorAluguel ?? 300)})</span>}
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-1">
+                    Valor Unitário
+                    {valorTotalEditadoManualmente && (
+                      <span className="text-[8px] text-amber-500 ml-1">(editado)</span>
+                    )}
+                  </label>
+                  <Controller
+                    name="valorUnitario"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-muted-foreground/50 z-10 pointer-events-none">R$</span>
+                        <SmartCurrencyInput
+                          value={field.value || 0}
+                          onChange={(val) => {
+                            handleValorUnitarioChange(val);
+                          }}
+                          className="h-11 rounded-2xl pl-10 font-black text-lg tabular-nums bg-background border-input text-foreground"
+                          placeholder="0,00"
+                        />
+                      </div>
+                    )}
+                  />
+                </div>
+
+                {/* Valor Total */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-1">
+                    Valor Total ({watchQuantidade} x)
+                    {valorTotalEditadoManualmente && (
+                      <span className="text-[8px] text-amber-500 ml-1">(ajustado)</span>
+                    )}
                   </label>
                   <Controller
                     name="valor"
@@ -515,27 +675,28 @@ export function LocacaoModal({
                         <SmartCurrencyInput
                           value={field.value || 0}
                           onChange={(val) => {
-                            field.onChange(val);
-                            if (!locacao?.id) {
-                              setValorManual(true); // Marca como edição manual
-                            }
+                            handleValorTotalChange(val);
                           }}
-                          className="h-11 rounded-2xl pl-10 font-black text-lg tabular-nums bg-background border-input text-foreground"
+                          className="h-11 rounded-2xl pl-10 font-black text-lg tabular-nums bg-background border-accent text-accent"
                           placeholder="0,00"
                         />
                       </div>
                     )}
                   />
                 </div>
-               <div className="space-y-2">
-                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Forma Pagto</label>
-                 <select {...register('metodoPagamento')} className="w-full h-11 px-4 py-2 rounded-2xl border border-input bg-background text-foreground text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20 appearance-none shadow-sm">
-                   <option value="pix">💎 PIX</option>
-                   <option value="debito">💳 Débito</option>
-                   <option value="credito">🏦 Crédito</option>
-                   <option value="boleto">📄 Boleto</option>
-                 </select>
-               </div>
+            </div>
+
+            {/* Forma de Pagamento */}
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Forma Pagto</label>
+                  <select {...register('metodoPagamento')} className="w-full h-11 px-4 py-2 rounded-2xl border border-input bg-background text-foreground text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20 appearance-none shadow-sm">
+                    <option value="pix">💎 PIX</option>
+                    <option value="debito">💳 Débito</option>
+                    <option value="credito">🏦 Crédito</option>
+                    <option value="boleto">📄 Boleto</option>
+                  </select>
+                </div>
             </div>
 
             {/* Resumo Financeiro Premium */}
@@ -544,7 +705,7 @@ export function LocacaoModal({
                <div className="flex justify-between items-baseline relative">
                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Valor Bruto Total</span>
                  <span className="text-xl font-black tabular-nums text-foreground">
-                   {formatCurrency((watchValor || 0) * (1 + (watch('jurosPercent') || 0) / 100))}
+                   {formatCurrency(round2((watchValor || 0) * (1 + (watch('jurosPercent') || 0) / 100)))}
                  </span>
                </div>
                <div className="flex justify-between items-baseline border-t border-accent/10 pt-2 mt-2 relative">
