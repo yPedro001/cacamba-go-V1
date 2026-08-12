@@ -151,6 +151,17 @@ export class CTRDocumentService {
 
   private getDocumentStyles(): string {
     return `
+      @page {
+        size: A4 portrait;
+        margin: 14mm 12mm 12mm;
+      }
+      @page Section1 {
+        size: 595.3pt 841.9pt;
+        margin: 39.7pt 34pt 34pt 34pt;
+        mso-header-margin: 0;
+        mso-footer-margin: 0;
+      }
+      .Section1 { page: Section1; }
       @font-face {
         font-family: 'Playwrite Colombia Guides';
         src: url('/fonts/PlaywriteCOGuides-Regular.ttf') format('truetype');
@@ -158,31 +169,56 @@ export class CTRDocumentService {
         font-style: normal;
       }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: Arial, sans-serif; font-size: 8px; color: #333; padding: 5px; }
-      .container { max-width: 650px; margin: 0 auto; }
-      .header { text-align: center; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 5px; }
-      .institutional-brand { display: flex; align-items: center; justify-content: center; min-height: 48px; margin-bottom: 4px; }
-      .institutional-brand img { display: block; width: 245px; max-width: 72%; height: auto; max-height: 68px; object-fit: contain; }
-      .institutional-name { display: none; font-size: 10px; font-weight: bold; letter-spacing: 0.4px; }
-      .header h1 { font-size: 12px; margin-bottom: 2px; }
-      .header .subtitle { font-size: 9px; color: #666; }
-      .section { margin-bottom: 5px; }
-      .section-title { font-size: 9px; font-weight: bold; background: #f0f0f0; padding: 2px 4px; margin-bottom: 3px; border-left: 2px solid #333; }
+      html, body { width: 100%; background: #fff; }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 8.5px;
+        line-height: 1.28;
+        color: #1f2937;
+        padding: 0;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .container { width: 100%; max-width: 680px; margin: 0 auto; }
+      .header {
+        text-align: center;
+        margin-bottom: 7px;
+        border-bottom: 1.5px solid #274c3b;
+        padding: 2px 0 7px;
+        page-break-inside: avoid;
+      }
+      .institutional-brand { display: flex; align-items: center; justify-content: center; min-height: 50px; margin-bottom: 5px; }
+      .institutional-brand img { display: block; width: 235px; max-width: 68%; height: auto; max-height: 66px; object-fit: contain; }
+      .institutional-name { display: none; font-size: 10px; font-weight: bold; letter-spacing: 0.5px; }
+      .header h1 { font-size: 12.5px; line-height: 1.2; margin-bottom: 3px; letter-spacing: 0.25px; color: #111827; }
+      .header .subtitle { font-size: 9.5px; font-weight: bold; color: #4b5563; letter-spacing: 0.35px; }
+      .section { margin-bottom: 6px; page-break-inside: avoid; }
+      .section-title {
+        font-size: 9px;
+        line-height: 1.25;
+        font-weight: bold;
+        color: #17251f;
+        background: #edf3f0;
+        padding: 3px 5px;
+        margin-bottom: 3px;
+        border-left: 3px solid #274c3b;
+        letter-spacing: 0.15px;
+      }
       .grid { display: table; width: 100%; }
       .row { display: table-row; }
-      .cell { display: table-cell; padding: 1px 3px; border-bottom: 1px solid #ddd; vertical-align: top; }
-      .cell.label { font-weight: bold; width: 28%; background: #fafafa; }
+      .cell { display: table-cell; padding: 2px 4px; border-bottom: 1px solid #d8dee4; vertical-align: top; }
+      .cell.label { font-weight: bold; width: 28%; color: #374151; background: #f8faf9; }
       .cell.value { width: 72%; }
       .cell.full { width: 100%; }
       .signature-area { margin-top: 10px; page-break-inside: avoid; }
       .signature-line { border-top: 1px solid #666; margin-top: 12px; padding-top: 2px; text-align: center; font-size: 7px; }
       .signature-grid { display: table; width: 100%; }
       .signature-cell { display: table-cell; width: 50%; text-align: center; padding: 3px; }
-      .footer { margin-top: 10px; font-size: 7px; color: #888; text-align: center; border-top: 1px solid #ddd; padding-top: 3px; }
+      .footer { margin-top: 9px; font-size: 7px; line-height: 1.35; color: #6b7280; text-align: center; border-top: 1px solid #cfd6d2; padding-top: 5px; page-break-inside: avoid; }
       table { width: 100%; border-collapse: collapse; }
-      th, td { border: 1px solid #333; padding: 2px 4px; text-align: left; font-size: 8px; }
-      th { background: #f0f0f0; font-weight: bold; }
-      .highlight { background: #fffde7; }
+      th, td { border: 1px solid #9ca8a2; padding: 3px 5px; text-align: left; font-size: 8.5px; line-height: 1.25; }
+      th { background: #edf3f0; font-weight: bold; }
+      .highlight { background: #fff9dd; }
       .signature-name { 
         font-family: 'Playwrite Colombia Guides', cursive; 
         font-size: 10px; 
@@ -208,6 +244,11 @@ export class CTRDocumentService {
         align-items: center;
         justify-content: flex-end;
         min-height: 30px;
+      }
+      @media print {
+        html, body { width: 100%; }
+        body { padding: 0; }
+        .container { max-width: none; }
       }
     `;
   }
@@ -445,18 +486,35 @@ export class CTRDocumentService {
 
   async generatePDF(payload: CTRPayload): Promise<Blob> {
     const html = this.renderToHTML(payload);
-    
-    const container = document.createElement('div');
-    container.innerHTML = html;
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.top = '0';
-    container.style.width = '600px';
-    container.style.background = 'white';
-    document.body.appendChild(container);
+
+    // Isola o documento para que os estilos do CTR não afetem a aplicação
+    // durante a captura e mantenham uma largura de renderização determinística.
+    const frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.position = 'fixed';
+    frame.style.left = '-10000px';
+    frame.style.top = '0';
+    frame.style.width = '720px';
+    frame.style.height = '1100px';
+    frame.style.border = '0';
+    frame.style.opacity = '0';
+    frame.style.pointerEvents = 'none';
+    document.body.appendChild(frame);
 
     try {
-      const images = Array.from(container.querySelectorAll('img'));
+      await new Promise<void>((resolve, reject) => {
+        frame.addEventListener('load', () => resolve(), { once: true });
+        frame.addEventListener('error', () => reject(new Error('Falha ao preparar o documento CTR')), { once: true });
+        frame.srcdoc = html;
+      });
+
+      const frameDocument = frame.contentDocument;
+      const container = frameDocument?.querySelector<HTMLElement>('.container');
+      if (!frameDocument || !container) {
+        throw new Error('Não foi possível renderizar o conteúdo do CTR');
+      }
+
+      const images = Array.from(frameDocument.querySelectorAll('img'));
       await Promise.all(images.map(image => image.complete
         ? Promise.resolve()
         : new Promise<void>(resolve => {
@@ -464,38 +522,47 @@ export class CTRDocumentService {
             image.addEventListener('error', () => resolve(), { once: true });
           })
       ));
-      if (document.fonts?.ready) await document.fonts.ready;
+      if (frameDocument.fonts?.ready) await frameDocument.fonts.ready;
 
       const html2canvas = (await import('html2canvas')).default;
       const jsPDF = (await import('jspdf')).default;
 
       const canvas = await html2canvas(container, {
-        scale: 1.5,
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 720,
       });
 
       const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
+      const marginLeft = 12;
+      const marginRight = 12;
+      const marginTop = 14;
+      const marginBottom = 12;
+      const usableWidth = pdfWidth - marginLeft - marginRight;
+      const usableHeight = pdfHeight - marginTop - marginBottom;
       const canvasRatio = canvas.height / canvas.width;
       
-      let finalWidth = pdfWidth;
-      let finalHeight = pdfWidth * canvasRatio;
+      let finalWidth = usableWidth;
+      let finalHeight = usableWidth * canvasRatio;
       
-      if (finalHeight > pdfHeight) {
-        finalHeight = pdfHeight;
-        finalWidth = pdfHeight / canvasRatio;
+      if (finalHeight > usableHeight) {
+        finalHeight = usableHeight;
+        finalWidth = usableHeight / canvasRatio;
       }
       
-      const marginX = (pdfWidth - finalWidth) / 2;
-      pdf.addImage(imgData, 'PNG', marginX, 0, finalWidth, finalHeight, undefined, 'FAST');
+      const positionX = marginLeft + (usableWidth - finalWidth) / 2;
+      pdf.addImage(imgData, 'PNG', positionX, marginTop, finalWidth, finalHeight, undefined, 'FAST');
 
       return pdf.output('blob');
     } finally {
-      document.body.removeChild(container);
+      frame.remove();
     }
   }
 
@@ -554,7 +621,7 @@ export class CTRDocumentService {
     `;
     
     const bodyContent = this.getDocumentBody(payload, embeddedLogo);
-    const fullHtml = header + bodyContent + footer;
+    const fullHtml = `${header}<div class="Section1">${bodyContent}</div>${footer}`;
     
     const blob = new Blob([fullHtml], { 
       type: 'application/msword'
