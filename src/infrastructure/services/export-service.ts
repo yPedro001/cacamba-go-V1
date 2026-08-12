@@ -1,7 +1,3 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import ExcelJS from 'exceljs';
-
 /**
  * Interface para os dados de exportação
  */
@@ -27,7 +23,11 @@ class ExportService {
   /**
    * Exporta os dados para um PDF profissional
    */
-  exportPDF({ title, filename, headers, data }: ExportData) {
+  async exportPDF({ title, filename, headers, data }: ExportData): Promise<void> {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
     const doc = new jsPDF();
     const date = new Date().toLocaleString('pt-BR');
 
@@ -96,6 +96,7 @@ class ExportService {
    * Utiliza ExcelJS — biblioteca ativa e sem vulnerabilidades conhecidas.
    */
   async exportExcel({ title, filename, headers, data }: ExportData): Promise<void> {
+    const { default: ExcelJS } = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'CaçambaGo';
     workbook.created = new Date();

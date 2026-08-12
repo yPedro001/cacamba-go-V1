@@ -49,7 +49,7 @@ export function CustomerModal({
     >
       <div className="space-y-8">
         {/* Dados Básicos */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           <div className="space-y-3">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Nome Completo / Razão *</label>
             <Input 
@@ -70,7 +70,7 @@ export function CustomerModal({
           </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           <div className="space-y-3">
             <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Telefone Principal *</label>
             <Input 
@@ -133,7 +133,7 @@ export function CustomerModal({
                   )}
                 </div>
 
-                <div className="grid grid-cols-4 gap-3 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
                   <div className="col-span-3">
                     {/* AddressAutocomplete recebe classe explícita para garantir contraste */}
                     <AddressAutocomplete 
@@ -159,7 +159,7 @@ export function CustomerModal({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input 
                     className="h-12 rounded-2xl px-4 text-sm font-semibold bg-background border-input text-foreground placeholder:text-muted-foreground/60" 
                     value={end.cidade || ''} 

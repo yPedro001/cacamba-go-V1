@@ -1,5 +1,6 @@
 import { useAppStore } from '@/store/useAppStore';
 import { Locacao, Cliente, Cacamba, Perfil, Gasto } from '@/core/domain/types';
+import { supabase } from '@/lib/supabase';
 
 /**
  * useDataActions: Orquestrador central de mutações de dados do sistema.
@@ -36,6 +37,7 @@ export function useDataActions() {
       ctrItems: state.ctrItems,
       locaisDescarte: state.locaisDescarte,
     };
+    state.setUsersData({ ...state.usersData, [userId]: dataToSync });
 
     // Usando importação dinâmica para não poluir o ciclo original do hook
     import('@/lib/supabase').then(({ supabase }) => {
@@ -167,13 +169,14 @@ export function useDataActions() {
     },
     addGasto: (g: Gasto) => { setGastos([...gastos, g]); sync(); },
     removeGasto: (id: string) => { setGastos(gastos.filter(g => g.id !== id)); sync(); },
-    logout: () => { 
-      useAppStore.getState().setUsuarioAtual(null); 
+    logout: async () => {
+      await supabase.auth.signOut();
+      useAppStore.setState({ usuarioAtual: null, clientes: [], cacambas: [], locacoes: [], gastos: [], notificacoes: [], ctrs: [], ctrItems: [], locaisDescarte: [] });
       window.location.href = '/login'; 
     },
-    deleteAccount: () => {
-      // Lógica de deleção (ex: limpar storage e redirecionar)
-      localStorage.clear();
+    deleteAccount: async () => {
+      await supabase.auth.signOut();
+      localStorage.removeItem('cacambago-storage-v2');
       window.location.href = '/login';
     }
   };

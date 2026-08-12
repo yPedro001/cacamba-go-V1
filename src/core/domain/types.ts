@@ -50,4 +50,7 @@ export type UserData = {
   perfil: Perfil;
   notificacoes: any[]; // To be defined
   configuracoes: any;  // To be defined
+  ctrs?: import('./ctr-types').CTR[];
+  ctrItems?: import('./ctr-types').CTRItem[];
+  locaisDescarte?: import('./ctr-types').LocalDescarte[];
 };

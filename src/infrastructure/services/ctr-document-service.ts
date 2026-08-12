@@ -163,10 +163,11 @@ export class CTRDocumentService {
       }
       .Section1 { page: Section1; }
       @font-face {
-        font-family: 'Playwrite Colombia Guides';
-        src: url('/fonts/PlaywriteCOGuides-Regular.ttf') format('truetype');
+        font-family: 'Allura';
+        src: url('/fonts/Allura-Regular.ttf') format('truetype');
         font-weight: normal;
         font-style: normal;
+        font-display: block;
       }
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { width: 100%; background: #fff; }
@@ -211,39 +212,33 @@ export class CTRDocumentService {
       .cell.value { width: 72%; }
       .cell.full { width: 100%; }
       .signature-area { margin-top: 10px; page-break-inside: avoid; }
-      .signature-line { border-top: 1px solid #666; margin-top: 12px; padding-top: 2px; text-align: center; font-size: 7px; }
-      .signature-grid { display: table; width: 100%; }
-      .signature-cell { display: table-cell; width: 50%; text-align: center; padding: 3px; }
-      .footer { margin-top: 9px; font-size: 7px; line-height: 1.35; color: #6b7280; text-align: center; border-top: 1px solid #cfd6d2; padding-top: 5px; page-break-inside: avoid; }
+      .signature-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+      .signature-table td { width: 50%; height: 82px; padding: 8px 10px; text-align: center; vertical-align: bottom; }
+      .signature-content { height: 64px; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; }
+      .signature-writing { height: 32px; display: flex; align-items: flex-end; justify-content: center; padding: 0 5px 2px; overflow: visible; }
+      .signature-rule { border-top: 1px solid #7b8580; padding-top: 5px; min-height: 27px; }
+      .signature-person { font-size: 8.5px; line-height: 1.2; font-weight: bold; color: #26332d; min-height: 10px; }
+      .signature-role { margin-top: 2px; font-size: 7px; line-height: 1.2; color: #6b7280; letter-spacing: 0.2px; }
+      .receipt-table { table-layout: fixed; page-break-inside: avoid; }
+      .receipt-table td { width: 50%; min-height: 34px; height: 34px; vertical-align: top; }
+      .receipt-value { display: block; min-height: 13px; margin-top: 3px; line-height: 1.25; overflow-wrap: anywhere; }
+      .footer { margin-top: 8px; min-height: 25px; font-size: 6.8px; line-height: 1.45; color: #6b7280; text-align: center; border-top: 1px solid #cfd6d2; padding: 5px 4px 3px; page-break-inside: avoid; overflow: visible; }
+      .footer p { display: block; margin: 0 0 2px; white-space: normal; overflow: visible; }
       table { width: 100%; border-collapse: collapse; }
       th, td { border: 1px solid #9ca8a2; padding: 3px 5px; text-align: left; font-size: 8.5px; line-height: 1.25; }
       th { background: #edf3f0; font-weight: bold; }
       .highlight { background: #fff9dd; }
       .signature-name { 
-        font-family: 'Playwrite Colombia Guides', cursive; 
-        font-size: 10px; 
-        color: #1e3a5f; 
-        text-align: center;
-        margin-bottom: 2px;
+        font-family: 'Allura', 'Segoe Script', 'Brush Script MT', cursive;
+        font-size: 21px;
         line-height: 1;
-        letter-spacing: 0.5px;
+        color: #173f66;
+        text-align: center;
+        margin: 0;
+        letter-spacing: 0.15px;
         text-rendering: geometricPrecision;
         font-variant: normal;
         font-weight: normal;
-      }
-      /* Linha para assinatura manual */
-      .signature-manual-line {
-        border-top: 1px solid #999;
-        width: 70%;
-        margin: 10px auto 2px auto;
-      }
-      /* Container híbrido para assinatura digital + área manual */
-      .signature-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-end;
-        min-height: 30px;
       }
       @media print {
         html, body { width: 100%; }
@@ -418,25 +413,30 @@ export class CTRDocumentService {
 
       <div class="section">
         <div class="section-title">6. DECLARAÇÕES E ASSINATURAS</div>
-        <p style="margin-bottom: 15px; font-size: 10px;">
+        <p style="margin-bottom: 8px; font-size: 9px; line-height: 1.35;">
           Declaro que as informações acima são verídicas e que o transporte dos resíduos será realizado de acordo com as normas ambientais vigentes.
         </p>
-        <div class="signature-area" style="margin-top: 25px;">
-          <table style="width: 100%; border-collapse: collapse;">
+        <div class="signature-area">
+          <table class="signature-table">
             <tr>
-              <td style="width: 50%; text-align: center; padding: 10px; vertical-align: top;">
-                <div class="signature-container">
-                  <span class="signature-name">${toTitleCase(payload.declaracoes.transportador.assinatura || payload.metadados.empresa.nome)}</span>
-                </div>
-                <div style="border-top: 1px solid #999; padding-top: 8px; margin-top: 5px;">
-                  <p style="font-size: 9px; font-weight: bold; margin: 0;">${payload.declaracoes.transportador.nome || '_________________'}</p>
-                  <p style="font-size: 8px; color: #666; margin: 2px 0 0 0;">ASSINATURA DO TRANSPORTADOR</p>
+              <td>
+                <div class="signature-content">
+                  <div class="signature-writing">
+                    <span class="signature-name">${toTitleCase(payload.declaracoes.transportador.assinatura || payload.metadados.empresa.nome)}</span>
+                  </div>
+                  <div class="signature-rule">
+                    <p class="signature-person">${payload.declaracoes.transportador.nome || payload.metadados.empresa.nome || '_________________'}</p>
+                    <p class="signature-role">ASSINATURA DO TRANSPORTADOR</p>
+                  </div>
                 </div>
               </td>
-              <td style="width: 50%; text-align: center; padding: 10px; vertical-align: bottom;">
-                <div style="border-top: 1px solid #999; padding-top: 8px; min-height: 65px; display: flex; flex-direction: column; justify-content: flex-end;">
-                  <p style="font-size: 9px; font-weight: bold; margin: 0;">${payload.declaracoes.recebedor.nome || '_________________'}</p>
-                  <p style="font-size: 8px; color: #666; margin: 2px 0 0 0;">RECEBEDOR NO DESTINO</p>
+              <td>
+                <div class="signature-content">
+                  <div class="signature-writing"></div>
+                  <div class="signature-rule">
+                    <p class="signature-person">${payload.declaracoes.recebedor.nome || '_________________'}</p>
+                    <p class="signature-role">ASSINATURA DO RECEBEDOR NO DESTINO</p>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -445,16 +445,15 @@ export class CTRDocumentService {
       </div>
 
       <div class="section">
-        <table>
+        <table class="receipt-table">
           <tr>
-            <td style="width: 50%;">
-              <strong>Data/Hora Recebimento:</strong><br>
-              ${payload.declaracoes.recebedor.dataHora || '___/___/______  ___:___'}
+            <td>
+              <strong>Data/Hora do recebimento:</strong>
+              <span class="receipt-value">${payload.declaracoes.recebedor.dataHora || '____/____/________  ____:____'}</span>
             </td>
-            <td style="width: 50%;">
-              <strong>Carimbo/Observações:</strong><br>
-              ${payload.declaracoes.recebedor.carimbo || ' '}<br>
-              ${payload.declaracoes.recebedor.observacao || ' '}
+            <td>
+              <strong>Carimbo/Observações:</strong>
+              <span class="receipt-value">${[payload.declaracoes.recebedor.carimbo, payload.declaracoes.recebedor.observacao].filter(Boolean).join(' — ') || '&nbsp;'}</span>
             </td>
           </tr>
         </table>
@@ -523,6 +522,14 @@ export class CTRDocumentService {
           })
       ));
       if (frameDocument.fonts?.ready) await frameDocument.fonts.ready;
+
+      const requiredHeight = Math.max(
+        frameDocument.documentElement.scrollHeight,
+        frameDocument.body.scrollHeight,
+        container.scrollHeight
+      );
+      frame.style.height = `${requiredHeight + 24}px`;
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 
       const html2canvas = (await import('html2canvas')).default;
       const jsPDF = (await import('jspdf')).default;

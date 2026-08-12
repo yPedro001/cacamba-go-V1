@@ -23,12 +23,33 @@ export const useAppStore = create<AppState>()(
       {
         name: 'cacambago-storage-v2',
         partialize: (state) => ({
-          ...state,
-          ctrs: state.ctrs,
-          ctrItems: state.ctrItems,
-          locaisDescarte: state.locaisDescarte,
-          localDescartePadraoId: state.localDescartePadraoId,
+          usersData: state.usersData,
+          sidebarCollapsed: state.sidebarCollapsed,
         }),
+        version: 3,
+        migrate: (persistedState) => {
+          const persisted = persistedState as Partial<AppState> | undefined;
+          const usersData = { ...(persisted?.usersData || {}) };
+          const activeUserId = persisted?.usuarioAtual?.id;
+          if (activeUserId && persisted) {
+            usersData[activeUserId] = {
+              clientes: persisted.clientes || [],
+              cacambas: persisted.cacambas || [],
+              locacoes: persisted.locacoes || [],
+              gastos: persisted.gastos || [],
+              perfil: persisted.perfil!,
+              notificacoes: persisted.notificacoes || [],
+              configuracoes: persisted.configuracoes || { pularConfirmacaoExclusao: false },
+              ctrs: persisted.ctrs || [],
+              ctrItems: persisted.ctrItems || [],
+              locaisDescarte: persisted.locaisDescarte || [],
+            };
+          }
+          return {
+            usersData,
+            sidebarCollapsed: persisted?.sidebarCollapsed || false,
+          } as AppState;
+        },
       }
     )
   )

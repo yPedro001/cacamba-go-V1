@@ -179,7 +179,7 @@ export default function PerfilPage() {
                   <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                     📍 Endereço da Sede / Pátio
                   </label>
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="col-span-3">
                       <AddressAutocomplete
                         value={enderecoForm.rua || ''}
@@ -197,7 +197,7 @@ export default function PerfilPage() {
                     </div>
                     <Input className="h-12 rounded-2xl bg-background border-input focus:ring-accent font-bold" value={enderecoForm.numero} onChange={e => setEnderecoForm({ ...enderecoForm, numero: e.target.value })} placeholder="Nº" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input className="h-12 rounded-2xl bg-background border-input focus:ring-accent font-bold" value={enderecoForm.cidade} onChange={e => setEnderecoForm({ ...enderecoForm, cidade: e.target.value })} placeholder="Cidade" />
                     <div className="relative">
                       <Input
@@ -423,7 +423,7 @@ export default function PerfilPage() {
                 <LogOut size={16} /> Encerrar Sessão
               </Button>
               <Button variant="destructive" className="w-full h-12 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-red-500/10" onClick={() => setIsDeleteModalOpen(true)}>
-                <Trash2 size={16} className="mr-2" /> Excluir Conta
+                <Trash2 size={16} className="mr-2" /> Limpar dados deste dispositivo
               </Button>
             </CardContent>
           </Card>
@@ -434,8 +434,8 @@ export default function PerfilPage() {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={deleteAccount}
-        title="Excluir Sua Conta permanentemente?"
-        description="Esta ação irá apagar TODOS os seus dados salvos vinculados a este usuário. Esta ação não pode ser desfeita e você perderá o acesso a esta conta."
+        title="Limpar os dados locais?"
+        description="Esta ação encerra a sessão e remove deste dispositivo o cache local do Caçamba Go. Sua conta e os dados salvos na nuvem não serão excluídos."
       />
     </div>
   )

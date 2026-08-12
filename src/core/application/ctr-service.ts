@@ -15,8 +15,7 @@ export class CTRService {
   }
 
   async getLocaisDescarte(): Promise<LocalDescarte[]> {
-    // Fallback para ID se não estiver disponível
-    const usuarioId = this.usuarioId || 'default-user';
+    const usuarioId = this.usuarioId;
     
     const { data, error } = await supabase
       .from('locais_descarte')
@@ -25,32 +24,19 @@ export class CTRService {
       .order('is_padrao', { ascending: false })
       .order('created_at', { ascending: true });
 
-    if (error) {
-      console.warn('Erro ao buscar locais, tentando sem filtro:', error);
-      // Tentar buscar todos os locais se falhar com filtro
-      const { data: allData, error: allError } = await supabase
-        .from('locais_descarte')
-        .select('*')
-        .order('is_padrao', { ascending: false });
-      
-      if (allError) throw new Error(`Erro ao buscar locais de descarte: ${allError.message}`);
-      return (allData || []).map(this.mapDBToLocalDescarte);
-    }
+    if (error) throw new Error(`Erro ao buscar locais de descarte: ${error.message}`);
     
     return (data || []).map(this.mapDBToLocalDescarte);
   }
 
   async createLocalDescarte(local: Omit<LocalDescarte, 'id' | 'createdAt' | 'usuarioId'>): Promise<LocalDescarte> {
-    // Fallback para ID se não estiver disponível
-    const usuarioId = this.usuarioId || 'default-user';
-    
-    console.log('Creating local with usuarioId:', usuarioId);
-    console.log('Local data:', local);
+    const usuarioId = this.usuarioId;
     
     // Criar objeto de insert apenas com campos必需
     const insertData: any = {
       nome: local.nome,
       rua: local.rua || '',
+      numero: local.numero || '',
       cidade: local.cidade || '',
       uf: local.uf || 'SP',
       usuario_id: usuarioId,
@@ -62,9 +48,9 @@ export class CTRService {
     if (local.bairro) insertData.bairro = local.bairro;
     if (local.cep) insertData.cep = local.cep;
     if (local.tipoLocal) insertData.tipo_local = local.tipoLocal;
+    if (local.licenca) insertData.licenca = local.licenca;
+    if (local.observacoes) insertData.observacoes = local.observacoes;
     if (local.isPadrao) insertData.is_padrao = local.isPadrao;
-    
-    console.log('Insert data:', insertData);
     
     const { data, error } = await supabase
       .from('locais_descarte')
@@ -73,11 +59,9 @@ export class CTRService {
       .single();
 
     if (error) {
-      console.error('Error creating local:', error);
       throw new Error(`Erro ao criar local de descarte: ${error.message}`);
     }
     
-    console.log('Local created:', data);
     return this.mapDBToLocalDescarte(data);
   }
 
@@ -257,6 +241,23 @@ export class CTRService {
 
     if (ctrError) throw new Error(`Erro ao criar CTR: ${ctrError.message}`);
     if (!ctrResult) throw new Error('CTR não foi criado');
+
+    if (itens.length > 0) {
+      const { error: itensError } = await supabase.from('ctr_itens').insert(
+        itens.map(item => ({
+          ctr_id: ctrResult.id,
+          aluguel_id: item.aluguelId,
+          cliente_id: item.clienteId,
+          snapshot_dados: item.snapshot,
+        }))
+      );
+
+      if (itensError) {
+        // A FK com ON DELETE CASCADE remove qualquer item parcial.
+        await supabase.from('ctrs').delete().eq('id', ctrResult.id).eq('usuario_id', this.usuarioId);
+        throw new Error(`Erro ao vincular os aluguéis ao CTR: ${itensError.message}`);
+      }
+    }
     
     return this.mapDBToCTR(ctrResult);
   }
@@ -486,26 +487,17 @@ export class CTRService {
   }
 
   private mapLocalDescarteToDB(local: Partial<LocalDescarte>): any {
-    // Remover campos que podem não existir no banco para evitar erro
-    const result: any = {
-      nome: local.nome,
-      cnpj: local.cnpj || '',
-      telefone: local.telefone || '',
-      rua: local.rua || '',
-      bairro: local.bairro || '',
-      cidade: local.cidade || '',
-      uf: local.uf || 'SP',
-      cep: local.cep || '',
-      tipo_local: local.tipoLocal || 'outro',
-      licenca: local.licenca || '',
-      is_padrao: local.isPadrao || false,
-    };
-    
-    // Só incluir numero se existir no objeto
-    if (local.numero) {
-      result.numero = local.numero;
-    }
-    
+    const result: Record<string, unknown> = {};
+    const mappings: Array<[keyof LocalDescarte, string]> = [
+      ['nome', 'nome'], ['cnpj', 'cnpj'], ['telefone', 'telefone'],
+      ['rua', 'rua'], ['numero', 'numero'], ['bairro', 'bairro'],
+      ['cidade', 'cidade'], ['uf', 'uf'], ['cep', 'cep'],
+      ['tipoLocal', 'tipo_local'], ['licenca', 'licenca'],
+      ['observacoes', 'observacoes'], ['isPadrao', 'is_padrao'],
+    ];
+    mappings.forEach(([source, target]) => {
+      if (local[source] !== undefined) result[target] = local[source];
+    });
     return result;
   }
 

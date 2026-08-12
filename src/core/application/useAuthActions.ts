@@ -14,15 +14,17 @@ export function useAuthActions() {
     setLocacoes,
     setGastos,
     setPerfil,
-    setNotificacoes
+    setNotificacoes,
+    updateConfiguracoes,
+    setCTRs,
+    setCTRItems,
+    setLocaisDescarte,
+    resetCTRForm,
   } = useAppStore();
 
   const getDefaultUserData = (perfilLat: number = -23.5505, perfilLng: number = -46.6333): UserData => ({
     clientes: [],
-    cacambas: [
-      { id: '1', codigo: 'C-001', tamanho: '5m', status: 'disponivel', lat: perfilLat, lng: perfilLng, enderecoAtual: 'Pátio Central', historico: [] },
-      { id: '2', codigo: 'C-002', tamanho: '5m', status: 'disponivel', lat: perfilLat, lng: perfilLng, enderecoAtual: 'Pátio Central', historico: [] },
-    ],
+    cacambas: [],
     locacoes: [],
     gastos: [],
     perfil: {
@@ -52,6 +54,8 @@ export function useAuthActions() {
         .select('nome, app_state')
         .eq('id', userId)
         .single();
+
+      if (error) throw error;
         
       if (dbPerfil) {
         nomeFinal = dbPerfil.nome || nomeFinal;
@@ -59,8 +63,8 @@ export function useAuthActions() {
           cloudData = dbPerfil.app_state as Partial<UserData>;
         }
       }
-    } catch (e) {
-      console.warn("Aviso: Falha ao buscar perfil DB, usando mock (Migration pode não ter rodado ainda).");
+    } catch {
+      throw new Error('Não foi possível carregar os dados da conta. Verifique a conexão e tente novamente.');
     }
 
     const localData = usersData[userId] || getDefaultUserData();
@@ -82,6 +86,10 @@ export function useAuthActions() {
       gastos: mergeArrays(localData.gastos, cloudData?.gastos || []),
       notificacoes: mergeArrays(localData.notificacoes, cloudData?.notificacoes || []),
       perfil: { ...localData.perfil, ...(cloudData?.perfil || {}), email },
+      configuracoes: { ...localData.configuracoes, ...(cloudData?.configuracoes || {}) },
+      ctrs: mergeArrays(localData.ctrs || [], cloudData?.ctrs || []),
+      ctrItems: mergeArrays(localData.ctrItems || [], cloudData?.ctrItems || []),
+      locaisDescarte: mergeArrays(localData.locaisDescarte || [], cloudData?.locaisDescarte || []),
     };
 
     setUsuarioAtual({ id: userId, email, nome: nomeFinal });
@@ -91,6 +99,11 @@ export function useAuthActions() {
     setGastos(mergedData.gastos);
     setPerfil(mergedData.perfil);
     setNotificacoes(mergedData.notificacoes);
+    updateConfiguracoes(mergedData.configuracoes);
+    setCTRs(mergedData.ctrs);
+    setCTRItems(mergedData.ctrItems);
+    setLocaisDescarte(mergedData.locaisDescarte);
+    resetCTRForm();
 
     // Salva o merge consolidado no mapa global
     setUsersData({ ...usersData, [userId]: { ...localData, ...mergedData } });
@@ -117,10 +130,11 @@ export function useAuthActions() {
       locaisDescarte: state.locaisDescarte,
     };
     
-    await supabase.from('perfis').update({ 
+    const { error } = await supabase.from('perfis').update({
       app_state: dataToSync,
       last_synced_at: new Date().toISOString()
     }).eq('id', user.id);
+    if (error) throw error;
   };
 
   const login = async (email: string, senha: string): Promise<{ success: boolean; error?: string }> => {
@@ -257,6 +271,9 @@ export function useAuthActions() {
         perfil: state.perfil,
         notificacoes: state.notificacoes,
         configuracoes: state.configuracoes,
+        ctrs: state.ctrs,
+        ctrItems: state.ctrItems,
+        locaisDescarte: state.locaisDescarte,
       };
       setUsersData({ ...state.usersData, [user.id]: data });
     }
@@ -265,7 +282,12 @@ export function useAuthActions() {
   const logout = async () => {
     sync(); // Salva o state da sessão atual localmente antes de deslogar
     await supabase.auth.signOut();
-    setUsuarioAtual(null);
+    useAppStore.setState({
+      usuarioAtual: null,
+      clientes: [], cacambas: [], locacoes: [], gastos: [], notificacoes: [],
+      ctrs: [], ctrItems: [], ctrAtual: null, ctrAtualId: null, ctrNumeroPendente: null,
+      locaisDescarte: [], localDescartePadraoId: null,
+    });
     router.push('/login');
   };
 
@@ -277,6 +299,7 @@ export function useAuthActions() {
     resetPassword,
     resendOtp,
     logout, 
-    sync 
+    sync,
+    carregarDadosDoUsuario,
   };
 }

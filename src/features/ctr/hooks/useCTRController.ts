@@ -326,14 +326,14 @@ export function useCTRController() {
         // Se for o primeiro local, definir como padrão
         if (locaisDescarte.length === 0 && savedLocal) {
           await service.updateLocalDescarte(savedLocal.id, { isPadrao: true });
+          savedLocal.isPadrao = true;
         }
         addLocalDescarte(savedLocal);
         return savedLocal;
       } catch (err) {
         console.error('Error creating local:', err);
         setError(err instanceof Error ? err.message : 'Erro ao criar local de descarte');
-        addLocalDescarte(novoLocal);
-        return novoLocal;
+        return undefined;
       } finally {
         setIsLoading(false);
       }
@@ -352,12 +352,16 @@ export function useCTRController() {
         return atualizado;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao atualizar local de descarte');
+        return undefined;
       } finally {
         setIsLoading(false);
       }
     }
-    updateLocalDescarte(id, updates);
-    return locaisDescarte.find(l => l.id === id);
+    if (!service) {
+      updateLocalDescarte(id, updates);
+      return locaisDescarte.find(l => l.id === id);
+    }
+    return undefined;
   }, [service, updateLocalDescarte, locaisDescarte]);
 
   const deleteLocalDescarteById = useCallback(async (id: string) => {
@@ -383,7 +387,6 @@ export function useCTRController() {
         setLocalPadrao(id);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erro ao definir local padrão');
-        setLocalPadrao(id);
       }
     } else {
       setLocalPadrao(id);

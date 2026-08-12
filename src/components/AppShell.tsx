@@ -8,6 +8,8 @@ import { Loader2 } from 'lucide-react'
 import { BackgroundSyncProvider } from '@/shared/providers/BackgroundSyncProvider'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/Toaster'
+import { supabase } from '@/lib/supabase'
+import { useAuthActions } from '@/core/application/useAuthActions'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -19,21 +21,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSidebarOpen 
   } = useAppStore()
   const [mounted, setMounted] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
+  const { carregarDadosDoUsuario } = useAuthActions()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
   useEffect(() => {
-    if (mounted && !usuarioAtual && pathname !== '/login') {
+    if (!mounted) return
+    let active = true
+    void supabase.auth.getSession().then(async ({ data }) => {
+      if (!active) return
+      const user = data.session?.user
+      if (user && !useAppStore.getState().usuarioAtual) {
+        try {
+          await carregarDadosDoUsuario(user.id, user.email || '', user.user_metadata?.nome || user.email?.split('@')[0] || 'Usuário')
+        } catch {
+          await supabase.auth.signOut()
+        }
+      }
+    }).catch(() => {
+      if (active) setAuthChecked(true)
+    })
+    return () => { active = false }
+  }, [mounted])
+
+  useEffect(() => {
+    if (mounted && authChecked && !usuarioAtual && pathname !== '/login') {
       router.push('/login')
     }
     if (mounted && usuarioAtual && pathname === '/login') {
       router.push('/')
     }
-  }, [usuarioAtual, pathname, router, mounted])
+  }, [usuarioAtual, pathname, router, mounted, authChecked])
 
-  if (!mounted) return null
+  if (!mounted || !authChecked) return null
 
   // Se estiver na tela de login, renderiza apenas o conteúdo (sem sidebar/header)
   if (pathname === '/login') {

@@ -9,6 +9,9 @@ import { Locacao, Cacamba, Notificacao } from '@/core/domain/types';
 class SyncEngine {
   private interval: NodeJS.Timeout | null = null;
   private isProcessing = false;
+  private readonly handleVisibilityChange = () => {
+    if (!document.hidden) this.process();
+  };
 
   start() {
     if (this.interval) return;
@@ -27,15 +30,16 @@ class SyncEngine {
 
     // Re-valida quando o usuário volta para a aba
     if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) this.process();
-      });
+      document.addEventListener('visibilitychange', this.handleVisibilityChange);
     }
   }
 
   stop() {
     if (this.interval) clearInterval(this.interval);
     this.interval = null;
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    }
   }
 
   private process() {

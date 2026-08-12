@@ -80,6 +80,7 @@ export function AddressAutocomplete({ value, onChange, placeholder, className, f
         <div className="absolute z-[100] w-full mt-1 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-slate-800 rounded-md shadow-2xl max-h-60 overflow-auto backdrop-blur-none">
           {suggestions.map((s, i) => (
             <button
+              type="button"
               key={i}
               className="w-full px-4 py-2.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0 flex flex-col gap-0.5"
               onClick={() => handleSelect(s)}
