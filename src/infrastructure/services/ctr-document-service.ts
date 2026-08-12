@@ -47,6 +47,8 @@ function formatCTRNumber(numero: string): string {
   return `N°${numero.padStart(7, '0')}`;
 }
 
+const PREFEITURA_LOGO_PATH = '/branding/prefeitura-taboao-da-serra.png';
+
 function toTitleCase(str: string): string {
   if (!str) return '';
   return str.toLowerCase().replace(/(?:^|\s)\w/g, c => c.toUpperCase());
@@ -159,6 +161,9 @@ export class CTRDocumentService {
       body { font-family: Arial, sans-serif; font-size: 8px; color: #333; padding: 5px; }
       .container { max-width: 650px; margin: 0 auto; }
       .header { text-align: center; margin-bottom: 5px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+      .institutional-brand { display: flex; align-items: center; justify-content: center; min-height: 48px; margin-bottom: 4px; }
+      .institutional-brand img { display: block; width: 245px; max-width: 72%; height: auto; max-height: 68px; object-fit: contain; }
+      .institutional-name { display: none; font-size: 10px; font-weight: bold; letter-spacing: 0.4px; }
       .header h1 { font-size: 12px; margin-bottom: 2px; }
       .header .subtitle { font-size: 9px; color: #666; }
       .section { margin-bottom: 5px; }
@@ -207,7 +212,7 @@ export class CTRDocumentService {
     `;
   }
 
-  private getDocumentBody(payload: CTRPayload): string {
+  private getDocumentBody(payload: CTRPayload, logoSrc: string = PREFEITURA_LOGO_PATH): string {
     const empresa = payload.metadados.empresa;
     const tipoOperacaoLabel = LABELS_TIPO_OPERACAO[payload.identificacao.tipoOperacao] || payload.identificacao.tipoOperacao;
     const classeLabel = payload.residuo.classe ? LABELS_RESIDUO_CLASSE[payload.residuo.classe] || payload.residuo.classe : '';
@@ -218,6 +223,10 @@ export class CTRDocumentService {
     return `
     <div class="container">
       <div class="header">
+        <div class="institutional-brand">
+          <img src="${logoSrc}" alt="Prefeitura de Taboão da Serra" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <div class="institutional-name">PREFEITURA DE TABOÃO DA SERRA</div>
+        </div>
         <h1>CONTROLE DE TRANSPORTE DE RESÍDUOS - CTR</h1>
         <div class="subtitle">${numeroFormatado}</div>
       </div>
@@ -417,7 +426,7 @@ export class CTRDocumentService {
     </div>`;
   }
 
-  renderToHTML(payload: CTRPayload): string {
+  renderToHTML(payload: CTRPayload, logoSrc: string = PREFEITURA_LOGO_PATH): string {
     const numeroFormatado = formatCTRNumber(payload.identificacao.numero);
     
     return `<!DOCTYPE html>
@@ -429,7 +438,7 @@ export class CTRDocumentService {
   <style>${this.getDocumentStyles()}</style>
 </head>
 <body>
-  ${this.getDocumentBody(payload)}
+  ${this.getDocumentBody(payload, logoSrc)}
 </body>
 </html>`;
   }
@@ -447,6 +456,16 @@ export class CTRDocumentService {
     document.body.appendChild(container);
 
     try {
+      const images = Array.from(container.querySelectorAll('img'));
+      await Promise.all(images.map(image => image.complete
+        ? Promise.resolve()
+        : new Promise<void>(resolve => {
+            image.addEventListener('load', () => resolve(), { once: true });
+            image.addEventListener('error', () => resolve(), { once: true });
+          })
+      ));
+      if (document.fonts?.ready) await document.fonts.ready;
+
       const html2canvas = (await import('html2canvas')).default;
       const jsPDF = (await import('jspdf')).default;
 
@@ -512,8 +531,8 @@ export class CTRDocumentService {
   }
 
   async generateWord(payload: CTRPayload): Promise<Blob> {
-    const html = this.renderToHTML(payload);
     const styles = this.getDocumentStyles();
+    const embeddedLogo = await this.getLogoDataUrl();
     
     const header = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -534,7 +553,7 @@ export class CTRDocumentService {
       </html>
     `;
     
-    const bodyContent = this.getDocumentBody(payload);
+    const bodyContent = this.getDocumentBody(payload, embeddedLogo);
     const fullHtml = header + bodyContent + footer;
     
     const blob = new Blob([fullHtml], { 
@@ -573,6 +592,22 @@ export class CTRDocumentService {
         printWindow.close();
       }, 300);
     };
+  }
+
+  private async getLogoDataUrl(): Promise<string> {
+    try {
+      const response = await fetch(PREFEITURA_LOGO_PATH);
+      if (!response.ok) return PREFEITURA_LOGO_PATH;
+      const blob = await response.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return PREFEITURA_LOGO_PATH;
+    }
   }
 
   private formatDateBR(dateStr: string): string {

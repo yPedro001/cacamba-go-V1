@@ -3,7 +3,7 @@ import { useAppStore, useClientes, useLocacoes, usePerfil, useLocaisDescarte, us
 import { CTRService } from '@/core/application/ctr-service';
 import { ctrDocumentService } from '@/infrastructure/services/ctr-document-service';
 import { CTRFormData, CTRConflito, CTRPayload, LocalDescarte } from '@/core/domain/ctr-types';
-import { Locacao } from '@/core/domain/types';
+import { Cliente, Locacao } from '@/core/domain/types';
 
 export function useCTRController() {
   const usuarioAtual = useAppStore(s => s.usuarioAtual);
@@ -37,6 +37,7 @@ export function useCTRController() {
   const [error, setError] = useState<string | null>(null);
   const [conflitos, setConflitos] = useState<CTRConflito[]>([]);
   const [alugueisSelecionados, setAlugueisSelecionados] = useState<Locacao[]>([]);
+  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
   const [localDescarteSelecionado, setLocalDescarteSelecionado] = useState<LocalDescarte | null>(null);
   const [payloadPreview, setPayloadPreview] = useState<CTRPayload | null>(null);
 
@@ -80,6 +81,7 @@ export function useCTRController() {
     setCTRAtual(novoForm);
     setCtrNumeroPendente(null); // Limpar número pendente ao iniciar novo CTR
     setAlugueisSelecionados([]);
+    setClienteSelecionado(null);
     setLocalDescarteSelecionado(localDescartePadrao || null);
     setConflitos([]);
     setPayloadPreview(null);
@@ -90,6 +92,7 @@ export function useCTRController() {
     setIsModalOpen(false);
     resetCTRForm(); // Limpa ctrAtual, ctrAtualId e ctrNumeroPendente
     setAlugueisSelecionados([]);
+    setClienteSelecionado(null);
     setLocalDescarteSelecionado(null);
     setConflitos([]);
     setPayloadPreview(null);
@@ -98,6 +101,14 @@ export function useCTRController() {
 
   const handleSelectAlugueis = useCallback((alugueis: Locacao[]) => {
     setAlugueisSelecionados(alugueis);
+    if (alugueis.length > 0) {
+      setClienteSelecionado(clientes.find(cliente => cliente.id === alugueis[0].clienteId) || null);
+    } else {
+      setConflitos([]);
+      if (service && clienteSelecionado && localDescarteSelecionado) {
+        updateCTRAtual(service.autoFillFromCliente(clienteSelecionado, localDescarteSelecionado, perfil));
+      }
+    }
     
     if (service && alugueis.length > 0 && localDescarteSelecionado) {
       const conflitosDetectados = service.validateConflitos(alugueis, clientes);
@@ -108,18 +119,30 @@ export function useCTRController() {
         updateCTRAtual(autoFill);
       }
     }
-  }, [service, clientes, localDescarteSelecionado, perfil, updateCTRAtual]);
+  }, [service, clientes, clienteSelecionado, localDescarteSelecionado, perfil, updateCTRAtual]);
+
+  const handleSelectCliente = useCallback((cliente: Cliente) => {
+    setClienteSelecionado(cliente);
+    setAlugueisSelecionados([]);
+    setConflitos([]);
+
+    if (service && localDescarteSelecionado) {
+      updateCTRAtual(service.autoFillFromCliente(cliente, localDescarteSelecionado, perfil));
+    }
+  }, [service, localDescarteSelecionado, perfil, updateCTRAtual]);
 
   const handleSelectLocalDescarte = useCallback((local: LocalDescarte | null) => {
     setLocalDescarteSelecionado(local);
     
-    if (local && alugueisSelecionados.length > 0) {
-      if (service) {
+    if (local && service) {
+      if (alugueisSelecionados.length > 0) {
         const autoFill = service.autoFillFromAlugueis(alugueisSelecionados, clientes, local, perfil);
         updateCTRAtual({ ...autoFill, localDescarteId: local.id });
+      } else if (clienteSelecionado) {
+        updateCTRAtual(service.autoFillFromCliente(clienteSelecionado, local, perfil));
       }
     }
-  }, [service, alugueisSelecionados, clientes, perfil, updateCTRAtual]);
+  }, [service, alugueisSelecionados, clienteSelecionado, clientes, perfil, updateCTRAtual]);
 
   const updateFormData = useCallback((updates: Partial<CTRFormData>) => {
     updateCTRAtual(updates);
@@ -383,6 +406,8 @@ export function useCTRController() {
     localDescartePadrao,
     localDescarteSelecionado,
     alugueisSelecionados,
+    clienteSelecionado,
+    clientes,
     conflitos,
     payloadPreview,
     isModalOpen,
@@ -394,6 +419,7 @@ export function useCTRController() {
     openEmitModal,
     closeModal,
     handleSelectAlugueis,
+    handleSelectCliente,
     handleSelectLocalDescarte,
     updateFormData,
     updateIdentificacao,

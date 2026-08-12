@@ -300,6 +300,74 @@ export class CTRService {
     return conflitos;
   }
 
+  autoFillFromCliente(
+    cliente: Cliente,
+    localDescarte: LocalDescarte,
+    perfil: any
+  ): Partial<CTRFormData> {
+    const enderecoPrincipal = cliente.enderecos?.[0];
+    const endereco = enderecoPrincipal
+      ? `${enderecoPrincipal.rua}${enderecoPrincipal.numero ? `, ${enderecoPrincipal.numero}` : ''}`
+      : cliente.endereco || '';
+    const cidade = enderecoPrincipal?.cidade || this.extrairCidade(cliente.endereco || '') || 'São Paulo';
+
+    return {
+      alugueisIds: [],
+      localDescarteId: localDescarte.id,
+      data: new Date().toISOString().split('T')[0],
+      horaSaida: new Date().toTimeString().slice(0, 5),
+      tipoOperacao: 'coleta',
+      origem: {
+        cep: enderecoPrincipal?.cep || '',
+        endereco,
+        bairro: '',
+        cidade,
+        uf: 'SP',
+        responsavel: cliente.nome,
+        telefone: cliente.telefone || '',
+        observacao: '',
+      },
+      gerador: {
+        nome: cliente.nome,
+        cpfCnpj: cliente.cpfCnpj,
+        cep: enderecoPrincipal?.cep || '',
+        endereco,
+        bairro: '',
+        cidade,
+        uf: 'SP',
+        responsavel: cliente.nome,
+        telefone: cliente.telefone || '',
+      },
+      transportador: {
+        nome: perfil.nomeEmpresa || '',
+        cpfCnpj: perfil.cnpj || '',
+        inscricao: '',
+        telefone: perfil.telefone || '',
+      },
+      destinatario: {
+        nome: localDescarte.nome,
+        cpfCnpj: localDescarte.cnpj || '',
+        endereco: `${localDescarte.rua}${localDescarte.numero ? `, ${localDescarte.numero}` : ''}`,
+        bairro: localDescarte.bairro || '',
+        cidade: localDescarte.cidade,
+        uf: localDescarte.uf,
+        tipoLocal: localDescarte.tipoLocal || 'aterro_sanitario',
+        licenca: localDescarte.licenca || '',
+      },
+      residuo: {
+        classe: 'A',
+        descricao: 'Resíduos de construção civil e demolição',
+        acondicionamento: 'Caçamba',
+        quantidade: 1,
+        unidade: 'm3',
+      },
+      declaracoes: {
+        transportador: { nome: perfil.nomeEmpresa || '', assinatura: '' },
+        recebedor: { nome: '', assinatura: '', dataHora: '', carimbo: '', observacao: '' },
+      },
+    };
+  }
+
   autoFillFromAlugueis(
     alugueis: Locacao[],
     clientes: Cliente[],

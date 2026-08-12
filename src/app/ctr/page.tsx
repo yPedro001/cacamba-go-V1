@@ -27,6 +27,7 @@ export default function CTRPage() {
     locaisDescarte,
     localDescarteSelecionado,
     alugueisSelecionados,
+    clienteSelecionado,
     conflitos,
     isModalOpen,
     isLoading,
@@ -37,6 +38,7 @@ export default function CTRPage() {
     openEmitModal,
     closeModal,
     handleSelectAlugueis,
+    handleSelectCliente,
     handleSelectLocalDescarte,
     updateIdentificacao,
     updateOrigem,
@@ -384,7 +386,9 @@ export default function CTRPage() {
                 <SelecaoAlugueis
                   locacoes={locacoesAtivas}
                   selecionados={alugueisSelecionados}
+                  clienteSelecionado={clienteSelecionado}
                   onSelecionar={handleSelectAlugueis}
+                  onSelecionarCliente={handleSelectCliente}
                 />
 
                 <Card className="bg-card border-border">

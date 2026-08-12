@@ -225,7 +225,9 @@ export const CTRPayloadSchema = z.object({
 });
 
 export const CTRFormDataSchema = z.object({
-  alugueisIds: z.array(z.string()).min(1, 'Selecione pelo menos um aluguel'),
+  // O CTR também pode ser emitido diretamente para um cliente cadastrado,
+  // mesmo quando ele não possui aluguel em aberto.
+  alugueisIds: z.array(z.string()),
   localDescarteId: z.string().uuid('Selecione um local de descarte'),
   
   numero: z.string().optional(),
