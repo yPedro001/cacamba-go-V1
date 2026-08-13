@@ -42,6 +42,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }
       }
     }).catch(() => {
+      // A falha na consulta da sessao nao deve bloquear a interface.
+    }).finally(() => {
       if (active) setAuthChecked(true)
     })
     return () => { active = false }
