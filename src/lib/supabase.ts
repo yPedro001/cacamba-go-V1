@@ -1,9 +1,37 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+// Fail-fast: sem env vars o app nunca sairá da tela branca — avisa explicitamente
+if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder')) {
+  console.error('[supabase] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY ausentes ou placeholder. Configure .env.local')
+}
+
+function isServiceRoleKey(key: string): boolean {
+  try {
+    const payload = JSON.parse(Buffer.from(key.split('.')[1], 'base64').toString())
+    return payload?.role === 'service_role'
+  } catch { return false }
+}
+
+if (supabaseKey && isServiceRoleKey(supabaseKey)) {
+  console.warn('[supabase] ATENÇÃO: NEXT_PUBLIC_SUPABASE_ANON_KEY parece ser service_role! Vazamento de chave privilegiada no client. Use a anon key.')
+}
+
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseKey || 'placeholder',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
+)
+
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey && !supabaseUrl.includes('placeholder') && supabaseKey !== 'placeholder')
 
 // Exemplo de como usar Realtime em um componente React (hook):
 /*

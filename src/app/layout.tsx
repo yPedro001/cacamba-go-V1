@@ -3,6 +3,7 @@ import './globals.css'
 import 'leaflet/dist/leaflet.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AppShell } from '@/components/AppShell'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 export const metadata: Metadata = {
   title: 'CaçambaGo | Gestão de Locação de Caçambas',
@@ -21,15 +22,17 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className="antialiased font-sans">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-        >
-          <AppShell>
-            {children}
-          </AppShell>
-        </ThemeProvider>
+        <ErrorBoundary>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+          >
+            <AppShell>
+              {children}
+            </AppShell>
+          </ThemeProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )

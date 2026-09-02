@@ -55,16 +55,24 @@ export function useAuthActions() {
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
-        
-      if (dbPerfil) {
-        nomeFinal = dbPerfil.nome || nomeFinal;
-        if (dbPerfil.app_state) {
-          cloudData = dbPerfil.app_state as Partial<UserData>;
+      // PGRST116 = no rows, 406 = not acceptable — trata como "sem dados ainda", não erro fatal
+      if (error) {
+        const code = (error as any)?.code
+        if (code === 'PGRST116' || error.message?.includes('No rows')) {
+          // usuário recém-criado sem linha em perfis — segue com dados locais
+        } else {
+          console.warn('[carregarDadosDoUsuario] erro ao buscar perfil:', error)
+          // Não lança — permite login mesmo se Supabase estiver instável/offline
+        }
+      } else if (dbPerfil) {
+        nomeFinal = (dbPerfil as any).nome || nomeFinal;
+        if ((dbPerfil as any).app_state) {
+          cloudData = (dbPerfil as any).app_state as Partial<UserData>;
         }
       }
-    } catch {
-      throw new Error('Não foi possível carregar os dados da conta. Verifique a conexão e tente novamente.');
+    } catch (err) {
+      console.warn('[carregarDadosDoUsuario] exceção:', err)
+      // Não lança — fallback para dados locais evita tela branca
     }
 
     const localData = usersData[userId] || getDefaultUserData();
@@ -113,28 +121,28 @@ export function useAuthActions() {
   };
   
   const syncCloud = async () => {
-    const user = useAppStore.getState().usuarioAtual;
-    if (!user) return;
-    
-    const state = useAppStore.getState();
-    const dataToSync = {
-      clientes: state.clientes,
-      cacambas: state.cacambas,
-      locacoes: state.locacoes,
-      gastos: state.gastos,
-      perfil: state.perfil,
-      notificacoes: state.notificacoes,
-      configuracoes: state.configuracoes,
-      ctrs: state.ctrs,
-      ctrItems: state.ctrItems,
-      locaisDescarte: state.locaisDescarte,
-    };
-    
-    const { error } = await supabase.from('perfis').update({
-      app_state: dataToSync,
-      last_synced_at: new Date().toISOString()
-    }).eq('id', user.id);
-    if (error) throw error;
+    try {
+      const user = useAppStore.getState().usuarioAtual;
+      if (!user) return;
+      const state = useAppStore.getState();
+      const dataToSync = {
+        clientes: state.clientes,
+        cacambas: state.cacambas,
+        locacoes: state.locacoes,
+        gastos: state.gastos,
+        perfil: state.perfil,
+        notificacoes: state.notificacoes,
+        configuracoes: state.configuracoes,
+        ctrs: state.ctrs,
+        ctrItems: state.ctrItems,
+        locaisDescarte: state.locaisDescarte,
+      };
+      const { error } = await supabase.from('perfis').update({
+        app_state: dataToSync,
+        last_synced_at: new Date().toISOString()
+      }).eq('id', user.id);
+      if (error) console.warn('[syncCloud] falha silenciosa:', error.message);
+    } catch (e) { console.warn('[syncCloud] exceção:', e) }
   };
 
   const login = async (email: string, senha: string): Promise<{ success: boolean; error?: string }> => {

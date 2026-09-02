@@ -28,27 +28,37 @@ export const useAppStore = create<AppState>()(
         }),
         version: 3,
         migrate: (persistedState) => {
-          const persisted = persistedState as Partial<AppState> | undefined;
-          const usersData = { ...(persisted?.usersData || {}) };
-          const activeUserId = persisted?.usuarioAtual?.id;
-          if (activeUserId && persisted) {
-            usersData[activeUserId] = {
-              clientes: persisted.clientes || [],
-              cacambas: persisted.cacambas || [],
-              locacoes: persisted.locacoes || [],
-              gastos: persisted.gastos || [],
-              perfil: persisted.perfil!,
-              notificacoes: persisted.notificacoes || [],
-              configuracoes: persisted.configuracoes || { pularConfirmacaoExclusao: false },
-              ctrs: persisted.ctrs || [],
-              ctrItems: persisted.ctrItems || [],
-              locaisDescarte: persisted.locaisDescarte || [],
-            };
+          try {
+            const persisted = persistedState as Partial<AppState> | undefined;
+            const usersData = { ...(persisted?.usersData || {}) };
+            const activeUserId = persisted?.usuarioAtual?.id;
+            if (activeUserId && persisted) {
+              usersData[activeUserId] = {
+                clientes: Array.isArray(persisted.clientes) ? persisted.clientes : [],
+                cacambas: Array.isArray(persisted.cacambas) ? persisted.cacambas : [],
+                locacoes: Array.isArray(persisted.locacoes) ? persisted.locacoes : [],
+                gastos: Array.isArray(persisted.gastos) ? persisted.gastos : [],
+                perfil: (persisted.perfil as any) || undefined,
+                notificacoes: Array.isArray(persisted.notificacoes) ? persisted.notificacoes : [],
+                configuracoes: (persisted.configuracoes as any) || { pularConfirmacaoExclusao: false },
+                ctrs: Array.isArray((persisted as any).ctrs) ? (persisted as any).ctrs : [],
+                ctrItems: Array.isArray((persisted as any).ctrItems) ? (persisted as any).ctrItems : [],
+                locaisDescarte: Array.isArray((persisted as any).locaisDescarte) ? (persisted as any).locaisDescarte : [],
+              };
+            }
+            return {
+              usersData,
+              sidebarCollapsed: Boolean(persisted?.sidebarCollapsed),
+            } as AppState;
+          } catch (e) {
+            console.warn('[persist migrate] falha, resetando storage:', e)
+            return { usersData: {}, sidebarCollapsed: false } as AppState
           }
-          return {
-            usersData,
-            sidebarCollapsed: persisted?.sidebarCollapsed || false,
-          } as AppState;
+        },
+        onRehydrateStorage: () => (state, error) => {
+          if (error) {
+            console.error('[persist] rehydrate error:', error)
+          }
         },
       }
     )

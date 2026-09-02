@@ -75,6 +75,10 @@ export default function LoginPage() {
       setError('Preencha todos os campos.')
       return
     }
+    if (form.senha !== form.confirmarSenha) {
+      setError('As senhas não coincidem.')
+      return
+    }
     if (form.senha.length < 6) {
       setError('A senha deve ter no mínimo 6 caracteres.')
       return
