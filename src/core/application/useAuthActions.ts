@@ -10,6 +10,7 @@ import {
   flushCloudSync,
   getDefaultUserData,
   getOAuthCallbackUrl,
+  isValidUUID,
   resetOperationalStore,
   setCloudWriteBlocked,
   translateAuthError,
@@ -44,31 +45,57 @@ export function useAuthActions() {
 
       if (isSupabaseConfigured) {
         try {
-          const { data: dbPerfil, error } = await supabase
-            .from('perfis')
-            .select('nome, app_state')
-            .eq('id', userId)
-            .single();
+          const validUuid = isValidUUID(userId) ? userId : null;
+          // 1. Tenta via RPC obter_perfil_por_identidade com SECURITY DEFINER (funciona para anon e authenticated)
+          const { data: rpcData, error: rpcError } = await supabase.rpc('obter_perfil_por_identidade', {
+            p_id: validUuid,
+            p_email: email ? email.toLowerCase().trim() : null,
+          });
 
-          if (error) {
-            const code = (error as { code?: string })?.code;
-            if (code === 'PGRST116' || error.message?.includes('No rows')) {
-              // Usuário recém-criado sem linha em perfis
-              shouldPersistBack = true;
-            } else {
-              cloudReadFailed = true;
-              console.warn(
-                '[carregarDadosDoUsuario] falha ao buscar perfil; escrita remota bloqueada:',
-                error
-              );
+          const profileRow = Array.isArray(rpcData) && rpcData.length > 0 ? rpcData[0] : null;
+
+          if (profileRow) {
+            if (profileRow.id) {
+              userId = profileRow.id;
             }
-          } else if (dbPerfil) {
-            nomeFinal = (dbPerfil as { nome?: string }).nome || nomeFinal;
-            const rawState = (dbPerfil as { app_state?: Partial<UserData> | null }).app_state;
+            nomeFinal = profileRow.nome || nomeFinal;
+            const rawState = profileRow.app_state as Partial<UserData> | null;
             if (rawState) {
               cloudData = rawState;
             } else {
               shouldPersistBack = true;
+            }
+          } else if (!rpcError) {
+            // Consulta teve sucesso mas retornou vazio (novo usuário)
+            shouldPersistBack = true;
+          } else {
+            // Fallback direto via SELECT caso a RPC falhe
+            const { data: dbPerfil, error } = await supabase
+              .from('perfis')
+              .select('id, nome, app_state')
+              .eq('id', userId)
+              .single();
+
+            if (error) {
+              const code = (error as { code?: string })?.code;
+              if (code === 'PGRST116' || error.message?.includes('No rows')) {
+                // Usuário recém-criado sem linha em perfis
+                shouldPersistBack = true;
+              } else {
+                cloudReadFailed = true;
+                console.warn(
+                  '[carregarDadosDoUsuario] falha ao buscar perfil; escrita remota bloqueada:',
+                  error
+                );
+              }
+            } else if (dbPerfil) {
+              nomeFinal = (dbPerfil as { nome?: string }).nome || nomeFinal;
+              const rawState = (dbPerfil as { app_state?: Partial<UserData> | null }).app_state;
+              if (rawState) {
+                cloudData = rawState;
+              } else {
+                shouldPersistBack = true;
+              }
             }
           }
         } catch (err) {
@@ -91,11 +118,31 @@ export function useAuthActions() {
         shouldPersistBack = true;
       }
 
+      // Quando há dados da nuvem válidos, a nuvem é a fonte autoritativa de verdade.
+      // Isso impede que registros previamente deletados ressuscitem do cache de sessões antigas.
+      const authoritativeData = cloudData ? {
+        clientes: cloudData.clientes ?? [],
+        cacambas: cloudData.cacambas ?? [],
+        locacoes: cloudData.locacoes ?? [],
+        gastos: cloudData.gastos ?? [],
+        ctrs: cloudData.ctrs ?? [],
+        ctrItems: cloudData.ctrItems ?? [],
+        locaisDescarte: cloudData.locaisDescarte ?? [],
+      } : {
+        clientes: localData.clientes ?? [],
+        cacambas: localData.cacambas ?? [],
+        locacoes: localData.locacoes ?? [],
+        gastos: localData.gastos ?? [],
+        ctrs: localData.ctrs ?? [],
+        ctrItems: localData.ctrItems ?? [],
+        locaisDescarte: localData.locaisDescarte ?? [],
+      };
+
       const mergedData: UserData = {
-        clientes: mergeArraysById(localData.clientes || [], cloudData?.clientes || []),
-        cacambas: mergeArraysById(localData.cacambas || [], cloudData?.cacambas || []),
-        locacoes: mergeArraysById(localData.locacoes || [], cloudData?.locacoes || []),
-        gastos: mergeArraysById(localData.gastos || [], cloudData?.gastos || []),
+        clientes: authoritativeData.clientes,
+        cacambas: authoritativeData.cacambas,
+        locacoes: authoritativeData.locacoes,
+        gastos: authoritativeData.gastos,
         notificacoes: dedupedNotifs,
         perfil: {
           ...localData.perfil,
@@ -106,12 +153,9 @@ export function useAuthActions() {
           ...localData.configuracoes,
           ...(cloudData?.configuracoes || {}),
         },
-        ctrs: mergeArraysById(localData.ctrs || [], cloudData?.ctrs || []),
-        ctrItems: mergeArraysById(localData.ctrItems || [], cloudData?.ctrItems || []),
-        locaisDescarte: mergeArraysById(
-          localData.locaisDescarte || [],
-          cloudData?.locaisDescarte || []
-        ),
+        ctrs: authoritativeData.ctrs,
+        ctrItems: authoritativeData.ctrItems,
+        locaisDescarte: authoritativeData.locaisDescarte,
       };
 
       storeState.setUsuarioAtual({ id: userId, email, nome: nomeFinal });
@@ -205,7 +249,7 @@ export function useAuthActions() {
       // 1. Se for o usuário principal (borghelixcacambas@gmail.com), vincula ao ID canônico de produção
       // 2. Se for qualquer outro usuário que já possua dados salvos com esse e-mail, vincula aos dados existentes
       // 3. Se for um novo usuário, cria uma conta nova e isolada com seu próprio Google UID
-      const CANONICAL_BORGHELIX_ID = 'd80e7225-78eb-4bc1-9c3e-cb880e4ce228';
+      const CANONICAL_BORGHELIX_ID = '87f05076-b040-4f03-8ea4-e22bee57d4ef';
       const storeUsersData = useAppStore.getState().usersData || {};
       const existingUidByEmail = Object.keys(storeUsersData).find(
         (uid) => storeUsersData[uid]?.perfil?.email?.toLowerCase().trim() === cleanEmail

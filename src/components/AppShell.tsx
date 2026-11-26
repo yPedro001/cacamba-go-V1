@@ -160,7 +160,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (fbUser && !useAppStore.getState().usuarioAtual) {
         const cleanEmail = fbUser.email?.toLowerCase().trim() || "";
         const displayName = fbUser.displayName || cleanEmail.split("@")[0] || "Usuário";
-        const CANONICAL_BORGHELIX_ID = "d80e7225-78eb-4bc1-9c3e-cb880e4ce228";
+        const CANONICAL_BORGHELIX_ID = "87f05076-b040-4f03-8ea4-e22bee57d4ef";
         const storeUsersData = useAppStore.getState().usersData || {};
         const existingUidByEmail = Object.keys(storeUsersData).find(
           (uid) => storeUsersData[uid]?.perfil?.email?.toLowerCase().trim() === cleanEmail

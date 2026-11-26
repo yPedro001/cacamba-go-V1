@@ -3,6 +3,7 @@ import { CTR, CTRItem, CTRFormData, CTRConflito, LocalDescarte } from '@/core/do
 import { CTRFormDataSchema, CTRSchema, CTRItemSchema, LocalDescarteSchema } from '@/core/domain/ctr-schemas';
 import { Locacao, Cliente } from '@/core/domain/types';
 import { getLocalTodayISO, isValidUUID } from '@/lib/domain-helpers';
+import { useAppStore } from '@/store/useAppStore';
 
 export interface CTRServiceConfig {
   usuarioId: string;
@@ -165,9 +166,32 @@ export class CTRService {
       // Fallback controlado abaixo caso a RPC esteja indisponível
     }
 
-    const rand = Math.floor(Math.random() * 900) + 100;
-    const timestamp = Date.now().toString().slice(-6);
-    return `${ano}${timestamp}${rand}`;
+    try {
+      const { data: latestCTR } = await supabase
+        .from('ctrs')
+        .select('numero')
+        .eq('usuario_id', this.usuarioId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestCTR?.numero) {
+        const numOnly = parseInt(latestCTR.numero.replace(/\D/g, ''), 10);
+        if (!isNaN(numOnly)) {
+          return `${ano}-${(numOnly + 1).toString().padStart(7, '0')}`;
+        }
+      }
+    } catch {
+      // Fallback para store em memória
+    }
+
+    const { ctrs } = useAppStore.getState();
+    const maxSeq = (ctrs || [])
+      .map((c) => parseInt(c.numero?.replace(/\D/g, '') || '0', 10))
+      .filter((n) => !isNaN(n))
+      .sort((a, b) => b - a)[0] || 0;
+
+    return `${ano}-${(maxSeq + 1).toString().padStart(7, '0')}`;
   }
 
   async getCTRItems(ctrId: string): Promise<CTRItem[]> {

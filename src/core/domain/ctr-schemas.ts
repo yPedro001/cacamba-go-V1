@@ -356,12 +356,18 @@ export function validarDocumento(doc: string): boolean {
   return false;
 }
 
-export function gerarNumeroCTR(sequencial?: number): string {
+export function gerarNumeroCTR(sequencial?: number, existingCTRs?: { numero?: string }[]): string {
   if (sequencial !== undefined) {
     return sequencial.toString().padStart(6, '0');
   }
-  const timestamp = Date.now().toString().slice(-6);
-  return timestamp;
+  if (existingCTRs && existingCTRs.length > 0) {
+    const maxSeq = existingCTRs
+      .map((c) => parseInt(c.numero?.replace(/\D/g, '') || '0', 10))
+      .filter((n) => !isNaN(n))
+      .sort((a, b) => b - a)[0] || 0;
+    return (maxSeq + 1).toString().padStart(6, '0');
+  }
+  return '000001';
 }
 
 export function formatarNumeroCTR(sequencial: number, _ano: number): string {

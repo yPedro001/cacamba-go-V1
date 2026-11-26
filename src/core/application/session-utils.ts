@@ -5,6 +5,11 @@ import { useAppStore } from '@/store/useAppStore';
 
 export const MAX_NOTIFICACOES_RETIDAS = 100;
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isValidUUID(str?: string | null): boolean {
+  return typeof str === 'string' && UUID_REGEX.test(str.trim());
+}
+
 /** Estado neutro padrão ao criar usuário novo ou resetar sessão em memória. */
 export function getDefaultUserData(
   perfilLat: number = -23.5505,
@@ -144,21 +149,35 @@ export async function flushCloudSync(): Promise<{ synced: boolean; error?: strin
     latest.setUsersData({ ...latest.usersData, [activeUser.id]: dataToSync });
 
     try {
-      const { error } = await supabase.from('perfis').upsert(
-        {
-          id: activeUser.id,
-          nome: activeUser.nome || activeUser.email.split('@')[0],
-          email: activeUser.email,
-          app_state: dataToSync,
-          last_synced_at: new Date().toISOString(),
-        },
-        { onConflict: 'id' }
-      );
-      if (error) {
-        console.warn('[syncCloud] falha no upsert do perfil:', error.message);
-        outcome = { synced: false, error: error.message };
-      } else {
+      const validUuid = isValidUUID(activeUser.id) ? activeUser.id : null;
+      // 1. Tenta persistência via RPC SECURITY DEFINER (compatível com Supabase e Firebase Google Auth)
+      const { data: rpcSuccess, error: rpcError } = await supabase.rpc('salvar_perfil_usuario', {
+        p_id: validUuid,
+        p_email: activeUser.email,
+        p_nome: activeUser.nome || activeUser.email.split('@')[0],
+        p_app_state: dataToSync,
+      });
+
+      if (!rpcError && rpcSuccess) {
         outcome = { synced: true };
+      } else {
+        // 2. Fallback: upsert direto tradicional caso RPC não esteja disponível
+        const { error } = await supabase.from('perfis').upsert(
+          {
+            id: activeUser.id,
+            nome: activeUser.nome || activeUser.email.split('@')[0],
+            email: activeUser.email,
+            app_state: dataToSync,
+            last_synced_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
+        if (error) {
+          console.warn('[syncCloud] falha no upsert do perfil:', error.message);
+          outcome = { synced: false, error: error.message };
+        } else {
+          outcome = { synced: true };
+        }
       }
     } catch (err: any) {
       console.warn('[syncCloud] exceção:', err);
