@@ -201,9 +201,20 @@ export function useAuthActions() {
       const cleanEmail = user.email.toLowerCase().trim();
       const displayName = user.displayName || cleanEmail.split('@')[0] || 'Usuário';
 
-      // Mapeamento canônico para o ID existente em produção caso seja borghelixcacambas@gmail.com
+      // Mapeamento de conta:
+      // 1. Se for o usuário principal (borghelixcacambas@gmail.com), vincula ao ID canônico de produção
+      // 2. Se for qualquer outro usuário que já possua dados salvos com esse e-mail, vincula aos dados existentes
+      // 3. Se for um novo usuário, cria uma conta nova e isolada com seu próprio Google UID
       const CANONICAL_BORGHELIX_ID = 'd80e7225-78eb-4bc1-9c3e-cb880e4ce228';
-      const effectiveId = cleanEmail === 'borghelixcacambas@gmail.com' ? CANONICAL_BORGHELIX_ID : user.uid;
+      const storeUsersData = useAppStore.getState().usersData || {};
+      const existingUidByEmail = Object.keys(storeUsersData).find(
+        (uid) => storeUsersData[uid]?.perfil?.email?.toLowerCase().trim() === cleanEmail
+      );
+
+      const effectiveId =
+        cleanEmail === 'borghelixcacambas@gmail.com'
+          ? CANONICAL_BORGHELIX_ID
+          : existingUidByEmail || user.uid;
 
       await carregarDadosDoUsuario(effectiveId, cleanEmail, displayName);
       router.push('/');

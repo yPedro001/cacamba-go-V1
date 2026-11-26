@@ -161,7 +161,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         const cleanEmail = fbUser.email?.toLowerCase().trim() || "";
         const displayName = fbUser.displayName || cleanEmail.split("@")[0] || "Usuário";
         const CANONICAL_BORGHELIX_ID = "d80e7225-78eb-4bc1-9c3e-cb880e4ce228";
-        const effectiveId = cleanEmail === "borghelixcacambas@gmail.com" ? CANONICAL_BORGHELIX_ID : fbUser.uid;
+        const storeUsersData = useAppStore.getState().usersData || {};
+        const existingUidByEmail = Object.keys(storeUsersData).find(
+          (uid) => storeUsersData[uid]?.perfil?.email?.toLowerCase().trim() === cleanEmail
+        );
+
+        const effectiveId =
+          cleanEmail === "borghelixcacambas@gmail.com"
+            ? CANONICAL_BORGHELIX_ID
+            : existingUidByEmail || fbUser.uid;
+
         try {
           await carregarDadosDoUsuario(effectiveId, cleanEmail, displayName);
         } catch (e) {
