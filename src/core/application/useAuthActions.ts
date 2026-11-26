@@ -1,313 +1,368 @@
+import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { UserData } from '@/core/domain/types';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import {
+  buildCurrentUserDataSnapshot,
+  deduplicateNotificacoes,
+  flushCloudSync,
+  getDefaultUserData,
+  getOAuthCallbackUrl,
+  resetOperationalStore,
+  setCloudWriteBlocked,
+  translateAuthError,
+} from '@/core/application/session-utils';
+
+// Lock em memória por userId para evitar race condition entre login() e onAuthStateChange
+const inFlightUserLoads = new Map<string, Promise<void>>();
+
+function mergeArraysById<T extends { id?: string }>(arr1: T[], arr2: T[]): T[] {
+  const map = new Map<string, T>();
+  [...(arr1 || []), ...(arr2 || [])].forEach((item) => {
+    if (item?.id) map.set(item.id, item);
+  });
+  return Array.from(map.values());
+}
 
 export function useAuthActions() {
   const router = useRouter();
-  const usersData = useAppStore(s => s.usersData);
-  const { 
-    setUsuarioAtual, 
-    setUsersData,
-    setClientes,
-    setCacambas,
-    setLocacoes,
-    setGastos,
-    setPerfil,
-    setNotificacoes,
-    updateConfiguracoes,
-    setCTRs,
-    setCTRItems,
-    setLocaisDescarte,
-    resetCTRForm,
-  } = useAppStore();
-
-  const getDefaultUserData = (perfilLat: number = -23.5505, perfilLng: number = -46.6333): UserData => ({
-    clientes: [],
-    cacambas: [],
-    locacoes: [],
-    gastos: [],
-    perfil: {
-      nomeEmpresa: 'Minha Empresa de Caçambas',
-      cnpj: '', telefone: '', email: '', endereco: '',
-      lat: perfilLat, lng: perfilLng,
-      padroes: { 
-        valorAluguel: 300, 
-        tamanhoCacamba: '5m', 
-        prefixoCacamba: 'C-',
-        taxaMaquininhaPadrao: 0,
-        jurosParcelamento: 0,
-        parcelasSemJuros: 1
-      }
-    },
-    notificacoes: [],
-    configuracoes: { pularConfirmacaoExclusao: false }
-  });
 
   const carregarDadosDoUsuario = async (userId: string, email: string, nome: string) => {
-    let nomeFinal = nome;
-    let cloudData: Partial<UserData> | null = null;
-    
-    try {
-      const { data: dbPerfil, error } = await supabase
-        .from('perfis')
-        .select('nome, app_state')
-        .eq('id', userId)
-        .single();
-
-      // PGRST116 = no rows, 406 = not acceptable — trata como "sem dados ainda", não erro fatal
-      if (error) {
-        const code = (error as any)?.code
-        if (code === 'PGRST116' || error.message?.includes('No rows')) {
-          // usuário recém-criado sem linha em perfis — segue com dados locais
-        } else {
-          console.warn('[carregarDadosDoUsuario] erro ao buscar perfil:', error)
-          // Não lança — permite login mesmo se Supabase estiver instável/offline
-        }
-      } else if (dbPerfil) {
-        nomeFinal = (dbPerfil as any).nome || nomeFinal;
-        if ((dbPerfil as any).app_state) {
-          cloudData = (dbPerfil as any).app_state as Partial<UserData>;
-        }
-      }
-    } catch (err) {
-      console.warn('[carregarDadosDoUsuario] exceção:', err)
-      // Não lança — fallback para dados locais evita tela branca
+    const existingPromise = inFlightUserLoads.get(userId);
+    if (existingPromise) {
+      await existingPromise;
+      return;
     }
 
-    const localData = usersData[userId] || getDefaultUserData();
-    
-    // Função utilitária para FUNDIR (merge) arrays por ID sem duplicar
-    const mergeArrays = <T extends {id?: string}>(arr1: T[], arr2: T[]) => {
-      const map = new Map<string, T>();
-      [...(arr1 || []), ...(arr2 || [])].forEach(item => {
-        if (item.id) map.set(item.id, item);
-      });
-      return Array.from(map.values());
-    };
+    const loadTask = (async () => {
+      let nomeFinal = nome;
+      let cloudData: Partial<UserData> | null = null;
+      let cloudReadFailed = false;
+      let shouldPersistBack = false;
 
-    // Funde dados Cloud (Supabase) + Dados Locais (LocalStorage)
-    const mergedData = {
-      clientes: mergeArrays(localData.clientes, cloudData?.clientes || []),
-      cacambas: mergeArrays(localData.cacambas, cloudData?.cacambas || []),
-      locacoes: mergeArrays(localData.locacoes, cloudData?.locacoes || []),
-      gastos: mergeArrays(localData.gastos, cloudData?.gastos || []),
-      notificacoes: mergeArrays(localData.notificacoes, cloudData?.notificacoes || []),
-      perfil: { ...localData.perfil, ...(cloudData?.perfil || {}), email },
-      configuracoes: { ...localData.configuracoes, ...(cloudData?.configuracoes || {}) },
-      ctrs: mergeArrays(localData.ctrs || [], cloudData?.ctrs || []),
-      ctrItems: mergeArrays(localData.ctrItems || [], cloudData?.ctrItems || []),
-      locaisDescarte: mergeArrays(localData.locaisDescarte || [], cloudData?.locaisDescarte || []),
-    };
+      if (isSupabaseConfigured) {
+        try {
+          const { data: dbPerfil, error } = await supabase
+            .from('perfis')
+            .select('nome, app_state')
+            .eq('id', userId)
+            .single();
 
-    setUsuarioAtual({ id: userId, email, nome: nomeFinal });
-    setClientes(mergedData.clientes);
-    setCacambas(mergedData.cacambas);
-    setLocacoes(mergedData.locacoes);
-    setGastos(mergedData.gastos);
-    setPerfil(mergedData.perfil);
-    setNotificacoes(mergedData.notificacoes);
-    updateConfiguracoes(mergedData.configuracoes);
-    setCTRs(mergedData.ctrs);
-    setCTRItems(mergedData.ctrItems);
-    setLocaisDescarte(mergedData.locaisDescarte);
-    resetCTRForm();
+          if (error) {
+            const code = (error as { code?: string })?.code;
+            if (code === 'PGRST116' || error.message?.includes('No rows')) {
+              // Usuário recém-criado sem linha em perfis
+              shouldPersistBack = true;
+            } else {
+              cloudReadFailed = true;
+              console.warn(
+                '[carregarDadosDoUsuario] falha ao buscar perfil; escrita remota bloqueada:',
+                error
+              );
+            }
+          } else if (dbPerfil) {
+            nomeFinal = (dbPerfil as { nome?: string }).nome || nomeFinal;
+            const rawState = (dbPerfil as { app_state?: Partial<UserData> | null }).app_state;
+            if (rawState) {
+              cloudData = rawState;
+            } else {
+              shouldPersistBack = true;
+            }
+          }
+        } catch (err) {
+          cloudReadFailed = true;
+          console.warn('[carregarDadosDoUsuario] exceção na leitura remota:', err);
+        }
+      }
 
-    // Salva o merge consolidado no mapa global
-    setUsersData({ ...usersData, [userId]: { ...localData, ...mergedData } });
-    
-    // Força um envio do dado fundido para a nuvem
-    setTimeout(() => syncCloud(), 1000);
-  };
-  
-  const syncCloud = async () => {
-    try {
-      const user = useAppStore.getState().usuarioAtual;
-      if (!user) return;
-      const state = useAppStore.getState();
-      const dataToSync = {
-        clientes: state.clientes,
-        cacambas: state.cacambas,
-        locacoes: state.locacoes,
-        gastos: state.gastos,
-        perfil: state.perfil,
-        notificacoes: state.notificacoes,
-        configuracoes: state.configuracoes,
-        ctrs: state.ctrs,
-        ctrItems: state.ctrItems,
-        locaisDescarte: state.locaisDescarte,
+      setCloudWriteBlocked(cloudReadFailed ? userId : null);
+
+      const storeState = useAppStore.getState();
+      const localData = storeState.usersData[userId] || getDefaultUserData();
+
+      const rawMergedNotifs = mergeArraysById(
+        localData.notificacoes || [],
+        cloudData?.notificacoes || []
+      );
+      const dedupedNotifs = deduplicateNotificacoes(rawMergedNotifs);
+      if (rawMergedNotifs.length !== dedupedNotifs.length) {
+        shouldPersistBack = true;
+      }
+
+      const mergedData: UserData = {
+        clientes: mergeArraysById(localData.clientes || [], cloudData?.clientes || []),
+        cacambas: mergeArraysById(localData.cacambas || [], cloudData?.cacambas || []),
+        locacoes: mergeArraysById(localData.locacoes || [], cloudData?.locacoes || []),
+        gastos: mergeArraysById(localData.gastos || [], cloudData?.gastos || []),
+        notificacoes: dedupedNotifs,
+        perfil: {
+          ...localData.perfil,
+          ...(cloudData?.perfil || {}),
+          email: email || cloudData?.perfil?.email || localData.perfil.email || '',
+        },
+        configuracoes: {
+          ...localData.configuracoes,
+          ...(cloudData?.configuracoes || {}),
+        },
+        ctrs: mergeArraysById(localData.ctrs || [], cloudData?.ctrs || []),
+        ctrItems: mergeArraysById(localData.ctrItems || [], cloudData?.ctrItems || []),
+        locaisDescarte: mergeArraysById(
+          localData.locaisDescarte || [],
+          cloudData?.locaisDescarte || []
+        ),
       };
-      const { error } = await supabase.from('perfis').update({
-        app_state: dataToSync,
-        last_synced_at: new Date().toISOString()
-      }).eq('id', user.id);
-      if (error) console.warn('[syncCloud] falha silenciosa:', error.message);
-    } catch (e) { console.warn('[syncCloud] exceção:', e) }
+
+      storeState.setUsuarioAtual({ id: userId, email, nome: nomeFinal });
+      storeState.setClientes(mergedData.clientes);
+      storeState.setCacambas(mergedData.cacambas);
+      storeState.setLocacoes(mergedData.locacoes);
+      storeState.setGastos(mergedData.gastos);
+      storeState.setPerfil(mergedData.perfil);
+      storeState.setNotificacoes(mergedData.notificacoes);
+      storeState.updateConfiguracoes(mergedData.configuracoes);
+      storeState.setCTRs(mergedData.ctrs || []);
+      storeState.setCTRItems(mergedData.ctrItems || []);
+      storeState.setLocaisDescarte(mergedData.locaisDescarte || []);
+      storeState.resetCTRForm();
+
+      const latestUsersData = useAppStore.getState().usersData;
+      useAppStore.getState().setUsersData({
+        ...latestUsersData,
+        [userId]: { ...localData, ...mergedData },
+      });
+
+      // Nunca sobrescreve a nuvem se a leitura inicial falhou (correção AUD-02)
+      if (!cloudReadFailed && (shouldPersistBack || (localData.locacoes?.length ?? 0) > 0)) {
+        setTimeout(() => {
+          void flushCloudSync();
+        }, 400);
+      }
+    })();
+
+    inFlightUserLoads.set(userId, loadTask);
+    try {
+      await loadTask;
+    } finally {
+      inFlightUserLoads.delete(userId);
+    }
+  };
+
+  const syncCloud = async () => {
+    return flushCloudSync();
+  };
+
+  const sync = () => {
+    const state = useAppStore.getState();
+    const user = state.usuarioAtual;
+    if (!user) return;
+    const data = buildCurrentUserDataSnapshot();
+    state.setUsersData({ ...state.usersData, [user.id]: data });
   };
 
   const login = async (email: string, senha: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      const cleanEmail = email.trim();
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: cleanEmail,
         password: senha,
       });
 
       if (error) throw error;
-      if (!data.user) throw new Error("Usuário não retornado.");
+      if (!data.user) throw new Error('Usuário não retornado.');
 
       const userId = data.user.id;
-      const nome = data.user.user_metadata?.nome || email.split('@')[0];
+      const nome =
+        data.user.user_metadata?.nome ||
+        data.user.user_metadata?.full_name ||
+        cleanEmail.split('@')[0];
 
-      await carregarDadosDoUsuario(userId, email, nome);
-
+      await carregarDadosDoUsuario(userId, data.user.email || cleanEmail, nome);
       return { success: true };
     } catch (err: any) {
-      console.error("Login Error:", err);
-      return { success: false, error: err.message || "E-mail ou senha incorretos." };
+      console.error('Login Error:', err);
+      return {
+        success: false,
+        error: translateAuthError(err?.message, 'E-mail ou senha incorretos.'),
+      };
     }
   };
 
-  const register = async (nome: string, email: string, senha: string): Promise<{ success: boolean; error?: string }> => {
+  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
+      const redirectTo = getOAuthCallbackUrl('login');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: 'select_account',
+          },
+        },
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      console.error('Google Login Error:', err);
+      return {
+        success: false,
+        error: translateAuthError(err?.message, 'Não foi possível iniciar o login com Google.'),
+      };
+    }
+  };
+
+  const linkGoogleIdentity = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const redirectTo = getOAuthCallbackUrl('link');
+      const { error } = await supabase.auth.linkIdentity({
+        provider: 'google',
+        options: {
+          redirectTo,
+        },
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      console.error('Link Google Error:', err);
+      return {
+        success: false,
+        error: translateAuthError(err?.message, 'Não foi possível vincular sua conta Google.'),
+      };
+    }
+  };
+
+  const register = async (
+    nome: string,
+    email: string,
+    senha: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: email.trim(),
         password: senha,
         options: {
-          data: { nome } // Salva o nome nos metadados do usuário
-        }
+          data: { nome: nome.trim() },
+        },
       });
-
       if (error) throw error;
-      
-      // Se a confirmação de email estiver ativada, user não estará logado imediatamente
       return { success: true };
     } catch (err: any) {
-      console.error("Register Error:", err);
-      let errorMsg = err.message || "Erro ao criar conta.";
-      
-      if (err.message?.includes("rate limit")) {
-        errorMsg = "Limite de e-mails atingido. Por favor, aguarde alguns minutos ou verifique as configurações do Supabase.";
-      } else if (err.message?.includes("already registered")) {
-        errorMsg = "Este e-mail já está em uso.";
-      }
-      
-      return { success: false, error: errorMsg };
+      console.error('Register Error:', err);
+      return {
+        success: false,
+        error: translateAuthError(err?.message, 'Erro ao criar conta.'),
+      };
     }
   };
 
-  const resendOtp = async (email: string, type: 'signup' | 'recovery'): Promise<{ success: boolean; error?: string }> => {
+  const resendOtp = async (
+    email: string,
+    type: 'signup' | 'recovery'
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       if (type === 'signup') {
         const { error } = await supabase.auth.resend({
           type: 'signup',
-          email,
+          email: email.trim(),
         });
         if (error) throw error;
-      } else {
-        // Para recovery, chamamos novamente a função de reset
-        return sendPasswordReset(email);
+        return { success: true };
       }
-      return { success: true };
+      return sendPasswordReset(email);
     } catch (err: any) {
-      console.error("Resend OTP Error:", err);
-      let errorMsg = "Erro ao reenviar código.";
-      if (err.message?.includes("rate limit")) {
-        errorMsg = "Limite de reenvio atingido. Aguarde alguns minutos.";
-      }
-      return { success: false, error: errorMsg };
+      console.error('Resend OTP Error:', err);
+      return {
+        success: false,
+        error: translateAuthError(err?.message, 'Erro ao reenviar código.'),
+      };
     }
   };
 
-  const verifyOtp = async (email: string, token: string, type: 'signup' | 'recovery' | 'magiclink'): Promise<{ success: boolean; error?: string }> => {
+  const verifyOtp = async (
+    email: string,
+    token: string,
+    type: 'signup' | 'recovery' | 'magiclink'
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
+      const cleanEmail = email.trim();
       const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token,
+        email: cleanEmail,
+        token: token.trim(),
         type,
       });
 
       if (error) throw error;
 
       if (type === 'signup' && data.user) {
-        // Loga o usuário logo após confirmar e carrega os arquivos
         const userId = data.user.id;
-        const nome = data.user.user_metadata?.nome || email.split('@')[0];
-        await carregarDadosDoUsuario(userId, email, nome);
+        const nome = data.user.user_metadata?.nome || cleanEmail.split('@')[0];
+        await carregarDadosDoUsuario(userId, data.user.email || cleanEmail, nome);
       }
 
       return { success: true };
     } catch (err: any) {
-      console.error("Verify OTP Error:", err);
-      return { success: false, error: err.message || "Código inválido ou expirado." };
+      console.error('Verify OTP Error:', err);
+      return {
+        success: false,
+        error: translateAuthError(err?.message, 'Código inválido ou expirado.'),
+      };
     }
   };
 
   const sendPasswordReset = async (email: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
       if (error) throw error;
       return { success: true };
     } catch (err: any) {
-      console.error("Reset Password Error:", err);
-      return { success: false, error: err.message || "Erro ao solicitar recuperação." };
+      console.error('Reset Password Error:', err);
+      return {
+        success: false,
+        error: translateAuthError(err?.message, 'Erro ao solicitar recuperação.'),
+      };
     }
   };
 
   const resetPassword = async (newPassword: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const { error } = await supabase.auth.updateUser({
-        password: newPassword
+        password: newPassword,
       });
-
       if (error) throw error;
       return { success: true };
     } catch (err: any) {
-      console.error("Update Password Error:", err);
-      return { success: false, error: err.message || "Erro ao atualizar a senha." };
-    }
-  };
-
-  const sync = () => {
-    const user = useAppStore.getState().usuarioAtual;
-    if (user) {
-      const state = useAppStore.getState();
-      const data: UserData = {
-        clientes: state.clientes,
-        cacambas: state.cacambas,
-        locacoes: state.locacoes,
-        gastos: state.gastos,
-        perfil: state.perfil,
-        notificacoes: state.notificacoes,
-        configuracoes: state.configuracoes,
-        ctrs: state.ctrs,
-        ctrItems: state.ctrItems,
-        locaisDescarte: state.locaisDescarte,
+      console.error('Update Password Error:', err);
+      return {
+        success: false,
+        error: translateAuthError(err?.message, 'Erro ao atualizar a senha.'),
       };
-      setUsersData({ ...state.usersData, [user.id]: data });
     }
   };
 
   const logout = async () => {
-    sync(); // Salva o state da sessão atual localmente antes de deslogar
-    await supabase.auth.signOut();
-    useAppStore.setState({
-      usuarioAtual: null,
-      clientes: [], cacambas: [], locacoes: [], gastos: [], notificacoes: [],
-      ctrs: [], ctrItems: [], ctrAtual: null, ctrAtualId: null, ctrNumeroPendente: null,
-      locaisDescarte: [], localDescartePadraoId: null,
-    });
+    sync();
+    // Tentativa rápida de envio final à nuvem antes de invalidar sessão
+    await Promise.race([
+      flushCloudSync().catch(() => undefined),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
+    await supabase.auth.signOut().catch(() => undefined);
+    setCloudWriteBlocked(null);
+    resetOperationalStore();
     router.push('/login');
   };
 
-  return { 
-    login, 
-    register, 
-    verifyOtp, 
-    sendPasswordReset, 
+  return {
+    login,
+    loginWithGoogle,
+    linkGoogleIdentity,
+    register,
+    verifyOtp,
+    sendPasswordReset,
     resetPassword,
     resendOtp,
-    logout, 
+    logout,
     sync,
+    syncCloud,
     carregarDadosDoUsuario,
   };
 }

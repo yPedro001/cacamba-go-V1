@@ -1,9 +1,10 @@
 "use client";
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { CTRPayload } from '@/core/domain/ctr-types';
-import { ctrDocumentService } from '@/infrastructure/services/ctr-document-service';
-import { Printer, FileDown, FileText, Loader2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from "react";
+import { CTRPayload } from "@/core/domain/ctr-types";
+import { ctrDocumentService } from "@/infrastructure/services/ctr-document-service";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileDown, FileText, Printer } from "lucide-react";
 
 interface CTRDocumentPreviewProps {
   payload: CTRPayload;
@@ -12,81 +13,98 @@ interface CTRDocumentPreviewProps {
   onPrint: (payload: CTRPayload) => void;
 }
 
-export function CTRDocumentPreview({ 
-  payload, 
-  onDownloadPDF, 
-  onDownloadWord, 
-  onPrint 
+export function CTRDocumentPreview({
+  payload,
+  onDownloadPDF,
+  onDownloadWord,
+  onPrint,
 }: CTRDocumentPreviewProps) {
-  const [htmlContent, setHtmlContent] = useState<string>('');
+  const [htmlContent, setHtmlContent] = useState<string>("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState<number>(1);
 
-  // Gerar HTML quando o payload mudar
-  React.useEffect(() => {
-    if (payload) {
-      try {
-        const html = ctrDocumentService.renderToHTML(payload);
-        setHtmlContent(html);
-      } catch (err) {
-        console.error('Erro ao gerar HTML do CTR:', err);
-        setHtmlContent('');
-      }
+  useEffect(() => {
+    if (!payload) return;
+    try {
+      setHtmlContent(ctrDocumentService.renderToHTML(payload));
+    } catch (err) {
+      console.error("Erro ao gerar preview:", err);
     }
   }, [payload]);
 
-  const isReady = htmlContent.length > 0;
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const updateScale = () => {
+      const avail = el.clientWidth;
+      if (avail > 0) {
+        setScale(Math.min(1, avail / 720));
+      }
+    };
+    updateScale();
+    const ro = new ResizeObserver(updateScale);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  if (!payload) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center text-sm text-muted-foreground">
+          Preencha os dados para visualizar o documento CTR oficial.
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
-        <Button
-          onClick={() => onDownloadPDF(payload)}
-          variant="secondary"
-          disabled={!isReady}
-          className="flex-1 h-10 rounded-xl font-bold text-xs uppercase tracking-wider"
-        >
-          <FileDown size={16} className="mr-2" />
-          Baixar PDF
-        </Button>
-        <Button
-          onClick={() => onDownloadWord(payload)}
-          variant="secondary"
-          disabled={!isReady}
-          className="flex-1 h-10 rounded-xl font-bold text-xs uppercase tracking-wider"
-        >
-          <FileText size={16} className="mr-2" />
-          Baixar Word
-        </Button>
-        <Button
-          onClick={() => onPrint(payload)}
-          disabled={!isReady}
-          className="flex-1 h-10 rounded-xl font-bold text-xs uppercase tracking-wider bg-accent hover:bg-accent-dark"
-        >
-          <Printer size={16} className="mr-2" />
-          Imprimir
-        </Button>
-      </div>
+    <Card className="overflow-hidden">
+      <CardHeader className="px-4 py-3.5 sm:px-5 border-b border-border bg-muted/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary" aria-hidden="true" />
+          Pré-visualização Oficial A4
+        </CardTitle>
 
-      {/* Container de visualização */}
-      <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-slate-200 flex flex-col" style={{ minHeight: '600px', height: 'calc(100dvh - 340px)' }}>
-        {!isReady ? (
-          <div className="flex-1 flex flex-col items-center justify-center bg-slate-50">
-            <Loader2 className="h-8 w-8 animate-spin text-accent mb-4" />
-            <p className="text-sm text-muted-foreground">Gerando visualização...</p>
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-3 sm:flex gap-2">
+          <Button type="button" size="sm" onClick={() => onDownloadPDF(payload)}>
+            <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
+            PDF
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => onDownloadWord(payload)}>
+            <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+            Word
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => onPrint(payload)}>
+            <Printer className="h-3.5 w-3.5" aria-hidden="true" />
+            Imprimir
+          </Button>
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-2 sm:p-4 bg-muted/40">
+        <div ref={containerRef} className="w-full overflow-hidden rounded-lg border border-border bg-white">
+          <div
+            style={{
+              width: 720,
+              height: Math.round(1010 * scale),
+              overflow: "hidden",
+            }}
+          >
+            <iframe
+              srcDoc={htmlContent}
+              title="Preview CTR Oficial"
+              style={{
+                width: 720,
+                height: 1010,
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+              }}
+              className="border-0 bg-white block"
+              sandbox="allow-same-origin"
+            />
           </div>
-        ) : (
-          <iframe
-            srcDoc={htmlContent}
-            title="CTR Preview"
-            className="w-full flex-1 min-h-[500px]"
-            sandbox="allow-same-origin"
-          />
-        )}
-      </div>
-
-      {/* Info de ajuda */}
-      <div className="text-xs text-muted-foreground text-center">
-        <p>Visualize o documento antes de baixar ou imprimir</p>
-      </div>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

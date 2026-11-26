@@ -1,73 +1,81 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useLocacoes, useClientes, useCacambas, usePerfil } from '@/store/useAppStore';
+import { useLocacoes, useClientes, useCacambas } from '@/store/useAppStore';
 import { useDataActions } from '@/core/application/useDataActions';
+import { isLocacaoEncerrada, isLocacaoReceitaRealizada } from '@/core/domain/business-logic';
 import { Locacao, Cliente } from '@/core/domain/types';
 import { exportService } from '@/infrastructure/services/export-service';
+import { formatLocalDateBR, getLocalTodayISO } from '@/lib/domain-helpers';
+import { notify } from '@/lib/notificationService';
+
+function extractCityFromText(raw: string): string {
+  if (!raw) return '';
+  if (raw.includes(' - ')) {
+    const segs = raw.split(' - ');
+    return segs[1]?.split(',')[0]?.trim() || '';
+  }
+  const parts = raw.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return parts[parts.length - 1].replace(/\d{5}-?\d{3}/, '').trim();
+  }
+  return '';
+}
 
 export function useRentalsController() {
   const clientes = useClientes();
   const locacoes = useLocacoes();
   const cacambas = useCacambas();
-  const perfil = usePerfil();
   const { addLocacao, updateLocacao, addCliente, updateCliente, addEnderecoAoCliente } = useDataActions();
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocacao, setEditingLocacao] = useState<Partial<Locacao> | undefined>();
 
-  const hoje = new Date().toISOString().split('T')[0];
+  const hoje = getLocalTodayISO();
 
   const financialSummary = useMemo(() => {
-    // 1. Inadimplentes e Valores Pendentes - ÚNICA FONTE DE VERDADE
-    // Definição: locações financeiramente ativas (não pagas e não canceladas) E com tempo expirado.
-    const inadimplentes = locacoes.filter(l => {
-      // Tem pendência financeira?
-      const pendenciaFinanceira = l.status !== 'pago' && l.status !== 'concluida' && l.status !== 'cancelada';
-      
-      // Já passou do prazo? (Considera data de devolução se existir, senão considera a data de retirada base)
-      const dataReferencia = l.dataDevolucaoPrevista ? l.dataDevolucaoPrevista : l.dataRetirada;
-      const isVencida = l.status === 'vencida' || (dataReferencia && dataReferencia < hoje);
-      
+    const inadimplentes = locacoes.filter((l) => {
+      const pendenciaFinanceira = !isLocacaoEncerrada(l.status);
+      const dataReferencia = l.dataDevolucaoPrevista || l.dataRetirada;
+      const isVencida = l.status === 'vencida' || Boolean(dataReferencia && dataReferencia < hoje);
       return pendenciaFinanceira && isVencida;
     });
 
-    const inadimplentesValor = inadimplentes.reduce((acc, curr) => acc + curr.valor, 0);
+    const inadimplentesValor = inadimplentes.reduce((acc, curr) => acc + (curr.valor || 0), 0);
     const inadimplentesCount = inadimplentes.length;
-    
-    // 2. Vencidos para Retirar (Pagas mas com data de devolução no passado)
-    const vencidos = locacoes.filter(l => 
-      l.status === 'pago' && l.dataDevolucaoPrevista && l.dataDevolucaoPrevista < hoje
-    );
-    
-    // 3. Pendentes de Entrega (Status explicitamente 'entrega_pendente')
-    const pendentesEntrega = locacoes.filter(l => 
-      l.status === 'entrega_pendente' || l.status === 'a_pagar'
+
+    const vencidos = locacoes.filter(
+      (l) => l.status === 'pago' && l.dataDevolucaoPrevista && l.dataDevolucaoPrevista < hoje
     );
 
-    // 4. Arrecadado (Efetivado no caixa)
+    const pendentesEntrega = locacoes.filter(
+      (l) => l.status === 'entrega_pendente' || l.status === 'a_pagar'
+    );
+
     const arrecadado = locacoes
-      .filter(l => l.status === 'pago' || l.status === 'concluida')
-      .reduce((acc, curr) => acc + curr.valor, 0);
+      .filter((l) => isLocacaoReceitaRealizada(l.status))
+      .reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
-    // 5. Receita Esperada (Tudo que não foi pago nem cancelado)
     const receitaEsperada = locacoes
-      .filter(l => l.status !== 'pago' && l.status !== 'concluida' && l.status !== 'cancelada')
-      .reduce((acc, curr) => acc + curr.valor, 0);
+      .filter((l) => !isLocacaoEncerrada(l.status))
+      .reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
-    // 6. Contagem de Ações (Painel Logístico)
     const acoes = {
-      entregas: locacoes.filter(l => l.status === 'entrega_pendente').length,
-      retiradas: locacoes.filter(l => l.status === 'vencida' || (l.dataDevolucaoPrevista && l.dataDevolucaoPrevista < hoje)).length,
-      financeiro: inadimplentesCount // Sincronizado estritamente com os inadimplentes reais
+      entregas: locacoes.filter((l) => l.status === 'entrega_pendente').length,
+      retiradas: locacoes.filter(
+        (l) =>
+          !isLocacaoEncerrada(l.status) &&
+          (l.status === 'vencida' || Boolean(l.dataDevolucaoPrevista && l.dataDevolucaoPrevista < hoje))
+      ).length,
+      financeiro: inadimplentesCount,
     };
 
-    return { 
-      inadimplentes, 
+    return {
+      inadimplentes,
       inadimplentesValor,
-      vencidos, 
-      pendentesEntrega, 
-      arrecadado, 
+      vencidos,
+      pendentesEntrega,
+      arrecadado,
       receitaEsperada,
-      acoes 
+      acoes,
     };
   }, [locacoes, hoje]);
 
@@ -81,128 +89,143 @@ export function useRentalsController() {
     setEditingLocacao(undefined);
   }, []);
 
-  const handleSave = async (data: Partial<Locacao> & { salvarEndereco?: boolean, nomeEndereco?: string, enderecoDetalhes?: any }) => {
-    // Validação de estoque para novas locações
+  const handleSave = async (
+    data: Partial<Locacao> & { salvarEndereco?: boolean; nomeEndereco?: string; enderecoDetalhes?: any }
+  ) => {
     if (!data.id) {
-      const disponiveis = cacambas.filter(c => c.status === 'disponivel');
+      const disponiveis = cacambas.filter((c) => c.status === 'disponivel');
       const requisitadas = data.quantidadeCacambas || 1;
       if (disponiveis.length < requisitadas) {
-        alert(`Caçambas insuficientes no pátio. Disponível: ${disponiveis.length}.`);
+        notify.error(`Caçambas insuficientes no pátio. Disponível: ${disponiveis.length}.`);
         return false;
       }
     }
 
-    // Se solicitou salvar o endereço no cliente
     if (data.salvarEndereco && data.clienteId && data.enderecoObra) {
       const det = data.enderecoDetalhes;
       addEnderecoAoCliente(data.clienteId, {
         nome: data.nomeEndereco || 'Nova Obra',
         rua: det?.road || data.enderecoObra.split(',')[0],
         numero: det?.house_number || data.enderecoObra.split(',')[1]?.split('-')[0]?.trim() || 'S/N',
-        cidade: det?.city || det?.town || det?.suburb || '',
-        cep: det?.postcode || '',
+        cidade: det?.city || det?.town || det?.suburb || extractCityFromText(data.enderecoObra),
+        cep: det?.postcode || data.cep || '',
         lat: data.lat,
-        lng: data.lng
+        lng: data.lng,
       });
     }
 
-    // Limpar campos auxiliares do payload final
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { salvarEndereco, nomeEndereco, enderecoDetalhes, ...locacaoParaSalvar } = data;
 
     if (locacaoParaSalvar.id) {
       updateLocacao(locacaoParaSalvar.id, locacaoParaSalvar);
     } else {
-      const newId = Date.now().toString();
-      addLocacao({ 
-        ...locacaoParaSalvar, 
-        id: newId, 
-        status: locacaoParaSalvar.status || 'entrega_pendente' 
+      addLocacao({
+        ...locacaoParaSalvar,
+        id: crypto.randomUUID(),
+        status: locacaoParaSalvar.status || 'entrega_pendente',
       } as Locacao);
     }
-    
+
     handleCloseModal();
     return true;
   };
 
   const handleAddClienteAndSave = async (
-    clienteData: Partial<Cliente>, 
-    locacaoData: Partial<Locacao>, 
-    options?: { updateExisting?: boolean, useExistingId?: string }
+    clienteData: Partial<Cliente>,
+    locacaoData: Partial<Locacao> & { enderecoDetalhes?: any },
+    options?: { updateExisting?: boolean; useExistingId?: string }
   ) => {
     let finalClienteId = options?.useExistingId || '';
 
     if (options?.updateExisting && options.useExistingId) {
       updateCliente(options.useExistingId, clienteData);
     } else if (!options?.useExistingId) {
-      const newId = `${Date.now()}-c`;
-      // No novo cadastro rápido, o endereço da obra vira o primeiro endereço do cliente
+      const newId = crypto.randomUUID();
+      const det = locacaoData.enderecoDetalhes;
       const primeiroEndereco = {
         id: crypto.randomUUID(),
         nome: 'Principal',
-        rua: locacaoData.enderecoObra?.split(',')[0] || 'Não informada',
-        numero: locacaoData.enderecoObra?.split(',')[1]?.split('-')[0]?.trim() || 'S/N',
-        cidade: locacaoData.enderecoObra?.split('-')[1]?.trim() || '',
-        cep: '',
+        rua: det?.road || locacaoData.enderecoObra?.split(',')[0]?.trim() || 'Não informada',
+        numero: det?.house_number || locacaoData.enderecoObra?.split(',')[1]?.split('-')[0]?.trim() || 'S/N',
+        cidade: det?.city || det?.town || det?.suburb || extractCityFromText(locacaoData.enderecoObra || ''),
+        cep: det?.postcode || locacaoData.cep || '',
         lat: locacaoData.lat,
-        lng: locacaoData.lng
+        lng: locacaoData.lng,
       };
 
-      addCliente({ 
-        ...clienteData, 
+      addCliente({
+        ...clienteData,
         id: newId,
+        dataCadastro: getLocalTodayISO(),
         enderecos: [primeiroEndereco],
-        endereco: locacaoData.enderecoObra || 'Endereço não informado' // Backup legibilidade
+        endereco: locacaoData.enderecoObra || 'Endereço não informado',
       } as Cliente);
       finalClienteId = newId;
     }
 
-    // Agora salva a locação com o ID do cliente (novo ou existente)
-    handleSave({ ...locacaoData, clienteId: finalClienteId });
+    return handleSave({ ...locacaoData, clienteId: finalClienteId });
   };
 
-  const exportRentals = (list: Locacao[], title: string) => {
-    const data = list.map(l => {
-      const cliente = clientes.find(c => c.id === l.clienteId);
-      return [
-        l.id!.slice(-6).toUpperCase(),
-        cliente?.nome || 'Desconhecido',
-        new Date(l.dataRetirada).toLocaleDateString('pt-BR'),
-        new Date(l.dataDevolucaoPrevista).toLocaleDateString('pt-BR'),
-        l.status.toUpperCase(),
-        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(l.valor)
-      ];
-    });
+  const exportRentals = async (list: Locacao[], title: string) => {
+    try {
+      const data = list.map((l) => {
+        const cliente = clientes.find((c) => c.id === l.clienteId);
+        return [
+          l.id!.slice(-6).toUpperCase(),
+          cliente?.nome || 'Desconhecido',
+          formatLocalDateBR(l.dataRetirada),
+          formatLocalDateBR(l.dataDevolucaoPrevista),
+          l.status.toUpperCase(),
+          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(l.valor || 0),
+        ];
+      });
 
-    exportService.exportPDF({
-      title,
-      filename: `relatorio_locacoes_${Date.now()}`,
-      headers: ['Código', 'Cliente', 'Retirada', 'Devolução', 'Status', 'Valor'],
-      data
-    });
+      await exportService.exportPDF({
+        title,
+        filename: `relatorio_locacoes_${Date.now()}`,
+        headers: ['Código', 'Cliente', 'Retirada', 'Devolução', 'Status', 'Valor'],
+        data,
+      });
+    } catch {
+      notify.error('Falha ao gerar o PDF de locações.');
+    }
   };
 
   const exportRentalsExcel = async (list: Locacao[], title: string) => {
-    const data = list.map(l => {
-      const cliente = clientes.find(c => c.id === l.clienteId);
-      return [
-        l.id!,
-        cliente?.nome || 'Desconhecido',
-        l.enderecoObra,
-        l.dataRetirada,
-        l.dataDevolucaoPrevista,
-        l.status,
-        l.valor,
-        l.valorLiquido || 0
-      ];
-    });
+    try {
+      const data = list.map((l) => {
+        const cliente = clientes.find((c) => c.id === l.clienteId);
+        return [
+          l.id!,
+          cliente?.nome || 'Desconhecido',
+          l.enderecoObra,
+          l.dataRetirada,
+          l.dataDevolucaoPrevista,
+          l.status,
+          l.valor,
+          l.valorLiquido || 0,
+        ];
+      });
 
-    await exportService.exportExcel({
-      title,
-      filename: `excel_locacoes_${Date.now()}`,
-      headers: ['ID', 'Cliente', 'Endereço', 'Data Retirada', 'Data Devolução', 'Status', 'Valor Bruto', 'Valor Líquido'],
-      data
-    });
+      await exportService.exportExcel({
+        title,
+        filename: `excel_locacoes_${Date.now()}`,
+        headers: [
+          'ID',
+          'Cliente',
+          'Endereço',
+          'Data Retirada',
+          'Data Devolução',
+          'Status',
+          'Valor Bruto',
+          'Valor Líquido',
+        ],
+        data,
+      });
+    } catch {
+      notify.error('Falha ao gerar a planilha Excel de locações.');
+    }
   };
 
   return {
@@ -217,6 +240,6 @@ export function useRentalsController() {
     handleAddClienteAndSave,
     updateLocacao,
     exportRentals,
-    exportRentalsExcel
+    exportRentalsExcel,
   };
 }

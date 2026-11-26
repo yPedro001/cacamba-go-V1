@@ -1,15 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <rect width="256" height="256" rx="56" fill="#0f172a"/>
-  
-  <path d="M48 96 L208 96 L184 200 L72 200 Z" fill="#3730a3"/>
-  <path d="M48 80 L208 80 L184 184 L72 184 Z" fill="#4f46e5"/>
-  
-  <path d="M32 80 L224 80" stroke="#6366f1" stroke-width="16" stroke-linecap="round"/>
-  
-  <rect x="88" y="184" width="16" height="24" rx="4" fill="#94a3b8" />
-  <rect x="152" y="184" width="16" height="24" rx="4" fill="#94a3b8" />
-  
-  <line x1="128" y1="96" x2="128" y2="170" stroke="#312e81" stroke-width="14" stroke-linecap="round"/>
-  <line x1="88" y1="96" x2="100" y2="170" stroke="#312e81" stroke-width="14" stroke-linecap="round"/>
-  <line x1="168" y1="96" x2="156" y2="170" stroke="#312e81" stroke-width="14" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="16" fill="#191715"/>
+  <rect x="3" y="3" width="58" height="58" rx="13" fill="none" stroke="#322E29" stroke-width="2"/>
+  <path d="M12 22h40l-4.5 22a3 3 0 0 1-2.95 2.4H19.45a3 3 0 0 1-2.95-2.4L12 22z" fill="#F18F24"/>
+  <rect x="9" y="18" width="46" height="5.5" rx="2.75" fill="#FBBF24"/>
+  <path d="M20 27v13M32 27v13M44 27v13" stroke="#191715" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="15" cy="34" r="2.2" fill="#191715"/>
+  <circle cx="49" cy="34" r="2.2" fill="#191715"/>
 </svg>

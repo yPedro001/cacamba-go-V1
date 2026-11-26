@@ -1,68 +1,89 @@
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
+const REQUEST_TIMEOUT_MS = 5000;
+const MAX_QUERY_LEN = 200;
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get('q');
-  
-  if (!q) return NextResponse.json({ error: 'Missing query' }, { status: 400 });
+  const rawQuery = searchParams.get('q') || '';
+  const query = rawQuery.trim().slice(0, MAX_QUERY_LEN);
 
-  const query = encodeURIComponent(q);
-  const debug: any[] = [];
-
-  // MUDANÇA: Priorizar PHOTON agora, pois Nominatim está dando 429
-  try {
-    const photonUrl = `https://photon.komoot.io/api/?q=${query}&limit=10`;
-    debug.push(`Calling Photon: ${photonUrl}`);
-    const res = await fetch(photonUrl);
-    
-    if (res.ok) {
-      const photonData = await res.json();
-      const features = photonData.features || [];
-      const compatibleData = features.map((f: any) => ({
-        lat: f.geometry.coordinates[1].toString(),
-        lon: f.geometry.coordinates[0].toString(),
-        display_name: [
-          f.properties.name,
-          f.properties.housenumber,
-          f.properties.street,
-          f.properties.city,
-          f.properties.state
-        ].filter(Boolean).join(', '),
-        address: {
-          road: f.properties.street,
-          city: f.properties.city,
-          postcode: f.properties.postcode
-        }
-      }));
-
-      if (compatibleData.length > 0) return NextResponse.json(compatibleData);
-      debug.push("Photon returned 0 features");
-    } else {
-      debug.push(`Photon failed with status ${res.status}`);
-    }
-  } catch (e: any) {
-    debug.push(`Photon Exception: ${e.message}`);
+  if (query.length < 3) {
+    return NextResponse.json(
+      { error: 'Informe ao menos 3 caracteres para buscar o endereço.' },
+      { status: 400 }
+    );
   }
 
-  // TENTATIVA NOMINATIM como Fallback Secundário
+  // Tentativa 1: Photon Komoot (rápido e tolerante para autocomplete, com bbox aproximada do Brasil)
   try {
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=5&countrycodes=br&addressdetails=1`;
-    debug.push(`Calling Nominatim: ${nominatimUrl}`);
-    const res = await fetch(nominatimUrl, { 
-      headers: { 'User-Agent': 'CacambaGo-Debug/1.0' }
+    const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&bbox=-74,-34,-34,5`;
+    const photonRes = await fetchWithTimeout(photonUrl, {
+      headers: { Accept: 'application/json' },
+    });
+
+    if (photonRes.ok) {
+      const photonData = await photonRes.json();
+      if (Array.isArray(photonData?.features) && photonData.features.length > 0) {
+        const formatted = photonData.features.map((f: any) => {
+          const p = f.properties || {};
+          const [lng, lat] = f.geometry?.coordinates || [0, 0];
+          const roadParts = [p.name || p.street, p.housenumber].filter(Boolean).join(', ');
+          const city = p.city || p.town || p.village || p.state || '';
+          const display_name = [roadParts, p.district, city, p.postcode].filter(Boolean).join(', ');
+
+          return {
+            display_name: display_name || p.name || query,
+            lat: String(lat),
+            lon: String(lng),
+            address: {
+              road: p.street || p.name || '',
+              suburb: p.district || p.suburb || '',
+              city: p.city || p.town || p.village || '',
+              postcode: p.postcode || '',
+              house_number: p.housenumber || '',
+            },
+          };
+        });
+        return NextResponse.json(formatted);
+      }
+    }
+  } catch {
+    // Segue para fallback Nominatim
+  }
+
+  // Tentativa 2: Nominatim OpenStreetMap (restrito ao Brasil)
+  try {
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      query
+    )}&countrycodes=br&addressdetails=1&limit=5`;
+
+    const res = await fetchWithTimeout(nominatimUrl, {
+      headers: {
+        'User-Agent': 'CacambaGo/1.0 (+https://cg.lyvox.com.br)',
+        Accept: 'application/json',
+        'Accept-Language': 'pt-BR,pt;q=0.9',
+      },
     });
 
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) return NextResponse.json(data);
+      return NextResponse.json(Array.isArray(data) ? data : []);
     }
-    debug.push(`Nominatim failed with status ${res.status}`);
-  } catch (e: any) {
-    debug.push(`Nominatim Exception: ${e.message}`);
+  } catch {
+    // Sem resultados disponíveis no momento
   }
 
-  // Retorna o log de erro se nada funcionar
-  return NextResponse.json({ error: "All providers failed", debug }, { status: 500 });
+  // Nunca devolve 500 + debug stack para falha externa transitória ou endereço não encontrado
+  return NextResponse.json([]);
 }

@@ -327,7 +327,7 @@ export default function CTRPage() {
         <TabsContent value="emitir" className="mt-6">
           <div className="text-center py-12 text-muted-foreground">
             <FileText size={48} className="mx-auto mb-4 opacity-20" />
-            <p className="font-bold">Clique em "Emitir CTR" para criar um novo documento</p>
+            <p className="font-bold">Clique em &ldquo;Emitir CTR&rdquo; para criar um novo documento</p>
           </div>
         </TabsContent>
       </Tabs>

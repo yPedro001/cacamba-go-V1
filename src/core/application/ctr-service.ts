@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { CTR, CTRItem, CTRFormData, CTRConflito, LocalDescarte } from '@/core/domain/ctr-types';
 import { CTRFormDataSchema, CTRSchema, CTRItemSchema, LocalDescarteSchema } from '@/core/domain/ctr-schemas';
 import { Locacao, Cliente } from '@/core/domain/types';
+import { getLocalTodayISO, isValidUUID } from '@/lib/domain-helpers';
 
 export interface CTRServiceConfig {
   usuarioId: string;
@@ -15,43 +16,52 @@ export class CTRService {
   }
 
   async getLocaisDescarte(): Promise<LocalDescarte[]> {
-    const usuarioId = this.usuarioId;
-    
     const { data, error } = await supabase
       .from('locais_descarte')
       .select('*')
-      .eq('usuario_id', usuarioId)
+      .eq('usuario_id', this.usuarioId)
       .order('is_padrao', { ascending: false })
       .order('created_at', { ascending: true });
 
     if (error) throw new Error(`Erro ao buscar locais de descarte: ${error.message}`);
-    
-    return (data || []).map(this.mapDBToLocalDescarte);
+
+    return (data || []).map((row) => this.mapDBToLocalDescarte(row));
   }
 
-  async createLocalDescarte(local: Omit<LocalDescarte, 'id' | 'createdAt' | 'usuarioId'>): Promise<LocalDescarte> {
+  async createLocalDescarte(
+    local: Omit<LocalDescarte, 'id' | 'createdAt' | 'usuarioId'>
+  ): Promise<LocalDescarte> {
     const usuarioId = this.usuarioId;
-    
-    // Criar objeto de insert apenas com campos必需
-    const insertData: any = {
+    const ruaCompleta =
+      local.numero && local.rua && !local.rua.includes(local.numero)
+        ? `${local.rua}, ${local.numero}`
+        : local.rua || '';
+
+    // Envia apenas colunas reais existentes na tabela public.locais_descarte
+    const insertData: Record<string, unknown> = {
       nome: local.nome,
-      rua: local.rua || '',
-      numero: local.numero || '',
+      rua: ruaCompleta,
       cidade: local.cidade || '',
       uf: local.uf || 'SP',
       usuario_id: usuarioId,
     };
-    
-    // Só adicionar campos opcionais se tiverem valor
+
     if (local.cnpj) insertData.cnpj = local.cnpj;
     if (local.telefone) insertData.telefone = local.telefone;
     if (local.bairro) insertData.bairro = local.bairro;
     if (local.cep) insertData.cep = local.cep;
     if (local.tipoLocal) insertData.tipo_local = local.tipoLocal;
     if (local.licenca) insertData.licenca = local.licenca;
-    if (local.observacoes) insertData.observacoes = local.observacoes;
-    if (local.isPadrao) insertData.is_padrao = local.isPadrao;
-    
+    if (local.isPadrao !== undefined) {
+      insertData.is_padrao = local.isPadrao;
+      if (local.isPadrao) {
+        await supabase
+          .from('locais_descarte')
+          .update({ is_padrao: false })
+          .eq('usuario_id', usuarioId);
+      }
+    }
+
     const { data, error } = await supabase
       .from('locais_descarte')
       .insert(insertData)
@@ -61,21 +71,30 @@ export class CTRService {
     if (error) {
       throw new Error(`Erro ao criar local de descarte: ${error.message}`);
     }
-    
+
     return this.mapDBToLocalDescarte(data);
   }
 
   async updateLocalDescarte(id: string, updates: Partial<LocalDescarte>): Promise<LocalDescarte> {
+    if (updates.isPadrao) {
+      await supabase
+        .from('locais_descarte')
+        .update({ is_padrao: false })
+        .eq('usuario_id', this.usuarioId)
+        .neq('id', id);
+    }
+
+    const dbPayload = this.mapLocalDescarteToDB(updates);
     const { data, error } = await supabase
       .from('locais_descarte')
-      .update(this.mapLocalDescarteToDB(updates))
+      .update(dbPayload)
       .eq('id', id)
       .eq('usuario_id', this.usuarioId)
       .select()
       .single();
 
     if (error) throw new Error(`Erro ao atualizar local de descarte: ${error.message}`);
-    
+
     return this.mapDBToLocalDescarte(data);
   }
 
@@ -90,6 +109,13 @@ export class CTRService {
   }
 
   async setLocalPadrao(id: string): Promise<void> {
+    const { error: resetErr } = await supabase
+      .from('locais_descarte')
+      .update({ is_padrao: false })
+      .eq('usuario_id', this.usuarioId);
+
+    if (resetErr) throw new Error(`Erro ao redefinir local padrão: ${resetErr.message}`);
+
     const { error } = await supabase
       .from('locais_descarte')
       .update({ is_padrao: true })
@@ -107,8 +133,8 @@ export class CTRService {
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(`Erro ao buscar CTRs: ${error.message}`);
-    
-    return (data || []).map(this.mapDBToCTR);
+
+    return (data || []).map((row) => this.mapDBToCTR(row));
   }
 
   async getCTRById(id: string): Promise<CTR | null> {
@@ -122,18 +148,26 @@ export class CTRService {
     if (error && error.code !== 'PGRST116') {
       throw new Error(`Erro ao buscar CTR: ${error.message}`);
     }
-    
+
     return data ? this.mapDBToCTR(data) : null;
   }
 
   async getProximoNumeroCTR(): Promise<string> {
-    // Gerar número CTR diretamente no código (sem依赖 função RPC problemática)
     const ano = new Date().getFullYear();
+    try {
+      const { data: seqNumero, error } = await supabase.rpc('gerar_proximo_numero_ctr', {
+        p_usuario_id: this.usuarioId,
+      });
+      if (!error && typeof seqNumero === 'string' && seqNumero.trim()) {
+        return seqNumero.trim();
+      }
+    } catch {
+      // Fallback controlado abaixo caso a RPC esteja indisponível
+    }
+
+    const rand = Math.floor(Math.random() * 900) + 100;
     const timestamp = Date.now().toString().slice(-6);
-    const numero = `${ano}${timestamp}`;
-    
-    console.log('Número CTR gerado:', numero);
-    return numero;
+    return `${ano}${timestamp}${rand}`;
   }
 
   async getCTRItems(ctrId: string): Promise<CTRItem[]> {
@@ -143,8 +177,8 @@ export class CTRService {
       .eq('ctr_id', ctrId);
 
     if (error) throw new Error(`Erro ao buscar itens do CTR: ${error.message}`);
-    
-    return (data || []).map(this.mapDBToCTRItem);
+
+    return (data || []).map((row) => this.mapDBToCTRItem(row));
   }
 
   async createCTR(
@@ -152,22 +186,23 @@ export class CTRService {
     localDescarte: LocalDescarte,
     alugueis: Locacao[],
     clientes: Cliente[],
-    numeroCTR?: string // Parâmetro opcional para usar número específico (evita gerar novo número)
+    numeroCTR?: string
   ): Promise<CTR> {
     const validation = CTRFormDataSchema.safeParse(formData);
     if (!validation.success) {
       throw new Error(`Dados inválidos: ${validation.error.message}`);
     }
 
-    // Se não passou número, gerar um novo
-    const numeroFinal = numeroCTR || await this.getProximoNumeroCTR();
+    const numeroFinal = numeroCTR || (await this.getProximoNumeroCTR());
 
-    const itens = alugueis.map(aluguel => {
-      const cliente = clientes.find(c => c.id === aluguel.clienteId);
+    const itens = alugueis.map((aluguel) => {
+      const cliente = clientes.find((c) => c.id === aluguel.clienteId);
       return {
         aluguelId: aluguel.id!,
         clienteId: aluguel.clienteId,
         snapshot: {
+          aluguelId: aluguel.id!,
+          clienteId: aluguel.clienteId,
           clienteNome: cliente?.nome || 'Não identificado',
           clienteCpfCnpj: cliente?.cpfCnpj || '',
           enderecoObra: aluguel.enderecoObra,
@@ -176,7 +211,6 @@ export class CTRService {
       };
     });
 
-    // Inserir CTR diretamente via Supabase client (sem função RPC)
     const { data: ctrResult, error: ctrError } = await supabase
       .from('ctrs')
       .insert({
@@ -185,7 +219,7 @@ export class CTRService {
         data: formData.data,
         hora_saida: formData.horaSaida,
         tipo_operacao: formData.tipoOperacao,
-        
+
         origem_cep: formData.origem.cep || '',
         origem_endereco: formData.origem.endereco,
         origem_bairro: formData.origem.bairro || '',
@@ -194,22 +228,22 @@ export class CTRService {
         origem_responsavel: formData.origem.responsavel || '',
         origem_telefone: formData.origem.telefone || '',
         origem_observacao: formData.origem.observacao || '',
-        
+
         gerador_nome: formData.gerador.nome,
         gerador_cpf_cnpj: formData.gerador.cpfCnpj,
         gerador_cep: formData.gerador.cep || '',
         gerador_endereco: formData.gerador.endereco || '',
         gerador_bairro: formData.gerador.bairro || '',
         gerador_cidade: formData.gerador.cidade || '',
-        gerador_uf: formData.gerador.uf || 'SP',
+        gerador_uf: formData.gerador.uf || formData.origem.uf || 'SP',
         gerador_responsavel: formData.gerador.responsavel || '',
         gerador_telefone: formData.gerador.telefone || '',
-        
+
         transportador_nome: formData.transportador.nome,
         transportador_cpf_cnpj: formData.transportador.cpfCnpj,
         transportador_inscricao: formData.transportador.inscricao || '',
         transportador_telefone: formData.transportador.telefone || '',
-        
+
         destinatario_nome: localDescarte.nome,
         destinatario_cpf_cnpj: localDescarte.cnpj || '',
         destinatario_endereco: `${localDescarte.rua}${localDescarte.numero ? ', ' + localDescarte.numero : ''}`,
@@ -218,13 +252,13 @@ export class CTRService {
         destinatario_uf: localDescarte.uf,
         destinatario_tipo_local: localDescarte.tipoLocal || 'outro',
         destinatario_licenca: localDescarte.licenca || '',
-        
+
         residuo_classe: formData.residuo.classe || 'A',
         residuo_descricao: formData.residuo.descricao,
         residuo_acondicionamento: formData.residuo.acondicionamento || '',
         residuo_quantidade: formData.residuo.quantidade,
         residuo_unidade: formData.residuo.unidade,
-        
+
         declaracao_transportador_nome: formData.declaracoes.transportador.nome || '',
         declaracao_transportador_assinatura: formData.declaracoes.transportador.assinatura || '',
         declaracao_recebedor_nome: formData.declaracoes.recebedor.nome || '',
@@ -232,7 +266,7 @@ export class CTRService {
         declaracao_recebedor_data_hora: formData.declaracoes.recebedor.dataHora || null,
         declaracao_recebedor_carimbo: formData.declaracoes.recebedor.carimbo || '',
         declaracao_recebedor_observacao: formData.declaracoes.recebedor.observacao || '',
-        
+
         status: 'emitido',
         local_descarte_id: localDescarte.id,
       })
@@ -244,21 +278,20 @@ export class CTRService {
 
     if (itens.length > 0) {
       const { error: itensError } = await supabase.from('ctr_itens').insert(
-        itens.map(item => ({
+        itens.map((item) => ({
           ctr_id: ctrResult.id,
-          aluguel_id: item.aluguelId,
-          cliente_id: item.clienteId,
-          snapshot_dados: item.snapshot,
+          aluguel_id: isValidUUID(item.aluguelId) ? item.aluguelId : null,
+          cliente_id: isValidUUID(item.clienteId) ? item.clienteId : null,
+          snapshot: item.snapshot,
         }))
       );
 
       if (itensError) {
-        // A FK com ON DELETE CASCADE remove qualquer item parcial.
         await supabase.from('ctrs').delete().eq('id', ctrResult.id).eq('usuario_id', this.usuarioId);
         throw new Error(`Erro ao vincular os aluguéis ao CTR: ${itensError.message}`);
       }
     }
-    
+
     return this.mapDBToCTR(ctrResult);
   }
 
@@ -274,10 +307,10 @@ export class CTRService {
 
   validateConflitos(alugueis: Locacao[], clientes: Cliente[]): CTRConflito[] {
     const conflitos: CTRConflito[] = [];
-    
+
     if (alugueis.length <= 1) return conflitos;
 
-    const clienteIds = Array.from(new Set(alugueis.map(a => a.clienteId)));
+    const clienteIds = Array.from(new Set(alugueis.map((a) => a.clienteId)));
     if (clienteIds.length > 1) {
       conflitos.push({
         tipo: 'bloqueio',
@@ -287,14 +320,14 @@ export class CTRService {
       });
     }
 
-    const clientesDoCTR = clienteIds.map(id => clientes.find(c => c.id === id)).filter(Boolean);
+    const clientesDoCTR = clienteIds.map((id) => clientes.find((c) => c.id === id)).filter(Boolean);
     if (clientesDoCTR.length > 0) {
-      const nomesClientes = clientesDoCTR.map(c => c!.nome).join(', ');
+      const nomesClientes = clientesDoCTR.map((c) => c!.nome).join(', ');
       conflitos.push({
         tipo: 'aviso',
         campo: 'cliente_nomes',
         mensagem: `Clientes selecionados: ${nomesClientes}`,
-        valores: clientesDoCTR.map(c => c!.nome),
+        valores: clientesDoCTR.map((c) => c!.nome),
       });
     }
 
@@ -310,12 +343,13 @@ export class CTRService {
     const endereco = enderecoPrincipal
       ? `${enderecoPrincipal.rua}${enderecoPrincipal.numero ? `, ${enderecoPrincipal.numero}` : ''}`
       : cliente.endereco || '';
-    const cidade = enderecoPrincipal?.cidade || this.extrairCidade(cliente.endereco || '') || 'São Paulo';
+    const cidade = enderecoPrincipal?.cidade || this.extrairCidade(cliente.endereco || '') || localDescarte.cidade || 'São Paulo';
+    const ufPadrao = localDescarte.uf || 'SP';
 
     return {
       alugueisIds: [],
       localDescarteId: localDescarte.id,
-      data: new Date().toISOString().split('T')[0],
+      data: getLocalTodayISO(),
       horaSaida: new Date().toTimeString().slice(0, 5),
       tipoOperacao: 'coleta',
       origem: {
@@ -323,7 +357,7 @@ export class CTRService {
         endereco,
         bairro: '',
         cidade,
-        uf: 'SP',
+        uf: ufPadrao,
         responsavel: cliente.nome,
         telefone: cliente.telefone || '',
         observacao: '',
@@ -335,7 +369,7 @@ export class CTRService {
         endereco,
         bairro: '',
         cidade,
-        uf: 'SP',
+        uf: ufPadrao,
         responsavel: cliente.nome,
         telefone: cliente.telefone || '',
       },
@@ -375,54 +409,54 @@ export class CTRService {
     localDescarte: LocalDescarte,
     perfil: any
   ): Partial<CTRFormData> {
-    const cliente = clientes.find(c => c.id === alugueis[0].clienteId);
-    
-    const totalQuantidade = alugueis.reduce((acc, a) => acc + (a.quantidadeCacambas || 1), 0);
-    
     const primeiroAluguel = alugueis[0];
+    const cliente = clientes.find((c) => c.id === primeiroAluguel.clienteId);
+    const enderecoPrincipal = cliente?.enderecos?.[0];
+    const totalQuantidade = alugueis.reduce((acc, a) => acc + (a.quantidadeCacambas || 1), 0);
 
     const cidadeExtraida = this.extrairCidade(primeiroAluguel.enderecoObra);
-    const cidadeCliente = this.extrairCidade(cliente?.endereco || '');
-    const cidadeOrigem = cidadeExtraida || cidadeCliente || 'São Paulo';
+    const cidadeCliente = enderecoPrincipal?.cidade || this.extrairCidade(cliente?.endereco || '');
+    const cidadeOrigem = cidadeExtraida || cidadeCliente || localDescarte.cidade || 'São Paulo';
+    const ufPadrao = localDescarte.uf || 'SP';
 
     return {
-      alugueisIds: alugueis.map(a => a.id!),
+      alugueisIds: alugueis.map((a) => a.id!),
       localDescarteId: localDescarte.id,
-      
-      data: new Date().toISOString().split('T')[0],
+
+      data: getLocalTodayISO(),
       horaSaida: new Date().toTimeString().slice(0, 5),
       tipoOperacao: 'coleta',
-      
+
       origem: {
-        cep: primeiroAluguel.cep || localDescarte.cep || '',
+        cep: primeiroAluguel.cep || enderecoPrincipal?.cep || '',
         endereco: primeiroAluguel.enderecoObra || '',
         bairro: '',
         cidade: cidadeOrigem,
-        uf: 'SP',
+        uf: ufPadrao,
         responsavel: cliente?.nome || '',
         telefone: cliente?.telefone || '',
         observacao: '',
       },
-      
+
       gerador: {
         nome: cliente?.nome || '',
         cpfCnpj: cliente?.cpfCnpj || '',
-        cep: localDescarte.cep || '',
+        cep: enderecoPrincipal?.cep || primeiroAluguel.cep || '',
         endereco: cliente?.endereco || primeiroAluguel.enderecoObra || '',
         bairro: '',
         cidade: cidadeCliente || cidadeOrigem,
-        uf: 'SP',
+        uf: ufPadrao,
         responsavel: cliente?.nome || '',
         telefone: cliente?.telefone || '',
       },
-      
+
       transportador: {
         nome: perfil.nomeEmpresa || '',
         cpfCnpj: perfil.cnpj || '',
         inscricao: '',
         telefone: perfil.telefone || '',
       },
-      
+
       destinatario: {
         nome: localDescarte.nome,
         cpfCnpj: localDescarte.cnpj || '',
@@ -433,7 +467,7 @@ export class CTRService {
         tipoLocal: localDescarte.tipoLocal || 'aterro_sanitario',
         licenca: localDescarte.licenca || '',
       },
-      
+
       residuo: {
         classe: 'A',
         descricao: 'Resíduos de construção civil e demolição',
@@ -441,7 +475,7 @@ export class CTRService {
         quantidade: totalQuantidade || 1,
         unidade: 'm3',
       },
-      
+
       declaracoes: {
         transportador: { nome: perfil.nomeEmpresa || '', assinatura: '' },
         recebedor: { nome: '', assinatura: '', dataHora: '', carimbo: '', observacao: '' },
@@ -471,30 +505,47 @@ export class CTRService {
       nome: db.nome,
       cnpj: db.cnpj || undefined,
       telefone: db.telefone || undefined,
-      rua: db.rua,
+      rua: db.rua || '',
       numero: db.numero || '',
       bairro: db.bairro || '',
-      cidade: db.cidade,
+      cidade: db.cidade || '',
       uf: db.uf,
       cep: db.cep || undefined,
       tipoLocal: db.tipo_local || undefined,
       licenca: db.licenca || undefined,
       observacoes: db.observacoes || undefined,
-      isPadrao: db.is_padrao,
+      isPadrao: Boolean(db.is_padrao),
       createdAt: db.created_at,
       usuarioId: db.usuario_id,
     };
   }
 
-  private mapLocalDescarteToDB(local: Partial<LocalDescarte>): any {
+  private mapLocalDescarteToDB(local: Partial<LocalDescarte>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
+    const ruaCombinada =
+      local.rua !== undefined
+        ? local.numero && !local.rua.includes(local.numero)
+          ? `${local.rua}, ${local.numero}`
+          : local.rua
+        : undefined;
+
     const mappings: Array<[keyof LocalDescarte, string]> = [
-      ['nome', 'nome'], ['cnpj', 'cnpj'], ['telefone', 'telefone'],
-      ['rua', 'rua'], ['numero', 'numero'], ['bairro', 'bairro'],
-      ['cidade', 'cidade'], ['uf', 'uf'], ['cep', 'cep'],
-      ['tipoLocal', 'tipo_local'], ['licenca', 'licenca'],
-      ['observacoes', 'observacoes'], ['isPadrao', 'is_padrao'],
+      ['nome', 'nome'],
+      ['cnpj', 'cnpj'],
+      ['telefone', 'telefone'],
+      ['bairro', 'bairro'],
+      ['cidade', 'cidade'],
+      ['uf', 'uf'],
+      ['cep', 'cep'],
+      ['tipoLocal', 'tipo_local'],
+      ['licenca', 'licenca'],
+      ['isPadrao', 'is_padrao'],
     ];
+
+    if (ruaCombinada !== undefined) {
+      result.rua = ruaCombinada;
+    }
+
     mappings.forEach(([source, target]) => {
       if (local[source] !== undefined) result[target] = local[source];
     });
@@ -508,7 +559,7 @@ export class CTRService {
       data: db.data,
       horaSaida: db.hora_saida,
       tipoOperacao: db.tipo_operacao,
-      
+
       origemCep: db.origem_cep || '',
       origemEndereco: db.origem_endereco,
       origemBairro: db.origem_bairro || '',
@@ -517,7 +568,7 @@ export class CTRService {
       origemResponsavel: db.origem_responsavel || '',
       origemTelefone: db.origem_telefone || '',
       origemObservacao: db.origem_observacao || '',
-      
+
       geradorNome: db.gerador_nome,
       geradorCpfCnpj: db.gerador_cpf_cnpj,
       geradorCep: db.gerador_cep || '',
@@ -527,18 +578,16 @@ export class CTRService {
       geradorUF: db.gerador_uf || undefined,
       geradorResponsavel: db.gerador_responsavel || '',
       geradorTelefone: db.gerador_telefone || '',
-      
-      // Transportador - campos que existem na tabela
+
       transportadorNome: db.transportador_nome,
       transportadorCpfCnpj: db.transportador_cpf_cnpj,
       transportadorInscricao: db.transportador_inscricao || undefined,
-      // Campos que NÃO existem na tabela - usar string vazia
       transportadorMotorista: db.transportador_motorista || '',
       transportadorPlaca: db.transportador_placa || '',
       transportadorTipoVeiculo: db.transportador_tipo_veiculo || '',
       transportadorLicenca: db.transportador_licenca || '',
       transportadorTelefone: db.transportador_telefone || '',
-      
+
       destinatarioNome: db.destinatario_nome,
       destinatarioCpfCnpj: db.destinatario_cpf_cnpj || '',
       destinatarioEndereco: db.destinatario_endereco,
@@ -547,15 +596,14 @@ export class CTRService {
       destinatarioUF: db.destinatario_uf,
       destinatarioTipoLocal: db.destinatario_tipo_local || undefined,
       destinatarioLicenca: db.destinatario_licenca || '',
-      
+
       residuoClasse: db.residuo_classe || undefined,
       residuoDescricao: db.residuo_descricao,
       residuoAcondicionamento: db.residuo_acondicionamento || '',
       residuoQuantidade: db.residuo_quantidade,
       residuoUnidade: db.residuo_unidade,
-      
-      // Declarações - campos que existem na tabela
-      declaracaoGeradorNome: '', // Campo não existe na tabela
+
+      declaracaoGeradorNome: '',
       declaracaoGeradorAssinatura: undefined,
       declaracaoTransportadorNome: db.declaracao_transportador_nome || '',
       declaracaoTransportadorAssinatura: db.declaracao_transportador_assinatura || undefined,
@@ -564,7 +612,7 @@ export class CTRService {
       declaracaoRecebedorDataHora: db.declaracao_recebedor_data_hora || undefined,
       declaracaoRecebedorCarimbo: db.declaracao_recebedor_carimbo || undefined,
       declaracaoRecebedorObservacao: db.declaracao_recebedor_observacao || undefined,
-      
+
       status: db.status,
       createdAt: db.created_at,
       updatedAt: db.updated_at,
@@ -573,16 +621,19 @@ export class CTRService {
   }
 
   private mapDBToCTRItem(db: any): CTRItem {
+    const snap = db.snapshot || db.snapshot_dados || {};
     return {
       id: db.id,
       ctrId: db.ctr_id,
-      aluguelId: db.aluguel_id,
-      clienteId: db.cliente_id,
-      snapshotClienteNome: db.snapshot_dados?.clienteNome || '',
-      snapshotClienteCpfCnpj: db.snapshot_dados?.clienteCpfCnpj || '',
-      snapshotEnderecoObra: db.snapshot_dados?.enderecoObra || '',
-      snapshotDataRetirada: db.snapshot_dados?.dataRetirada || '',
+      aluguelId: db.aluguel_id || snap.aluguelId || '',
+      clienteId: db.cliente_id || snap.clienteId || '',
+      snapshotClienteNome: snap.clienteNome || '',
+      snapshotClienteCpfCnpj: snap.clienteCpfCnpj || '',
+      snapshotEnderecoObra: snap.enderecoObra || '',
+      snapshotDataRetirada: snap.dataRetirada || '',
       createdAt: db.created_at,
     };
   }
 }
+
+export { CTRSchema, CTRItemSchema, LocalDescarteSchema };

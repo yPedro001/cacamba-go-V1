@@ -1,218 +1,130 @@
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
-@import 'leaflet/dist/leaflet.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: #f8fafc;
-    --foreground: #020617;
-    --card: #ffffff;
-    --card-foreground: #020617;
-    --popover: #ffffff;
-    --popover-foreground: #020617;
-    --primary: #6366f1;
-    --primary-foreground: #ffffff;
-    --secondary: #f1f5f9;
-    --secondary-foreground: #0f172a;
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b;
-    --accent: #6366f1;
-    --accent-foreground: #ffffff;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --border: #cbd5e1;
-    --input: #cbd5e1;
-    --ring: #6366f1;
+    --z-base: 1;
+    --z-raised: 10;
+    --z-map-overlay: 100;
+    --z-sticky: 200;
+    --z-nav: 300;
+    --z-dropdown: 350;
+    --z-modal: 400;
+    --z-confirm: 450;
+    --z-toast: 500;
+
+    /* Light Mode — "Concreto Diurno" (Legibilidade sob sol / escritório) */
+    --background: 36 22% 95%;
+    --foreground: 28 14% 12%;
+
+    --card: 40 30% 98%;
+    --card-foreground: 28 14% 12%;
+
+    --popover: 40 30% 98%;
+    --popover-foreground: 28 14% 12%;
+
+    --primary: 24 85% 42%;
+    --primary-foreground: 40 30% 98%;
+
+    --secondary: 36 16% 89%;
+    --secondary-foreground: 28 14% 16%;
+
+    --muted: 36 16% 89%;
+    --muted-foreground: 30 10% 34%;
+
+    --accent: 24 85% 42%;
+    --accent-foreground: 40 30% 98%;
+
+    --destructive: 3 72% 43%;
+    --destructive-foreground: 40 30% 98%;
+
+    --border: 36 13% 79%;
+    --input: 35 12% 66%;
+    --ring: 214 82% 41%;
     --radius: 0.75rem;
-    
-    /* Leaflet Map Theme Variables */
-    --map-background: #f8fafc;
-    --map-popup-bg: #ffffff;
-    --map-popup-text: #1e2937;
-    --map-popup-border: #e2e8f0;
-    --map-popup-header-bg: #f1f5f9;
-    --user-pin: #3b82f6;
-    --user-pin-ring: #60a5fa;
-    
-    /* Scrollbar Theme Variables */
-    --scrollbar-thumb: #94a3b8;
-    --scrollbar-thumb-hover: #64748b;
+
+    /* Semânticos operacionais */
+    --status-success-bg: 149 52% 93%;
+    --status-success-ink: 151 68% 26%;
+    --status-info-bg: 213 78% 95%;
+    --status-info-ink: 214 72% 38%;
+    --status-warning-bg: 41 88% 92%;
+    --status-warning-ink: 35 100% 27%;
+    --status-danger-bg: 4 82% 95%;
+    --status-danger-ink: 3 72% 42%;
   }
 
   .dark {
-    --background: #020617;
-    --foreground: #f8fafc;
-    --card: #0f172a;
-    --card-foreground: #f8fafc;
-    --popover: #0f172a;
-    --popover-foreground: #f8fafc;
-    --primary: #818cf8;
-    --primary-foreground: #ffffff;
-    --secondary: #1e293b;
-    --secondary-foreground: #f8fafc;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    --accent: #818cf8;
-    --accent-foreground: #ffffff;
-    --destructive: #f87171;
-    --destructive-foreground: #ffffff;
-    --border: #334155;
-    --input: #334155;
-    --ring: #818cf8;
-    
-    /* Leaflet Map Theme Variables - Dark */
-    --map-background: #0f172a;
-    --map-popup-bg: #1e293b;
-    --map-popup-text: #f8fafc;
-    --map-popup-border: #334155;
-    --map-popup-header-bg: #0f172a;
-    --user-pin: #60a5fa;
-    --user-pin-ring: #3b82f6;
-    
-    /* Scrollbar Theme Variables - Dark */
-    --scrollbar-thumb: #475569;
-    --scrollbar-thumb-hover: #64748b;
-  }
-}
+    /* Dark Mode — "Grafite Noturno" (Cabine / pátio / baixa fadiga visual) */
+    --background: 30 10% 9%;
+    --foreground: 38 18% 93%;
 
-@layer base {
+    --card: 30 10% 13%;
+    --card-foreground: 38 18% 93%;
+
+    --popover: 30 10% 13%;
+    --popover-foreground: 38 18% 93%;
+
+    --primary: 31 89% 54%;
+    --primary-foreground: 28 20% 9%;
+
+    --secondary: 30 9% 18%;
+    --secondary-foreground: 38 18% 90%;
+
+    --muted: 30 9% 18%;
+    --muted-foreground: 34 10% 66%;
+
+    --accent: 31 89% 54%;
+    --accent-foreground: 28 20% 9%;
+
+    --destructive: 5 86% 68%;
+    --destructive-foreground: 28 20% 9%;
+
+    --border: 30 8% 25%;
+    --input: 30 8% 34%;
+    --ring: 204 90% 65%;
+
+    /* Semânticos operacionais Dark */
+    --status-success-bg: 151 35% 16%;
+    --status-success-ink: 151 56% 60%;
+    --status-info-bg: 213 46% 18%;
+    --status-info-ink: 212 95% 71%;
+    --status-warning-bg: 37 49% 15%;
+    --status-warning-ink: 40 90% 61%;
+    --status-danger-bg: 5 42% 17%;
+    --status-danger-ink: 5 92% 71%;
+  }
+
   * {
     @apply border-border;
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   }
+
+  html {
+    overflow-x: clip;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    @apply bg-background text-foreground antialiased font-sans;
+    overflow-x: clip;
+    min-height: 100dvh;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display), system-ui, sans-serif;
+    font-style: normal;
   }
 }
 
-/* ==========================================================================
-   Leaflet Map Custom Markers & Popups
-   ========================================================================== */
-
-.cacamba-marker-pin {
-  width: 100%;
-  height: 100%;
-  border-radius: 6px;
-  background-color: var(--pin-bg);
-  border: 2px solid var(--pin-ring);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  white-space: nowrap;
-  font-size: 11px;
-  font-weight: 800;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-  position: relative;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.cacamba-marker-pin::after {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 6px solid var(--pin-ring);
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
-.cacamba-blink {
-  animation: blinkFast 1s infinite alternate;
-}
-@keyframes blinkFast {
-  0% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 rgba(239,68,68,0); }
-  100% { opacity: 0.8; transform: scale(1.05); box-shadow: 0 0 15px rgba(239,68,68,0.8); }
-}
-
-.user-pin {
-  width: 20px;
-  height: 20px;
-  background: var(--user-pin);
-  border: 3px solid white;
-  border-radius: 50%;
-  box-shadow: 0 0 10px rgba(59,130,246,0.8);
-  position: relative;
-}
-.user-pin-ring {
-  position: absolute;
-  top: -10px; left: -10px; right: -10px; bottom: -10px;
-  border: 2px solid var(--user-pin-ring);
-  border-radius: 50%;
-  animation: pingUser 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-@keyframes pingUser {
-  75%, 100% { transform: scale(1.5); opacity: 0; }
-}
-
-/* Custom Popup Styles inside Leaflet */
-.cacamba-popup .leaflet-popup-content-wrapper {
-  padding: 0;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.25) !important;
-}
-.cacamba-popup .leaflet-popup-content {
-  margin: 0 !important;
-}
-.cacamba-popup-inner {
-  display: flex;
-  flex-direction: column;
-  color: var(--map-popup-text);
-  font-family: inherit;
-  width: 100%;
-}
-.popup-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  background: var(--map-popup-header-bg);
-  border-bottom: 1px solid var(--map-popup-border);
-}
-.popup-code {
-  font-size: 1.1rem;
-  color: var(--map-popup-text);
-}
-.popup-status-badge {
-  color: white;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  font-weight: 800;
-  padding: 3px 8px;
-  border-radius: 12px;
-}
-/* Estilos Globais Premium */
-@layer utilities {
-  .glass {
-    @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/20 dark:border-slate-800/20 shadow-xl;
-  }
-  
-  .glass-dark {
-    @apply bg-slate-950/40 backdrop-blur-xl border border-white/5 shadow-2xl;
-  }
-
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500;
-  }
-  
-  /* Premium dark surfaces - Design decision: these are intentionally dark for visual hierarchy */
-  .premium-dark {
-    @apply bg-slate-900 text-white;
-  }
-  .premium-dark-surface {
-    @apply bg-slate-900/50 text-white;
-  }
-}
-
-/* Scrollbar Customizada */
+/* Customização segura da barra de rolagem */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -221,60 +133,123 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 9999px;
-  transition: background-color 0.2s;
+  @apply bg-muted-foreground/30 rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
+  @apply bg-muted-foreground/50;
 }
 
-/* Animações de Entrada */
-.animate-in {
-  animation-duration: 0.5s;
-  animation-fill-mode: both;
-  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+/* Anel de foco acessível zero-shift */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
-.fade-in { animation-name: fadeIn; }
-.slide-up { animation-name: slideUp; }
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+/* ===== ESTILOS DO MAPA LEAFLET ===== */
+.cacamba-marker-pin {
+  min-width: 56px;
+  height: 30px;
+  background: var(--pin-bg, #57534E);
+  border: 2px solid var(--pin-ring, #44403C);
+  border-radius: 9px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono), monospace;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  position: relative;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.cacamba-marker-pin::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid var(--pin-ring, #44403C);
 }
 
-/* Melhorias no Leaflet */
-.leaflet-container {
-  @apply font-sans !important;
-  background-color: var(--map-background) !important;
-  z-index: 1 !important;
-  height: 100% !important;
-  width: 100% !important;
+.cacamba-marker-pin:hover {
+  transform: translateY(-2px);
 }
 
-.leaflet-pane {
+@keyframes cacamba-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(196, 43, 34, 0.55), 0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(196, 43, 34, 0), 0 4px 12px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.cacamba-blink {
+  animation: cacamba-pulse 1.8s infinite;
+}
+
+.user-pin {
+  width: 18px;
+  height: 18px;
+  background: #1d5fb8;
+  border: 3px solid #faf8f5;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(29, 95, 184, 0.55);
+  position: relative;
+}
+
+.user-pin-ring {
+  position: absolute;
+  inset: -6px;
+  border: 2px solid #1d5fb8;
+  border-radius: 50%;
+  opacity: 0.45;
+}
+
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+  border: 1px solid hsl(var(--border));
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+}
+
+.leaflet-popup-tip {
+  background: hsl(var(--card)) !important;
+}
+
+.leaflet-popup-close-button {
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: 18px !important;
+  padding: 6px 8px !important;
   z-index: 10 !important;
 }
 
-.leaflet-tile-pane {
-  opacity: 1 !important;
-  visibility: visible !important;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
-.leaflet-tile {
-  filter: none !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-.cacamba-marker-pin {
-  @apply transition-transform duration-200 hover:scale-125 items-center justify-center font-black !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
-  z-index: 1000 !important;
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }

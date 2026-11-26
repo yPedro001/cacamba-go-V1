@@ -1,128 +1,157 @@
-import React, { useState, useRef } from 'react'
-import { Bell, Check, X, Trash2, CalendarClock } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useAppStore } from '@/store/useAppStore'
-import { Button } from '@/components/ui/button'
+"use client";
+import React, { useState, useRef, useEffect } from "react";
+import { Bell, CheckCheck, Trash2, AlertTriangle, Info, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/store/useAppStore";
+import { Notificacao } from "@/store/slices/ui-slice";
+import { cn } from "@/lib/utils";
+import { formatDateTimeBR } from "@/lib/domain-helpers";
 
 export function NotificationBell() {
-  const router = useRouter()
-  const { notificacoes, marcarNotificacaoLida, marcarTodasLidas } = useAppStore()
-  const [isOpen, setIsOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const [isOpen, setIsOpen] = useState(false);
+  const notificacoes = useAppStore((s) => s.notificacoes);
+  const marcarNotificacaoLida = useAppStore((s) => s.marcarNotificacaoLida);
+  const marcarTodasLidas = useAppStore((s) => s.marcarTodasLidas);
+  const removeNotificacao = useAppStore((s) => s.removeNotificacao);
 
-  const unreadCount = notificacoes.filter(n => !n.lida).length
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const unreadCount = notificacoes.filter((n) => !n.lida).length;
+  const visibleNotifs = notificacoes.slice(0, 30);
 
-  // Fechar ao clicar fora do componente
-  const handleClickOutside = (event: MouseEvent) => {
-    if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-      setIsOpen(false)
-    }
-  }
-
-  // Adicionar/remover listener
-  React.useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen])
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
-  const handleNotificacaoClick = (id: string, locacaoId?: string) => {
-    marcarNotificacaoLida(id)
-    setIsOpen(false)
-    if (locacaoId) {
-      router.push(`/alugueis?highlightId=${locacaoId}`)
+  const getIcon = (n: Notificacao) => {
+    if (n.tipo === "error") {
+      return <AlertTriangle className="h-4 w-4 text-status-danger-ink shrink-0" aria-hidden="true" />;
     }
-  }
+    if (n.tipo === "warning") {
+      return <Clock className="h-4 w-4 text-status-warning-ink shrink-0" aria-hidden="true" />;
+    }
+    return <Info className="h-4 w-4 text-status-info-ink shrink-0" aria-hidden="true" />;
+  };
 
   return (
-    <div className="relative" ref={containerRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted"
-        aria-label="Notificações"
+    <div ref={wrapperRef} className="relative">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        onClick={() => setIsOpen((v) => !v)}
+        aria-label={
+          unreadCount > 0
+            ? `Notificações (${unreadCount} não lidas)`
+            : "Notificações"
+        }
+        aria-expanded={isOpen}
+        className="relative rounded-lg border-border bg-card hover:bg-muted"
       >
-        <Bell size={20} />
+        <Bell className="h-[18px] w-[18px] text-foreground" aria-hidden="true" />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-background animate-pulse">
-            {unreadCount > 9 ? '9+' : unreadCount}
+          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-primary text-primary-foreground text-[11px] font-bold tabular-nums flex items-center justify-center border-2 border-card">
+            {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
-      </button>
+      </Button>
 
       {isOpen && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-          <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-xl border border-border bg-card shadow-2xl z-50 overflow-hidden ring-1 ring-black/5">
-            <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
-              <h3 className="font-bold text-sm">Notificações</h3>
+        <div
+          role="dialog"
+          aria-label="Central de notificações"
+          className="fixed inset-x-3 top-16 sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:mt-2 sm:w-96 z-[350] rounded-xl border border-border bg-popover text-popover-foreground shadow-xl overflow-hidden"
+        >
+          <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-muted/40">
+            <div className="flex items-center gap-2 min-w-0">
+              <h4 className="text-sm font-semibold text-foreground">Notificações</h4>
               {unreadCount > 0 && (
-                <button
-                  onClick={marcarTodasLidas}
-                  className="text-xs font-semibold text-accent hover:text-accent-dark transition-colors flex items-center gap-1"
-                >
-                  <Check size={14} /> Marcar todas lidas
-                </button>
+                <span className="rounded-md bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums">
+                  {unreadCount} novas
+                </span>
               )}
             </div>
-            
-            <div className="max-h-[350px] overflow-y-auto">
-              {notificacoes.length === 0 ? (
-                <div className="p-6 text-center text-muted-foreground flex flex-col items-center">
-                  <Bell className="h-8 w-8 text-muted/50 mb-2" />
-                  <p className="text-sm">Nenhuma notificação</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {notificacoes.slice(0, 50).map((not) => (
-                    <div
-                      key={not.id}
-                      onClick={() => handleNotificacaoClick(not.id, not.locacaoId)}
-                      className={`flex gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
-                        !not.lida ? 'bg-primary/5' : ''
-                      }`}
-                    >
-                      <div className="mt-0.5">
-                        <div className={`p-1.5 rounded-full ${!not.lida ? 'bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-muted text-muted-foreground'}`}>
-                          <CalendarClock size={16} />
-                        </div>
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-start justify-between gap-1">
-                          <p className={`text-sm ${!not.lida ? 'font-bold' : 'font-medium'}`}>
-                            {not.titulo}
-                          </p>
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            {new Date(not.dataCriacao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                          </span>
-                        </div>
-                        <p className={`text-xs ${!not.lida ? 'text-foreground font-medium' : 'text-muted-foreground'} line-clamp-2 leading-relaxed`}>
-                          {not.mensagem}
-                        </p>
-                      </div>
-                      {!not.lida && (
-                        <div className="flex-shrink-0 flex items-center justify-center">
-                          <div className="h-2 w-2 rounded-full bg-accent"></div>
-                        </div>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={marcarTodasLidas}
+                className="inline-flex min-h-[36px] items-center gap-1 rounded-md px-2 text-xs font-semibold text-primary hover:bg-primary/10 whitespace-nowrap transition-colors"
+              >
+                <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                Marcar lidas
+              </button>
+            )}
+          </div>
+
+          <div className="max-h-[65dvh] sm:max-h-96 overflow-y-auto divide-y divide-border/60">
+            {visibleNotifs.length === 0 ? (
+              <div className="py-10 px-4 text-center space-y-1">
+                <Bell className="h-7 w-7 mx-auto text-muted-foreground/50" aria-hidden="true" />
+                <p className="text-sm font-medium text-muted-foreground">
+                  Nenhum alerta pendente no momento.
+                </p>
+              </div>
+            ) : (
+              visibleNotifs.map((n) => (
+                <div
+                  key={n.id}
+                  className={cn(
+                    "flex items-start gap-3 px-4 py-3 transition-colors",
+                    !n.lida ? "bg-primary/5" : "bg-transparent opacity-80"
+                  )}
+                >
+                  <div className="mt-0.5">{getIcon(n)}</div>
+                  <button
+                    type="button"
+                    onClick={() => !n.lida && marcarNotificacaoLida(n.id)}
+                    className="flex-1 min-w-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring rounded"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-foreground truncate">
+                        {n.titulo}
+                      </span>
+                      {!n.lida && (
+                        <span
+                          className="h-2 w-2 rounded-full bg-primary shrink-0"
+                          aria-label="Não lida"
+                        />
                       )}
                     </div>
-                  ))}
+                    {n.mensagem && (
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                        {n.mensagem}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground/80 mt-1 tabular-nums">
+                      {formatDateTimeBR(n.dataCriacao, "")}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeNotificacao(n.id)}
+                    aria-label={`Remover alerta ${n.titulo}`}
+                    className="h-8 w-8 shrink-0 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
                 </div>
-              )}
-            </div>
-            <div className="border-t border-border bg-muted/20 p-2 text-center">
-              <button 
-                onClick={() => setIsOpen(false)}
-                className="text-xs text-muted-foreground hover:text-foreground font-medium w-full py-1"
-              >
-                Fechar
-              </button>
-            </div>
+              ))
+            )}
           </div>
-        </>
+        </div>
       )}
     </div>
-  )
+  );
 }

@@ -82,7 +82,7 @@ export default function DocumentacoesPage() {
             </CardHeader>
             <CardContent className="px-8 pb-8 space-y-6">
                <p className="text-sm text-muted-foreground font-medium leading-relaxed italic border-l-2 border-accent/20 pl-4">
-                 "{m.desc}"
+                 &ldquo;{m.desc}&rdquo;
                </p>
                <div className="space-y-2">
                   <p className="text-[10px] font-black uppercase tracking-widest text-accent/60">Principais Recursos</p>

@@ -1,44 +1,65 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useClientes, useConfiguracoes } from '@/store/useAppStore';
+import { useClientes, useConfiguracoes, useLocacoes } from '@/store/useAppStore';
 import { Cliente, ClienteEndereco } from '@/core/domain/types';
+import { isLocacaoEncerrada } from '@/core/domain/business-logic';
 import { geocodeService } from '@/infrastructure/api/geocode-service';
 import { useDataActions } from '@/core/application/useDataActions';
 import { exportService } from '@/infrastructure/services/export-service';
+import { getLocalTodayISO } from '@/lib/domain-helpers';
+import { notify } from '@/lib/notificationService';
 
 export function useCustomersController() {
   const clientes = useClientes();
+  const locacoes = useLocacoes();
   const configuracoes = useConfiguracoes();
   const { addCliente, updateCliente, removeCliente } = useDataActions();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentClient, setCurrentClient] = useState<Partial<Cliente>>({});
-  const [savedClient, setSavedClient] = useState<Partial<Cliente>>({}); // Último estado salvo
+  const [savedClient, setSavedClient] = useState<Partial<Cliente>>({});
   const [isCepLoading, setIsCepLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [clientIdToDelete, setClientIdToDelete] = useState<string | null>(null);
 
-  // Estado para gerenciar múltiplos endereços no formulário
   const [enderecosForm, setEnderecosForm] = useState<Partial<ClienteEndereco>[]>([]);
   const [savedEnderecos, setSavedEnderecos] = useState<Partial<ClienteEndereco>[]>([]);
-
-  // Estado para o diálogo de confirmação
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
 
-  const filteredClientes = (clientes || [])
-    .filter(c => {
-      const nome = c?.nome?.toLowerCase() || '';
-      const search = searchTerm.toLowerCase();
-      const telefone = c?.telefone || '';
-      const enderecoLegado = c?.endereco?.toLowerCase() || '';
-      
-      return nome.includes(search) || 
-             telefone.includes(searchTerm) ||
-             enderecoLegado.includes(search) ||
-             (c?.enderecos?.some(e => e.rua?.toLowerCase().includes(search)) ?? false);
-    })
-    .sort((a, b) => (b.dataCadastro || '').localeCompare(a.dataCadastro || ''));
+  const filteredClientes = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    const qDigits = searchTerm.replace(/\D/g, '');
+    return (clientes || [])
+      .filter((c) => {
+        if (!q) return true;
+        const nome = c?.nome?.toLowerCase() || '';
+        const email = c?.email?.toLowerCase() || '';
+        const doc = c?.cpfCnpj?.toLowerCase() || '';
+        const docDigits = (c?.cpfCnpj || '').replace(/\D/g, '');
+        const tel = c?.telefone || '';
+        const telDigits = tel.replace(/\D/g, '');
+        const endLegado = c?.endereco?.toLowerCase() || '';
+
+        return (
+          nome.includes(q) ||
+          email.includes(q) ||
+          doc.includes(q) ||
+          (qDigits.length >= 2 && (docDigits.includes(qDigits) || telDigits.includes(qDigits))) ||
+          tel.includes(searchTerm) ||
+          endLegado.includes(q) ||
+          (c?.enderecos?.some(
+            (e) =>
+              e.rua?.toLowerCase().includes(q) ||
+              e.cidade?.toLowerCase().includes(q) ||
+              e.nome?.toLowerCase().includes(q)
+          ) ??
+            false)
+        );
+      })
+      .sort((a, b) => (b.dataCadastro || '').localeCompare(a.dataCadastro || ''));
+  }, [clientes, searchTerm]);
 
   const handleOpenModal = useCallback((cliente?: Cliente) => {
     if (cliente) {
@@ -160,39 +181,94 @@ export function useCustomersController() {
   };
 
   const saveClient = () => {
-    if (!currentClient.nome || !currentClient.telefone) {
-      alert("Nome e Telefone são obrigatórios.");
+    setFormError(null);
+    const nomeTrimmed = (currentClient.nome || '').trim();
+    const telefoneTrimmed = (currentClient.telefone || '').trim();
+    if (nomeTrimmed.length < 2 || !telefoneTrimmed) {
+      const msg = 'Informe o Nome completo (mín. 2 caracteres) e o Telefone do cliente.';
+      setFormError(msg);
+      notify.error(msg);
       return;
     }
 
-    // Validação mínima de endereços
-    const enderecosValidos = enderecosForm.filter(e => e.nome && e.rua && e.cidade) as ClienteEndereco[];
-    
-    // Manter o campo endereco legado como o primeiro endereço para compatibilidade
-    const legacyEndereco = enderecosValidos[0] 
-      ? `${enderecosValidos[0].rua}, ${enderecosValidos[0].numero || 'S/N'} - ${enderecosValidos[0].cidade} - ${enderecosValidos[0].cep || ''}`
-      : '';
+    const docDigits = (currentClient.cpfCnpj || '').replace(/\D/g, '');
+    if (docDigits.length > 0 && docDigits.length !== 11 && docDigits.length !== 14) {
+      const msg = 'CPF deve ter 11 dígitos ou CNPJ deve ter 14 dígitos.';
+      setFormError(msg);
+      notify.error(msg);
+      return;
+    }
 
-    const payload = { 
-      ...currentClient, 
+    if (docDigits.length >= 11) {
+      const duplicate = clientes.find(
+        (c) => c.id !== currentClient.id && (c.cpfCnpj || '').replace(/\D/g, '') === docDigits
+      );
+      if (duplicate) {
+        const msg = `Já existe outro cliente cadastrado com este CPF/CNPJ (${duplicate.nome}).`;
+        setFormError(msg);
+        notify.error(msg);
+        return;
+      }
+    }
+
+    // Preserva endereços preenchidos sem descartar silenciosamente por falta de apelido
+    const incompleteAddress = enderecosForm.find((e) => (e.rua?.trim() || e.cep?.trim()) && !e.cidade?.trim());
+    if (incompleteAddress) {
+      const msg = 'Preencha a Cidade para todos os endereços informados.';
+      setFormError(msg);
+      notify.error(msg);
+      return;
+    }
+
+    const enderecosValidos = enderecosForm
+      .filter((e) => e.rua?.trim() && e.cidade?.trim())
+      .map((e, idx) => ({
+        id: e.id || crypto.randomUUID(),
+        nome: e.nome?.trim() || (idx === 0 ? 'Principal' : `Obra ${idx + 1}`),
+        rua: e.rua!.trim(),
+        numero: e.numero?.trim() || 'S/N',
+        cidade: e.cidade!.trim(),
+        cep: e.cep?.trim() || '',
+        lat: e.lat,
+        lng: e.lng,
+      })) as ClienteEndereco[];
+
+    const legacyEndereco = enderecosValidos[0]
+      ? `${enderecosValidos[0].rua}, ${enderecosValidos[0].numero || 'S/N'} - ${enderecosValidos[0].cidade} - ${enderecosValidos[0].cep || ''}`
+      : currentClient.endereco || '';
+
+    const payload = {
+      ...currentClient,
+      nome: nomeTrimmed,
+      telefone: telefoneTrimmed,
       enderecos: enderecosValidos,
-      endereco: legacyEndereco // Snapshot para compatibilidade
+      endereco: legacyEndereco,
     } as Cliente;
 
     if (isEditing && currentClient.id) {
       updateCliente(currentClient.id, payload);
     } else {
-      addCliente({ ...payload, id: Date.now().toString(), dataCadastro: new Date().toISOString().split('T')[0] });
+      addCliente({
+        ...payload,
+        id: crypto.randomUUID(),
+        dataCadastro: getLocalTodayISO(),
+      });
     }
-    
-    // Salva o estado como "último salvo" após sucesso
-    setSavedClient(currentClient);
-    setSavedEnderecos(enderecosForm);
-    
-    handleCloseModal(true); // Force close após salvar
+
+    setSavedClient(payload);
+    setSavedEnderecos(enderecosValidos);
+    handleCloseModal(true);
   };
 
   const deleteClient = (id: string) => {
+    const activeRentals = locacoes.filter((l) => l.clienteId === id && !isLocacaoEncerrada(l.status));
+    if (activeRentals.length > 0) {
+      notify.error(
+        `Este cliente possui ${activeRentals.length} locação(ões) ativa(s). Encerre ou cancele antes de excluir.`
+      );
+      return;
+    }
+
     if (configuracoes.pularConfirmacaoExclusao) {
       removeCliente(id);
     } else {
@@ -209,40 +285,51 @@ export function useCustomersController() {
     }
   };
 
-  const exportPDF = () => {
-    exportService.exportPDF({
-      title: 'Relatório Geral de Clientes',
-      filename: `clientes_cacambago_${Date.now()}`,
-      headers: ['Nome', 'Documento', 'Telefone', 'E-mail', 'Endereços'],
-      data: filteredClientes.map(c => [
-        c.nome,
-        c.cpfCnpj || '-',
-        c.telefone || '-',
-        c.email || '-',
-        (c.enderecos || []).map(e => `${e.nome}: ${e.rua}, ${e.numero}`).join(' | ') || (c.endereco ? `Legado: ${c.endereco}` : '-')
-      ])
-    });
+  const exportPDF = async () => {
+    try {
+      await exportService.exportPDF({
+        title: 'Relatório Geral de Clientes',
+        filename: `clientes_cacambago_${Date.now()}`,
+        headers: ['Nome', 'Documento', 'Telefone', 'E-mail', 'Endereços'],
+        data: filteredClientes.map((c) => [
+          c.nome,
+          c.cpfCnpj || '-',
+          c.telefone || '-',
+          c.email || '-',
+          (c.enderecos || []).map((e) => `${e.nome}: ${e.rua}, ${e.numero}`).join(' | ') ||
+            (c.endereco ? c.endereco : '-'),
+        ]),
+      });
+    } catch {
+      notify.error('Falha ao gerar o PDF de clientes.');
+    }
   };
 
   const exportExcel = async () => {
-    await exportService.exportExcel({
-      title: 'Clientes CaçambaGo',
-      filename: `clientes_excel_${Date.now()}`,
-      headers: ['Nome', 'CPF/CNPJ', 'Telefone', 'E-mail', 'Qtd Endereços'],
-      data: filteredClientes.map(c => [
-        c.nome,
-        c.cpfCnpj || '',
-        c.telefone || '',
-        c.email || '',
-        (c.enderecos?.length || (c.endereco ? 1 : 0)).toString()
-      ])
-    });
+    try {
+      await exportService.exportExcel({
+        title: 'Clientes CaçambaGo',
+        filename: `clientes_excel_${Date.now()}`,
+        headers: ['Nome', 'CPF/CNPJ', 'Telefone', 'E-mail', 'Qtd Endereços'],
+        data: filteredClientes.map((c) => [
+          c.nome,
+          c.cpfCnpj || '',
+          c.telefone || '',
+          c.email || '',
+          (c.enderecos?.length || (c.endereco ? 1 : 0)).toString(),
+        ]),
+      });
+    } catch {
+      notify.error('Falha ao gerar a planilha Excel de clientes.');
+    }
   };
 
   return {
     filteredClientes,
     searchTerm,
     setSearchTerm,
+    formError,
+    setFormError,
     isModalOpen,
     handleOpenModal,
     handleCloseModal,
@@ -262,7 +349,6 @@ export function useCustomersController() {
     updateEnderecoField,
     exportPDF,
     exportExcel,
-    // Novos: proteção contra alterações não salvas
     hasUnsavedChanges,
     showUnsavedConfirm,
     confirmCloseModal,

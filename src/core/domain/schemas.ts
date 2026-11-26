@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const StatusHistoricoEntrySchema = z.object({
   status: z.string(),
-  data: z.string().datetime() || z.string(), // ISO string
+  data: z.string().min(1), // ISO string ou data legada
   usuario: z.string(),
   motivo: z.string().optional(),
 });
@@ -68,6 +68,7 @@ export const LocacaoSchema = z.object({
   taxaCartaoPercent: z.number().optional().default(0),
   valorTaxa: z.number().optional().default(0),
   valorLiquido: z.number().optional().default(0),
+  observacoes: z.string().optional(),
   dataPagamento: z.string().optional().nullable(),
   parcelas: z.number().min(1).max(12).optional().default(1),
   jurosPercent: z.number().optional().default(0),
@@ -88,7 +89,14 @@ export const PerfilSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   endereco: z.string().optional(),
   chavePix: z.string().optional(),
-  logoUrl: z.string().url().optional().nullable(),
+  logoUrl: z
+    .string()
+    .refine(
+      (val) => !val || /^https?:\/\//i.test(val) || /^data:image\//i.test(val),
+      'URL ou DataURL de imagem inválido'
+    )
+    .optional()
+    .nullable(),
   lat: z.number().optional(),
   lng: z.number().optional(),
   padroes: z.object({

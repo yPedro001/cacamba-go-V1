@@ -53,7 +53,7 @@ export function maskCurrencySmart(rawInput: string): string {
   if (!rawInput) return '';
 
   // Remove R$, espaços e qualquer caractere que não seja dígito, vírgula ou ponto
-  let clean = rawInput.replace(/[R$\s]/g, '');
+  const clean = rawInput.replace(/[R$\s]/g, '');
 
   // Se contém vírgula (separador decimal)
   if (clean.includes(',')) {

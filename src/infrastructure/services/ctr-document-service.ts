@@ -1,6 +1,7 @@
 import { CTRPayload, CTRFormData, LocalDescarte } from '@/core/domain/ctr-types';
 import { CTRPayloadSchema } from '@/core/domain/ctr-schemas';
 import { Perfil } from '@/core/domain/types';
+import { escapeHtml, formatLocalDateBR } from '@/lib/domain-helpers';
 
 const LABELS_TIPO_OPERACAO: Record<string, string> = {
   coleta: 'Coleta',
@@ -14,9 +15,9 @@ const LABELS_RESIDUO_CLASSE: Record<string, string> = {
   A: 'Classe A - Resíduos de construção civil',
   B: 'Classe B - Resíduos perigosos de outras fontes',
   C: 'Classe C - Resíduos que não podem ser reciclados',
-  D: 'Classe D - Resíduos perigosos ( NCI )',
+  D: 'Classe D - Resíduos perigosos (tintas, solventes, óleos)',
   E: 'Classe E - Resíduos radioativos',
-  F: 'Classe F - Resíduos perigosos ( Ambientes服务业 )',
+  F: 'Classe D / Perigosos (tintas, solventes, óleos e contaminantes)',
   Inerte: 'Classe Inerte - Resíduos que não se degradam',
 };
 
@@ -40,7 +41,6 @@ const LABELS_UNIDADE: Record<string, string> = {
 function formatCTRNumber(numero: string): string {
   if (!numero) return '-';
   if (numero.startsWith('FALLBACK-')) {
-    // Extrai apenas o timestamp do FALLBACK
     const clean = numero.replace('FALLBACK-', '').split('-')[0];
     return `N°${clean}`;
   }
@@ -51,7 +51,7 @@ const PREFEITURA_LOGO_PATH = '/branding/prefeitura-taboao-da-serra.png';
 
 function toTitleCase(str: string): string {
   if (!str) return '';
-  return str.toLowerCase().replace(/(?:^|\s)\w/g, c => c.toUpperCase());
+  return str.toLowerCase().replace(/(?:^|\s)\w/g, (c) => c.toUpperCase());
 }
 
 export class CTRDocumentService {
@@ -62,11 +62,11 @@ export class CTRDocumentService {
     numeroCTR: string
   ): CTRPayload {
     const nomeEmpresa = perfil.nomeEmpresa || '';
-    
+
     const payload: CTRPayload = {
       identificacao: {
         numero: numeroCTR,
-        data: this.formatDateBR(formData.data),
+        data: formatLocalDateBR(formData.data, formData.data),
         horaSaida: formData.horaSaida,
         tipoOperacao: formData.tipoOperacao,
       },
@@ -87,7 +87,7 @@ export class CTRDocumentService {
         endereco: formData.gerador.endereco || '',
         bairro: undefined,
         cidade: formData.gerador.cidade || '',
-        uf: (formData.gerador.uf || 'SP') as any,
+        uf: (formData.gerador.uf || localDescarte.uf || 'SP') as any,
         responsavel: formData.gerador.responsavel || '',
         telefone: formData.gerador.telefone || '',
       },
@@ -100,11 +100,12 @@ export class CTRDocumentService {
       destinatario: {
         nome: formData.destinatario.nome || localDescarte.nome,
         cpfCnpj: formData.destinatario.cpfCnpj || localDescarte.cnpj || '',
-        endereco: formData.destinatario.endereco || `${localDescarte.rua}${localDescarte.numero ? ', ' + localDescarte.numero : ''}`,
+        endereco:
+          formData.destinatario.endereco ||
+          `${localDescarte.rua}${localDescarte.numero ? ', ' + localDescarte.numero : ''}`,
         bairro: undefined,
         cidade: formData.destinatario.cidade || localDescarte.cidade,
         uf: (formData.destinatario.uf || localDescarte.uf) as any,
-        // Priorizar valor do formulário (edição manual) vs valor do local de descarte
         tipoLocal: formData.destinatario.tipoLocal || localDescarte.tipoLocal || 'outro',
         licenca: formData.destinatario.licenca || localDescarte.licenca || '',
       },
@@ -228,7 +229,7 @@ export class CTRDocumentService {
       th, td { border: 1px solid #9ca8a2; padding: 3px 5px; text-align: left; font-size: 8.5px; line-height: 1.25; }
       th { background: #edf3f0; font-weight: bold; }
       .highlight { background: #fff9dd; }
-      .signature-name { 
+      .signature-name {
         font-family: 'Allura', 'Segoe Script', 'Brush Script MT', cursive;
         font-size: 21px;
         line-height: 1;
@@ -249,18 +250,34 @@ export class CTRDocumentService {
   }
 
   private getDocumentBody(payload: CTRPayload, logoSrc: string = PREFEITURA_LOGO_PATH): string {
+    const e = escapeHtml;
     const empresa = payload.metadados.empresa;
-    const tipoOperacaoLabel = LABELS_TIPO_OPERACAO[payload.identificacao.tipoOperacao] || payload.identificacao.tipoOperacao;
-    const classeLabel = payload.residuo.classe ? LABELS_RESIDUO_CLASSE[payload.residuo.classe] || payload.residuo.classe : '';
-    const tipoLocalLabel = payload.destinatario.tipoLocal ? LABELS_TIPO_LOCAL[payload.destinatario.tipoLocal] || '' : '';
-    const unidadeLabel = LABELS_UNIDADE[payload.residuo.unidade] || payload.residuo.unidade;
-    const numeroFormatado = formatCTRNumber(payload.identificacao.numero);
+    const tipoOperacaoLabel = e(
+      LABELS_TIPO_OPERACAO[payload.identificacao.tipoOperacao] || payload.identificacao.tipoOperacao
+    );
+    const classeLabel = e(
+      payload.residuo.classe ? LABELS_RESIDUO_CLASSE[payload.residuo.classe] || payload.residuo.classe : ''
+    );
+    const tipoLocalLabel = e(
+      payload.destinatario.tipoLocal ? LABELS_TIPO_LOCAL[payload.destinatario.tipoLocal] || '' : ''
+    );
+    const unidadeLabel = e(LABELS_UNIDADE[payload.residuo.unidade] || payload.residuo.unidade);
+    const numeroFormatado = e(formatCTRNumber(payload.identificacao.numero));
+    const safeLogoSrc = e(logoSrc);
+    const assinaturaTransportador = e(
+      toTitleCase(payload.declaracoes.transportador.assinatura || payload.metadados.empresa.nome)
+    );
+    const observacoesRecebedor = e(
+      [payload.declaracoes.recebedor.carimbo, payload.declaracoes.recebedor.observacao]
+        .filter(Boolean)
+        .join(' — ')
+    );
 
     return `
     <div class="container">
       <div class="header">
         <div class="institutional-brand">
-          <img src="${logoSrc}" alt="Prefeitura de Taboão da Serra" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <img src="${safeLogoSrc}" alt="Prefeitura de Taboão da Serra" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
           <div class="institutional-name">PREFEITURA DE TABOÃO DA SERRA</div>
         </div>
         <h1>CONTROLE DE TRANSPORTE DE RESÍDUOS - CTR</h1>
@@ -269,8 +286,8 @@ export class CTRDocumentService {
 
       <table>
         <tr>
-          <td style="width: 50%;"><strong>Data:</strong> ${payload.identificacao.data}</td>
-          <td style="width: 25%;"><strong>Hora Saída:</strong> ${payload.identificacao.horaSaida}</td>
+          <td style="width: 50%;"><strong>Data:</strong> ${e(payload.identificacao.data)}</td>
+          <td style="width: 25%;"><strong>Hora Saída:</strong> ${e(payload.identificacao.horaSaida)}</td>
           <td style="width: 25%;"><strong>Operação:</strong> ${tipoOperacaoLabel}</td>
         </tr>
       </table>
@@ -278,27 +295,31 @@ export class CTRDocumentService {
       <div class="section">
         <div class="section-title">1. ORIGEM DO RESÍDUO</div>
         <div class="grid">
-          ${payload.origem.cep ? `
+          ${
+            payload.origem.cep
+              ? `
           <div class="row">
             <div class="cell label">CEP:</div>
-            <div class="cell value">${payload.origem.cep}</div>
+            <div class="cell value">${e(payload.origem.cep)}</div>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
           <div class="row">
             <div class="cell label">Endereço:</div>
-            <div class="cell value">${payload.origem.endereco}</div>
+            <div class="cell value">${e(payload.origem.endereco)}</div>
           </div>
           <div class="row">
             <div class="cell label">Cidade/UF:</div>
-            <div class="cell value">${payload.origem.cidade} / ${payload.origem.uf}</div>
+            <div class="cell value">${e(payload.origem.cidade)} / ${e(payload.origem.uf)}</div>
           </div>
           <div class="row">
             <div class="cell label">Responsável:</div>
-            <div class="cell value">${payload.origem.responsavel || '-'}</div>
+            <div class="cell value">${e(payload.origem.responsavel || '-')}</div>
           </div>
           <div class="row">
             <div class="cell label">Telefone:</div>
-            <div class="cell value">${payload.origem.telefone || '-'}</div>
+            <div class="cell value">${e(payload.origem.telefone || '-')}</div>
           </div>
         </div>
       </div>
@@ -308,33 +329,37 @@ export class CTRDocumentService {
         <div class="grid">
           <div class="row">
             <div class="cell label">Nome/Razão Social:</div>
-            <div class="cell value">${payload.gerador.nome}</div>
+            <div class="cell value">${e(payload.gerador.nome)}</div>
           </div>
           <div class="row">
             <div class="cell label">CPF/CNPJ:</div>
-            <div class="cell value">${payload.gerador.cpfCnpj}</div>
+            <div class="cell value">${e(payload.gerador.cpfCnpj)}</div>
           </div>
-          ${payload.gerador.cep ? `
+          ${
+            payload.gerador.cep
+              ? `
           <div class="row">
             <div class="cell label">CEP:</div>
-            <div class="cell value">${payload.gerador.cep}</div>
+            <div class="cell value">${e(payload.gerador.cep)}</div>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
           <div class="row">
             <div class="cell label">Endereço:</div>
-            <div class="cell value">${payload.gerador.endereco || '-'}</div>
+            <div class="cell value">${e(payload.gerador.endereco || '-')}</div>
           </div>
           <div class="row">
             <div class="cell label">Cidade/UF:</div>
-            <div class="cell value">${payload.gerador.cidade || '-'} / ${payload.gerador.uf || '-'}</div>
+            <div class="cell value">${e(payload.gerador.cidade || '-')} / ${e(payload.gerador.uf || '-')}</div>
           </div>
           <div class="row">
             <div class="cell label">Responsável:</div>
-            <div class="cell value">${payload.gerador.responsavel || '-'}</div>
+            <div class="cell value">${e(payload.gerador.responsavel || '-')}</div>
           </div>
           <div class="row">
             <div class="cell label">Telefone:</div>
-            <div class="cell value">${payload.gerador.telefone || '-'}</div>
+            <div class="cell value">${e(payload.gerador.telefone || '-')}</div>
           </div>
         </div>
       </div>
@@ -344,15 +369,15 @@ export class CTRDocumentService {
         <div class="grid">
           <div class="row">
             <div class="cell label">Empresa:</div>
-            <div class="cell value">${payload.transportador.nome}</div>
+            <div class="cell value">${e(payload.transportador.nome)}</div>
           </div>
           <div class="row">
             <div class="cell label">CNPJ/CPF:</div>
-            <div class="cell value">${payload.transportador.cpfCnpj}</div>
+            <div class="cell value">${e(payload.transportador.cpfCnpj)}</div>
           </div>
           <div class="row">
             <div class="cell label">Telefone:</div>
-            <div class="cell value">${payload.transportador.telefone || '-'}</div>
+            <div class="cell value">${e(payload.transportador.telefone || '-')}</div>
           </div>
         </div>
       </div>
@@ -362,30 +387,34 @@ export class CTRDocumentService {
         <div class="grid">
           <div class="row">
             <div class="cell label">Nome/Razão Social:</div>
-            <div class="cell value">${payload.destinatario.nome}</div>
+            <div class="cell value">${e(payload.destinatario.nome)}</div>
           </div>
           <div class="row">
             <div class="cell label">CNPJ:</div>
-            <div class="cell value">${payload.destinatario.cpfCnpj || '-'}</div>
+            <div class="cell value">${e(payload.destinatario.cpfCnpj || '-')}</div>
           </div>
           <div class="row">
             <div class="cell label">Endereço:</div>
-            <div class="cell value">${payload.destinatario.endereco}</div>
+            <div class="cell value">${e(payload.destinatario.endereco)}</div>
           </div>
           <div class="row">
             <div class="cell label">Cidade/UF:</div>
-            <div class="cell value">${payload.destinatario.cidade} / ${payload.destinatario.uf}</div>
+            <div class="cell value">${e(payload.destinatario.cidade)} / ${e(payload.destinatario.uf)}</div>
           </div>
           <div class="row">
             <div class="cell label">Tipo do Local:</div>
             <div class="cell value">${tipoLocalLabel}</div>
           </div>
-          ${payload.destinatario.licenca ? `
+          ${
+            payload.destinatario.licenca
+              ? `
           <div class="row">
             <div class="cell label">Licença Operacional:</div>
-            <div class="cell value">${payload.destinatario.licenca}</div>
+            <div class="cell value">${e(payload.destinatario.licenca)}</div>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
         </div>
       </div>
 
@@ -398,15 +427,15 @@ export class CTRDocumentService {
           </div>
           <div class="row">
             <div class="cell label">Descrição:</div>
-            <div class="cell value">${payload.residuo.descricao}</div>
+            <div class="cell value">${e(payload.residuo.descricao)}</div>
           </div>
           <div class="row">
             <div class="cell label">Acondicionamento:</div>
-            <div class="cell value">${payload.residuo.acondicionamento || '-'}</div>
+            <div class="cell value">${e(payload.residuo.acondicionamento || '-')}</div>
           </div>
           <div class="row">
             <div class="cell label">Quantidade:</div>
-            <div class="cell value highlight"><strong>${payload.residuo.quantidade} ${unidadeLabel}</strong></div>
+            <div class="cell value highlight"><strong>${e(payload.residuo.quantidade)} ${unidadeLabel}</strong></div>
           </div>
         </div>
       </div>
@@ -422,10 +451,10 @@ export class CTRDocumentService {
               <td>
                 <div class="signature-content">
                   <div class="signature-writing">
-                    <span class="signature-name">${toTitleCase(payload.declaracoes.transportador.assinatura || payload.metadados.empresa.nome)}</span>
+                    <span class="signature-name">${assinaturaTransportador}</span>
                   </div>
                   <div class="signature-rule">
-                    <p class="signature-person">${payload.declaracoes.transportador.nome || payload.metadados.empresa.nome || '_________________'}</p>
+                    <p class="signature-person">${e(payload.declaracoes.transportador.nome || payload.metadados.empresa.nome || '_________________')}</p>
                     <p class="signature-role">ASSINATURA DO TRANSPORTADOR</p>
                   </div>
                 </div>
@@ -434,7 +463,7 @@ export class CTRDocumentService {
                 <div class="signature-content">
                   <div class="signature-writing"></div>
                   <div class="signature-rule">
-                    <p class="signature-person">${payload.declaracoes.recebedor.nome || '_________________'}</p>
+                    <p class="signature-person">${e(payload.declaracoes.recebedor.nome || '_________________')}</p>
                     <p class="signature-role">ASSINATURA DO RECEBEDOR NO DESTINO</p>
                   </div>
                 </div>
@@ -449,26 +478,26 @@ export class CTRDocumentService {
           <tr>
             <td>
               <strong>Data/Hora do recebimento:</strong>
-              <span class="receipt-value">${payload.declaracoes.recebedor.dataHora || '____/____/________  ____:____'}</span>
+              <span class="receipt-value">${e(payload.declaracoes.recebedor.dataHora || '____/____/________  ____:____')}</span>
             </td>
             <td>
               <strong>Carimbo/Observações:</strong>
-              <span class="receipt-value">${[payload.declaracoes.recebedor.carimbo, payload.declaracoes.recebedor.observacao].filter(Boolean).join(' — ') || '&nbsp;'}</span>
+              <span class="receipt-value">${observacoesRecebedor || '&nbsp;'}</span>
             </td>
           </tr>
         </table>
       </div>
 
       <div class="footer">
-        <p>Documento gerado por ${empresa.nome} | CNPJ: ${empresa.cnpj || 'Não informado'} | Tel: ${empresa.telefone || 'Não informado'}</p>
-        <p>Emitido em: ${payload.metadados.emitidasEm} | Status: ${payload.metadados.status.toUpperCase()}</p>
+        <p>Documento gerado por ${e(empresa.nome || 'Empresa Transportadora')} | CNPJ: ${e(empresa.cnpj || 'Não informado')} | Tel: ${e(empresa.telefone || 'Não informado')}</p>
+        <p>Emitido em: ${e(payload.metadados.emitidasEm)} | Status: ${e(payload.metadados.status.toUpperCase())}</p>
       </div>
     </div>`;
   }
 
   renderToHTML(payload: CTRPayload, logoSrc: string = PREFEITURA_LOGO_PATH): string {
-    const numeroFormatado = formatCTRNumber(payload.identificacao.numero);
-    
+    const numeroFormatado = escapeHtml(formatCTRNumber(payload.identificacao.numero));
+
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -486,8 +515,6 @@ export class CTRDocumentService {
   async generatePDF(payload: CTRPayload): Promise<Blob> {
     const html = this.renderToHTML(payload);
 
-    // Isola o documento para que os estilos do CTR não afetem a aplicação
-    // durante a captura e mantenham uma largura de renderização determinística.
     const frame = document.createElement('iframe');
     frame.setAttribute('aria-hidden', 'true');
     frame.style.position = 'fixed';
@@ -514,13 +541,16 @@ export class CTRDocumentService {
       }
 
       const images = Array.from(frameDocument.querySelectorAll('img'));
-      await Promise.all(images.map(image => image.complete
-        ? Promise.resolve()
-        : new Promise<void>(resolve => {
-            image.addEventListener('load', () => resolve(), { once: true });
-            image.addEventListener('error', () => resolve(), { once: true });
-          })
-      ));
+      await Promise.all(
+        images.map((image) =>
+          image.complete
+            ? Promise.resolve()
+            : new Promise<void>((resolve) => {
+                image.addEventListener('load', () => resolve(), { once: true });
+                image.addEventListener('error', () => resolve(), { once: true });
+              })
+        )
+      );
       if (frameDocument.fonts?.ready) await frameDocument.fonts.ready;
 
       const requiredHeight = Math.max(
@@ -529,7 +559,7 @@ export class CTRDocumentService {
         container.scrollHeight
       );
       frame.style.height = `${requiredHeight + 24}px`;
-      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
       const html2canvas = (await import('html2canvas')).default;
       const jsPDF = (await import('jspdf')).default;
@@ -555,15 +585,15 @@ export class CTRDocumentService {
       const usableWidth = pdfWidth - marginLeft - marginRight;
       const usableHeight = pdfHeight - marginTop - marginBottom;
       const canvasRatio = canvas.height / canvas.width;
-      
+
       let finalWidth = usableWidth;
       let finalHeight = usableWidth * canvasRatio;
-      
+
       if (finalHeight > usableHeight) {
         finalHeight = usableHeight;
         finalWidth = usableHeight / canvasRatio;
       }
-      
+
       const positionX = marginLeft + (usableWidth - finalWidth) / 2;
       pdf.addImage(imgData, 'PNG', positionX, marginTop, finalWidth, finalHeight, undefined, 'FAST');
 
@@ -574,7 +604,12 @@ export class CTRDocumentService {
   }
 
   private sanitizeFilename(name: string): string {
-    return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+    return name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private cleanNumeroForFilename(numero: string): string {
@@ -588,7 +623,6 @@ export class CTRDocumentService {
   private generateCTRFilename(payload: CTRPayload, extension: string): string {
     const nomeCliente = this.sanitizeFilename(payload.gerador.nome || 'Cliente');
     const numeroLimpo = this.cleanNumeroForFilename(payload.identificacao.numero);
-    // Formato: Pedro Oliveira-CTR-N°56776567
     return `${nomeCliente}-CTR-N°${numeroLimpo}.${extension}`;
   }
 
@@ -598,16 +632,17 @@ export class CTRDocumentService {
     const a = document.createElement('a');
     a.href = url;
     a.download = this.generateCTRFilename(payload, 'pdf');
+    a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   async generateWord(payload: CTRPayload): Promise<Blob> {
     const styles = this.getDocumentStyles();
     const embeddedLogo = await this.getLogoDataUrl();
-    
+
     const header = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office"
             xmlns:w="urn:schemas-microsoft-com:office:word"
@@ -621,20 +656,18 @@ export class CTRDocumentService {
       </head>
       <body>
     `;
-    
+
     const footer = `
       </body>
       </html>
     `;
-    
+
     const bodyContent = this.getDocumentBody(payload, embeddedLogo);
     const fullHtml = `${header}<div class="Section1">${bodyContent}</div>${footer}`;
-    
-    const blob = new Blob([fullHtml], { 
-      type: 'application/msword'
+
+    return new Blob([fullHtml], {
+      type: 'application/msword',
     });
-    
-    return blob;
   }
 
   async downloadWord(payload: CTRPayload, _filename?: string): Promise<void> {
@@ -643,23 +676,25 @@ export class CTRDocumentService {
     const a = document.createElement('a');
     a.href = url;
     a.download = this.generateCTRFilename(payload, 'doc');
+    a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   async print(payload: CTRPayload): Promise<void> {
     const html = this.renderToHTML(payload);
-    
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       throw new Error('Não foi possível abrir a janela de impressão');
     }
+    printWindow.opener = null;
 
     printWindow.document.write(html);
     printWindow.document.close();
-    
+
     printWindow.onload = () => {
       setTimeout(() => {
         printWindow.print();
@@ -682,12 +717,6 @@ export class CTRDocumentService {
     } catch {
       return PREFEITURA_LOGO_PATH;
     }
-  }
-
-  private formatDateBR(dateStr: string): string {
-    if (!dateStr) return '';
-    const [year, month, day] = dateStr.split('-');
-    return `${day}/${month}/${year}`;
   }
 }
 

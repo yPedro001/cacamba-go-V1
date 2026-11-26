@@ -64,7 +64,7 @@ export const LocalDescarteSchema = z.object({
   licenca: z.string().optional(),
   observacoes: z.string().optional(),
   isPadrao: z.boolean().default(false),
-  createdAt: z.string().datetime(),
+  createdAt: z.string().min(1),
   usuarioId: z.string(),
 });
 
@@ -130,8 +130,8 @@ export const CTRSchema = z.object({
   declaracaoRecebedorObservacao: z.string().optional(),
   
   status: CTRStatusEnum.default('emitido'),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
   usuarioId: z.string(),
 });
 
@@ -144,7 +144,7 @@ export const CTRItemSchema = z.object({
   snapshotClienteCpfCnpj: z.string().optional(),
   snapshotEnderecoObra: z.string(),
   snapshotDataRetirada: z.string().optional(),
-  createdAt: z.string().datetime(),
+  createdAt: z.string().min(1),
 });
 
 export const CTRPayloadSchema = z.object({

@@ -1,8 +1,7 @@
-import React from 'react';
-import { LocacaoModal } from './LocacaoModal';
-import { useRentalsController } from '../hooks/useRentalsController';
-import { Cliente, Cacamba, Perfil, Locacao } from '@/core/domain/types';
-import { Button } from '@/components/ui/button';
+import React from "react";
+import { LocacaoModal } from "./LocacaoModal";
+import { useRentalsController } from "../hooks/useRentalsController";
+import { Cliente, Cacamba, Perfil, Locacao } from "@/core/domain/types";
 
 interface LocacaoModalWrapperProps {
   clientes: Cliente[];
@@ -11,7 +10,13 @@ interface LocacaoModalWrapperProps {
   triggerButton?: React.ReactNode;
   locacaoParaEditar?: Partial<Locacao>;
   onOpenModal?: (loc?: Partial<Locacao>) => void;
-  onSaveLocacao?: (data: Partial<Locacao> & { salvarEndereco?: boolean, nomeEndereco?: string, enderecoDetalhes?: any }) => Promise<boolean>;
+  onSaveLocacao?: (
+    data: Partial<Locacao> & {
+      salvarEndereco?: boolean;
+      nomeEndereco?: string;
+      enderecoDetalhes?: any;
+    }
+  ) => Promise<boolean>;
 }
 
 export function LocacaoModalWithGuard({
@@ -21,54 +26,64 @@ export function LocacaoModalWithGuard({
   triggerButton,
   locacaoParaEditar,
   onOpenModal,
-  onSaveLocacao
+  onSaveLocacao,
 }: LocacaoModalWrapperProps) {
-  // Se passar locacaoParaEditar, usa ele. Se não, cria própria instância
-  const rentalsController = onOpenModal 
-    ? null 
-    : useRentalsController();
+  // Hook sempre chamado incondicionalmente (cumpre Rules of Hooks)
+  const rentalsController = useRentalsController();
+  const isControlled = Boolean(onOpenModal);
 
-  // Se temos onSaveLocacao externo, usa ele. Se não, usa o do controller
-  const saveCallback = onSaveLocacao || rentalsController?.handleSave;
+  const saveCallback = onSaveLocacao || rentalsController.handleSave;
 
-  // Se temos locacaoParaEditar, usamos o controller passado via props
   const handleOpenModal = () => {
     if (onOpenModal) {
       onOpenModal(locacaoParaEditar);
     } else {
-      rentalsController?.handleOpenModal();
+      rentalsController.handleOpenModal(locacaoParaEditar);
     }
   };
 
-  // Função wrapper para salvar - fecha o modal após salvar
-  const handleSaveWrapper = async (data: Partial<Locacao> & { salvarEndereco?: boolean, nomeEndereco?: string, enderecoDetalhes?: any }) => {
-    const result = await saveCallback?.(data);
-    // Fecha o modal após salvar
-    if (onOpenModal) {
+  const handleSaveWrapper = async (
+    data: Partial<Locacao> & {
+      salvarEndereco?: boolean;
+      nomeEndereco?: string;
+      enderecoDetalhes?: any;
+    }
+  ) => {
+    const result = await saveCallback(data);
+    if (result && onOpenModal) {
       onOpenModal(undefined);
     }
     return result;
   };
 
-  // Obtém os métodos do controller passado ou da instância local
-  const isOpen = onOpenModal ? locacaoParaEditar !== undefined : rentalsController?.isModalOpen;
-  const handleClose = onOpenModal ? () => onOpenModal(undefined) : rentalsController?.handleCloseModal;
-  const editingLocacao = onOpenModal ? locacaoParaEditar : rentalsController?.editingLocacao;
+  const isOpen = isControlled ? locacaoParaEditar !== undefined : rentalsController.isModalOpen;
+  const handleClose = isControlled
+    ? () => onOpenModal?.(undefined)
+    : rentalsController.handleCloseModal;
+  const editingLocacao = isControlled ? locacaoParaEditar : rentalsController.editingLocacao;
 
   return (
     <>
       {triggerButton && (
-        <div onClick={handleOpenModal}>
+        <div
+          onClick={handleOpenModal}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleOpenModal();
+            }
+          }}
+        >
           {triggerButton}
         </div>
       )}
-      
+
       <LocacaoModal
-        isOpen={isOpen || false}
-        onClose={handleClose || (() => {})}
+        isOpen={isOpen}
+        onClose={handleClose}
         locacao={editingLocacao}
-        onSave={handleSaveWrapper || (async () => {})}
-        onAddClienteAndSave={rentalsController?.handleAddClienteAndSave || (async () => {})}
+        onSave={handleSaveWrapper}
+        onAddClienteAndSave={rentalsController.handleAddClienteAndSave}
         clientes={clientes}
         perfil={perfil}
         cacambas={cacambas}

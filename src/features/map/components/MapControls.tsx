@@ -1,76 +1,88 @@
+'use client';
+
 import React from 'react';
-import { Locate, Filter, XCircle, RefreshCw } from 'lucide-react';
+import { Locate, Filter, RefreshCw, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface MapControlsProps {
-  userPos: [number, number] | null;
   showFilters: boolean;
   setShowFilters: (v: boolean | ((prev: boolean) => boolean)) => void;
   locate: () => void;
-  clearFilters: () => void;
-  setRoute: (v: any) => void;
-  mapRef: React.MutableRefObject<any>; // Tipado como `any` para evitar import direto do Leaflet
-  filteredCacambas?: any[];
+  setRoute: (v: null) => void;
+  hasActiveRoute: boolean;
+  hasActiveFilters: boolean;
+  mapRef: React.MutableRefObject<{ invalidateSize?: () => void } | null>;
 }
 
 /**
- * MapControls: Botões flutuantes no canto superior direito do mapa.
- * Renderizado DENTRO do MapContainer (via MapInnerContent).
- * Posicionado com `absolute` — funciona corretamente dentro do contexto do Leaflet.
+ * Controles essenciais flutuantes no canto superior direito (44x44 touch-safe).
  */
 export function MapControls({
-  userPos,
   showFilters,
   setShowFilters,
   locate,
-  clearFilters,
   setRoute,
+  hasActiveRoute,
+  hasActiveFilters,
   mapRef,
 }: MapControlsProps) {
   return (
-    <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2 pointer-events-auto">
-
-      {/* Atualizar (invalidar tamanho e limpar rota) */}
+    <div className="absolute top-3 right-3 z-[800] flex flex-col gap-2 pointer-events-auto">
       <button
-        onClick={() => {
-          setRoute(null);
-          mapRef.current?.invalidateSize();
-        }}
-        title="Atualizar mapa"
-        className="h-10 w-10 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg hover:bg-white dark:hover:bg-slate-800 transition-all active:scale-95"
-      >
-        <RefreshCw className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-      </button>
-
-      {/* Localizar */}
-      <button
+        type="button"
         onClick={locate}
-        title="Localizar"
-        className="h-10 w-10 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-blue-200 dark:border-blue-700 rounded-xl shadow-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all active:scale-95 text-blue-600"
+        title="Centralizar minha localização ou caçamba filtrada"
+        aria-label="Localizar no mapa"
+        className="h-11 w-11 flex items-center justify-center bg-card/95 backdrop-blur border border-border rounded-xl shadow-md hover:bg-muted text-primary transition-colors active:scale-95"
       >
         <Locate className="h-5 w-5" />
       </button>
 
-      {/* Filtros */}
       <button
-        onClick={() => setShowFilters(v => !v)}
-        title="Filtros"
-        className={`h-10 w-10 flex items-center justify-center backdrop-blur rounded-xl shadow-lg transition-all active:scale-95 border ${
-          showFilters
-            ? 'bg-primary border-primary text-white shadow-primary/30'
-            : 'bg-white/95 dark:bg-slate-900/95 border-slate-200 dark:border-slate-700 text-foreground hover:bg-slate-50 dark:hover:bg-slate-800'
-        }`}
+        type="button"
+        onClick={() => setShowFilters((v) => !v)}
+        title="Filtros do mapa"
+        aria-label="Abrir filtros do mapa"
+        className={cn(
+          'relative h-11 w-11 flex items-center justify-center backdrop-blur rounded-xl shadow-md transition-colors active:scale-95 border',
+          showFilters || hasActiveFilters
+            ? 'bg-primary border-primary text-primary-foreground'
+            : 'bg-card/95 border-border text-foreground hover:bg-muted'
+        )}
       >
         <Filter className="h-4 w-4" />
+        {hasActiveFilters && (
+          <span
+            aria-hidden="true"
+            className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-card"
+          />
+        )}
       </button>
 
-      {/* Limpar filtros */}
       <button
-        onClick={clearFilters}
-        title="Limpar filtros"
-        className="h-10 w-10 flex items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-red-200 dark:border-red-800 rounded-xl shadow-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all active:scale-95 text-red-500"
+        type="button"
+        onClick={() => {
+          setRoute(null);
+          mapRef.current?.invalidateSize?.();
+        }}
+        title="Reajustar mapa"
+        aria-label="Reajustar visualização do mapa"
+        className="h-11 w-11 flex items-center justify-center bg-card/95 backdrop-blur border border-border rounded-xl shadow-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors active:scale-95"
       >
-        <XCircle className="h-4 w-4" />
+        <RefreshCw className="h-4 w-4" />
       </button>
+
+      {hasActiveRoute && (
+        <button
+          type="button"
+          onClick={() => setRoute(null)}
+          title="Limpar rota traçada"
+          aria-label="Limpar rota traçada"
+          className="h-11 w-11 flex items-center justify-center bg-destructive text-destructive-foreground rounded-xl shadow-md hover:opacity-90 transition-opacity active:scale-95"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }

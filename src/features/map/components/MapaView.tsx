@@ -1,278 +1,505 @@
-"use client"
-import React from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useMapController } from '../hooks/useMapController'
-import { MAP_COLORS } from '../constants'
-import { MapFilterPanel } from './MapFilterPanel'
-import { useClientes } from '@/store/useAppStore'
-import { cn } from '@/lib/utils'
-import { useSearchParams } from 'next/navigation'
-// Importação direta — MapaView já é carregado com ssr: false pela page.tsx
-// Então é seguro importar MapComponent diretamente (Leaflet roda só no cliente)
-import { MapComponent } from './MapComponent'
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useMapController } from '../hooks/useMapController';
+import { MAP_COLORS } from '../constants';
+import { MapFilterPanel } from './MapFilterPanel';
+import { MapComponent, EnrichedMapCacamba } from './MapComponent';
+import { ConfirmModal } from '@/components/ConfirmModal';
+import { useCacambas, useClientes } from '@/store/useAppStore';
+import { formatLocalDateBR, buildWhatsAppUrl } from '@/lib/domain-helpers';
+import { cn } from '@/lib/utils';
+import { useSearchParams } from 'next/navigation';
+import { Locacao, MapColor } from '@/core/domain/types';
+import {
+  MapPin,
+  SlidersHorizontal,
+  X,
+  Navigation,
+  ExternalLink,
+  CheckCircle2,
+  Truck,
+  History,
+  Phone,
+  AlertTriangle,
+  Crosshair,
+} from 'lucide-react';
+
+const ACTIVE_MAP_STATUS_KEYS: Exclude<MapColor, 'verde'>[] = [
+  'azul',
+  'amarelo',
+  'vermelho',
+  'cinza',
+];
+
+function getAdvanceActionMeta(status: Locacao['status']) {
+  if (status === 'entrega_pendente') {
+    return {
+      buttonLabel: 'Confirmar Entrega',
+      modalTitle: 'Confirmar Entrega na Obra',
+      modalDescription: 'Esta caçamba passará para o status Em Uso e iniciará a contagem de prazo.',
+    };
+  }
+  if (status === 'em_uso') {
+    return {
+      buttonLabel: 'Solicitar Retirada',
+      modalTitle: 'Marcar para Retirada',
+      modalDescription: 'Esta caçamba será sinalizada no mapa em vermelho para retirada no endereço.',
+    };
+  }
+  return {
+    buttonLabel: 'Confirmar Retirada e Pagamento',
+    modalTitle: 'Confirmar Retirada e Baixa Financeira',
+    modalDescription:
+      'A locação será marcada como Paga (receita realizada) com a data de hoje e a caçamba voltará a ficar disponível no pátio.',
+  };
+}
 
 export default function MapaView() {
   const controller = useMapController();
   const clientes = useClientes();
+  const allCacambas = useCacambas();
   const searchParams = useSearchParams();
-  const [mounted, setMounted] = React.useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [selectedCacambaId, setSelectedCacambaId] = useState<string | null>(null);
+  const [pendingAdvance, setPendingAdvance] = useState<{
+    cab: EnrichedMapCacamba;
+    loc: Locacao;
+  } | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Aplica filtro da URL ao montar (ex: navegação do dashboard com ?filtro=vermelho)
-  React.useEffect(() => {
+  useEffect(() => {
     if (!mounted) return;
     const filterFromUrl = searchParams.get('filtro');
     if (filterFromUrl) {
-      setTimeout(() => {
-        controller.setFilterColor(filterFromUrl as any);
-      }, 200);
+      controller.setFilterColor(filterFromUrl as MapColor | 'todos');
     }
-  }, [mounted, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, searchParams]);
 
-  const { locacoes } = controller;
+  const { locacoes, filteredCacambas } = controller;
 
-  // Itinerário do dia: locações que exigem ação operacional
-  const itinerario = React.useMemo(() => {
-    return locacoes
-      .filter(l => l.status === 'vencida' || l.status === 'entrega_pendente')
-      .slice(0, 6);
+  const statusCounts = useMemo(() => {
+    const counts: Record<Exclude<MapColor, 'verde'>, number> = {
+      azul: 0,
+      amarelo: 0,
+      vermelho: 0,
+      cinza: 0,
+    };
+    allCacambas.forEach((cab) => {
+      const enriched = filteredCacambas.find((fc) => fc.id === cab.id);
+      if (enriched && enriched._color !== 'verde') {
+        counts[enriched._color] = (counts[enriched._color] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allCacambas, filteredCacambas]);
+
+  const semCoordenadasProprias = useMemo(() => {
+    return filteredCacambas.filter((c) => c.lat == null || c.lng == null).length;
+  }, [filteredCacambas]);
+
+  // Itinerário do dia: entregas pendentes + retiradas vencidas (prioridade vencida primeiro)
+  const itinerario = useMemo(() => {
+    return [...locacoes]
+      .filter((l) => l.status === 'vencida' || l.status === 'entrega_pendente')
+      .sort((a, b) => {
+        if (a.status === 'vencida' && b.status !== 'vencida') return -1;
+        if (a.status !== 'vencida' && b.status === 'vencida') return 1;
+        return (a.dataDevolucaoPrevista || a.dataRetirada).localeCompare(
+          b.dataDevolucaoPrevista || b.dataRetirada
+        );
+      })
+      .slice(0, 8);
   }, [locacoes]);
+
+  const selectedCacamba = useMemo(() => {
+    if (!selectedCacambaId) return null;
+    return (filteredCacambas.find((c) => c.id === selectedCacambaId) as EnrichedMapCacamba) ?? null;
+  }, [filteredCacambas, selectedCacambaId]);
+
+  const focusCacamba = (cab: EnrichedMapCacamba) => {
+    setSelectedCacambaId(cab.id);
+    if (cab._resolvedLat != null && cab._resolvedLng != null && controller.mapRef.current) {
+      controller.mapRef.current.flyTo([cab._resolvedLat, cab._resolvedLng], 16, { duration: 0.9 });
+    }
+  };
+
+  const focusFromLocacao = (loc: Locacao) => {
+    const targetId = loc.cacambaId || loc.cacambaIds?.[0];
+    if (!targetId) return;
+    const match = filteredCacambas.find((c) => c.id === targetId) as EnrichedMapCacamba | undefined;
+    if (match) {
+      focusCacamba(match);
+    } else if (loc.lat != null && loc.lng != null && controller.mapRef.current) {
+      controller.mapRef.current.flyTo([loc.lat, loc.lng], 16, { duration: 0.9 });
+    }
+  };
+
+  const hasActiveFilters =
+    controller.filterColor !== 'todos' ||
+    controller.filterCliente !== 'todos' ||
+    controller.filterVencimento !== 'todos';
 
   if (!mounted) {
     return (
-      <div className="w-full" style={{ height: '700px' }}>
-        <div className="w-full h-full bg-slate-900 animate-pulse rounded-3xl flex items-center justify-center">
-          <p className="text-white/40 font-black text-xs uppercase tracking-widest">
-            Carregando Mapa...
-          </p>
-        </div>
+      <div className="h-[calc(100dvh-160px)] min-h-[420px] w-full flex items-center justify-center bg-card border border-border rounded-xl">
+        <p className="text-muted-foreground font-semibold text-xs uppercase tracking-widest">
+          Carregando mapa...
+        </p>
       </div>
     );
   }
 
+  const selectedLoc = selectedCacamba
+    ? controller.getLocacaoForCacamba(selectedCacamba.id)
+    : undefined;
+  const selectedCliente = selectedLoc
+    ? clientes.find((c) => c.id === selectedLoc.clienteId)
+    : undefined;
+  const selectedWhatsApp = selectedCliente?.telefone
+    ? buildWhatsAppUrl(
+        selectedCliente.telefone,
+        `Olá ${selectedCliente.nome}, tudo bem? Sobre a caçamba ${selectedCacamba?.codigo || ''}.`
+      )
+    : null;
+  const advanceMeta = selectedLoc ? getAdvanceActionMeta(selectedLoc.status) : null;
+
   return (
-    <div className="space-y-6 w-full" data-map-v3="true">
-      {/* ─── LINHA 1: HEADER & CONTROLES SUPERIORES ─── */}
-      <div className="flex flex-col 2xl:flex-row justify-between items-start 2xl:items-center gap-5">
+    <div className="space-y-4 w-full" data-map-v3="true">
+      {/* Cabeçalho operacional único */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
-          <h2 className="text-3xl font-black tracking-tight text-foreground/90">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
             Mapa de Operações
           </h2>
-          <p className="text-sm text-muted-foreground font-medium mt-1">
-            Visualize e gerencie suas caçambas em tempo real
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Localize caçambas, trace rotas e acompanhe entregas e retiradas do dia.
           </p>
         </div>
 
-        <div className="flex flex-col xl:flex-row items-start xl:items-center gap-3 w-full 2xl:w-auto">
-          {/* Badges de legenda rápida (agora agindo como filtros principais visuais na barra superior) */}
-          <div className="flex flex-wrap gap-1.5 bg-background/50 backdrop-blur-sm border border-border/50 p-1.5 rounded-xl shadow-sm w-full xl:w-auto">
-            {Object.entries(MAP_COLORS).map(([key, val]) => (
-              <button
-                key={key}
-                onClick={() => controller.setFilterColor(
-                  controller.filterColor === key ? 'todos' : key as any
-                )}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all",
-                  controller.filterColor === key
-                    ? "text-white shadow-sm"
-                    : "text-foreground/70 hover:text-foreground bg-background/40 hover:bg-background/80"
-                )}
-                style={controller.filterColor === key ? { background: val.bg } : {}}
-              >
-                <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: val.bg, border: `1.5px solid ${val.ring}` }}
-                />
-                {val.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="w-px h-8 bg-border/60 hidden xl:block"></div>
-
-          {/* Botões de Ação na mesma linha */}
-          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-            <button
-              onClick={() => controller.locate()}
-              className="flex-1 xl:flex-none flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-background border border-border hover:bg-muted font-bold text-[11px] uppercase tracking-wider text-foreground shadow-sm transition-colors"
-            >
-              <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Localizar no Mapa
-            </button>
-            <button
-              onClick={() => controller.setShowFilters(!controller.showFilters)}
-              className={cn(
-                "flex-1 xl:flex-none flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border font-bold text-[11px] uppercase tracking-wider shadow-sm transition-colors",
-                controller.showFilters ? "bg-primary border-primary text-white" : "bg-background border-border hover:bg-muted text-foreground"
-              )}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              Filtros Avançados
-            </button>
-            <button
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => controller.locate()}
+            className="min-h-[44px] flex-1 sm:flex-none whitespace-nowrap"
+          >
+            <Crosshair className="w-4 h-4 mr-2 text-primary" />
+            Localizar
+          </Button>
+          <Button
+            type="button"
+            variant={controller.showFilters ? 'default' : 'outline'}
+            onClick={() => controller.setShowFilters(!controller.showFilters)}
+            className="min-h-[44px] flex-1 sm:flex-none whitespace-nowrap"
+          >
+            <SlidersHorizontal className="w-4 h-4 mr-2" />
+            Filtros
+          </Button>
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="ghost"
               onClick={() => controller.clearFilters()}
-              className="flex-1 xl:flex-none flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 dark:bg-red-900/10 dark:border-red-900/30 dark:hover:bg-red-900/20 font-bold text-[11px] uppercase tracking-wider shadow-sm transition-colors"
+              className="min-h-[44px] text-destructive hover:text-destructive whitespace-nowrap"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Limpar Filtros
-            </button>
-          </div>
+              <X className="w-4 h-4 mr-1.5" />
+              Limpar
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* ─── LINHA 2: MAPA ─── */}
-      <div className="w-full relative">
-        <div
-          className="relative w-full overflow-hidden rounded-2xl border border-border/40 shadow-xl bg-slate-900"
-          style={{ height: '580px' }}
+      {/* Barra única de status clicáveis (sem legenda duplicada dentro do mapa) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+        <button
+          type="button"
+          onClick={() => controller.setFilterColor('todos')}
+          className={cn(
+            'min-h-[40px] shrink-0 px-3 rounded-lg text-xs font-semibold border transition-colors whitespace-nowrap',
+            controller.filterColor === 'todos'
+              ? 'bg-foreground text-background border-foreground'
+              : 'bg-card text-muted-foreground border-border hover:text-foreground'
+          )}
         >
-          <MapComponent controller={controller} />
+          Todas ({allCacambas.length})
+        </button>
+        {ACTIVE_MAP_STATUS_KEYS.map((key) => {
+          const val = MAP_COLORS[key];
+          const isSelected = controller.filterColor === key;
+          const count = isSelected
+            ? filteredCacambas.length
+            : !hasActiveFilters
+              ? statusCounts[key]
+              : null;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => controller.setFilterColor(isSelected ? 'todos' : key)}
+              className={cn(
+                'min-h-[40px] shrink-0 inline-flex items-center gap-2 px-3 rounded-lg text-xs font-semibold border transition-colors whitespace-nowrap',
+                isSelected
+                  ? 'border-transparent shadow-sm'
+                  : 'bg-card text-foreground border-border hover:bg-muted'
+              )}
+              style={isSelected ? { background: val.bg, color: val.ink } : undefined}
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ background: val.bg, border: `1.5px solid ${val.ring}` }}
+              />
+              <span>{val.label}</span>
+              {count !== null && (
+                <span className="tabular-nums opacity-80">({count})</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Canvas do mapa */}
+      <div className="w-full relative">
+        <div className="relative w-full h-[52dvh] min-h-[340px] max-h-[540px] lg:h-[62dvh] lg:max-h-[660px] overflow-hidden rounded-xl border border-border shadow-md bg-muted">
+          <MapComponent
+            controller={controller}
+            onSelectCacamba={(cab) => setSelectedCacambaId(cab.id)}
+            onRequestAdvanceStatus={(cab, loc) => setPendingAdvance({ cab, loc })}
+          />
         </div>
 
-        {/* Badge de rota quando ativa */}
+        {/* Badge flutuante de rota calculada */}
         {controller.route && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[400] shadow-2xl">
-            <div className="inline-flex items-center gap-3 px-6 py-3 bg-blue-600 text-white text-sm rounded-full font-bold">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-                  d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-              {controller.route.distance} km · ~{controller.route.time} min
+          <div className="mt-2 sm:mt-0 sm:absolute sm:bottom-4 sm:left-1/2 sm:-translate-x-1/2 z-[800] flex justify-center">
+            <div className="inline-flex items-center gap-3 px-4 py-2 bg-info text-white text-xs sm:text-sm rounded-full font-semibold shadow-lg">
+              <Navigation className="w-4 h-4 shrink-0" />
+              <span className="tabular-nums">
+                {controller.route.distance} km · ~{controller.route.time} min
+              </span>
               <button
+                type="button"
                 onClick={() => controller.setRoute(null)}
-                className="ml-2 hover:bg-white/20 p-1 rounded-full transition-colors font-black text-xl leading-none flex items-center justify-center w-7 h-7"
+                aria-label="Fechar rota"
+                className="h-7 w-7 flex items-center justify-center rounded-full hover:bg-white/20"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* ─── LINHA 3: PAINEL DE CONTROLE (ESQ) E ITINERÁRIO (DIR) ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 xl:grid-cols-6 gap-6 items-start">
-        
-        {/* COLUNA ESQUERDA: PAINEL DE CONTROLE (compacto) */}
-        <div className="lg:col-span-1 xl:col-span-1 border border-border/20 rounded-2xl bg-card/60 shadow-sm p-4">
-          <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-4">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            Legenda de Status
-          </h3>
-          
-          <div className="space-y-1">
-            {Object.entries(MAP_COLORS).map(([key, val]) => (
-              <button
-                key={key}
-                onClick={() => controller.setFilterColor(
-                  controller.filterColor === key ? 'todos' : key as any
-                )}
-                className={cn(
-                  "w-full flex items-center justify-between p-2 rounded-lg transition-all text-left group",
-                  controller.filterColor === key
-                    ? "bg-muted ring-1 ring-border shadow-sm"
-                    : "hover:bg-muted/50 border border-transparent"
-                )}
+      {/* Aviso de fallback para pátio quando há caçambas sem GPS próprio */}
+      {semCoordenadasProprias > 0 && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/60 border border-border rounded-lg px-3 py-2">
+          <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+          <span>
+            {semCoordenadasProprias} caçamba(s) sem coordenadas próprias de obra estão agrupadas na posição da sede.
+          </span>
+        </div>
+      )}
+
+      {/* Card sincronizado da caçamba selecionada (excelente em campo/mobile) */}
+      {selectedCacamba && (
+        <Card className="border-primary/40 bg-card shadow-md">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <span
+                className="px-2.5 py-1 rounded-md text-xs font-bold font-mono shrink-0"
+                style={{
+                  background: MAP_COLORS[selectedCacamba._color].bg,
+                  color: MAP_COLORS[selectedCacamba._color].ink,
+                }}
               >
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: val.bg, border: `2px solid ${val.ring}` }}
-                  />
-                  <p className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">{val.label}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-border/10 flex items-center justify-between bg-muted/30 -mx-4 -mb-4 p-4 rounded-b-2xl">
-            <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">No Mapa Atual</span>
-            <span className="text-sm font-black text-foreground bg-background px-2.5 py-1 rounded-md border border-border/50 shadow-sm">
-              {controller.filteredCacambas.length}
-            </span>
-          </div>
-        </div>
-
-        {/* COLUNA DIREITA: ITINERÁRIO DO DIA */}
-        <div className="lg:col-span-4 xl:col-span-5">
-          <Card className="border-border/20 shadow-sm bg-card/60 h-full">
-            <CardHeader className="pb-3 border-b border-border/10 bg-muted/10">
-              <CardTitle className="text-sm font-black flex items-center gap-2 uppercase tracking-[0.1em]">
-                <div className="w-1.5 h-5 bg-indigo-600 rounded-full shadow-[0_0_10px_rgba(79,70,229,0.5)]" />
-                Itinerário Operacional
-                {itinerario.length > 0 && (
-                  <span className="ml-auto text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 px-2.5 py-0.5 rounded-full border border-red-200 dark:border-red-900/50 shadow-sm">
-                    {itinerario.length} Pendente{itinerario.length !== 1 ? 's' : ''}
+                {selectedCacamba.codigo}
+              </span>
+              <div className="min-w-0">
+                <CardTitle className="text-base truncate">
+                  {selectedLoc ? controller.getClienteName(selectedLoc.clienteId) : 'No Pátio (Disponível)'}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground truncate">
+                  {selectedLoc?.enderecoObra || selectedCacamba.enderecoAtual || 'Sede da empresa'}
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setSelectedCacambaId(null)}
+              aria-label="Fechar detalhes da caçamba"
+              className="min-h-[44px] min-w-[44px] shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {selectedLoc && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-muted/40 rounded-lg p-3 border border-border">
+                <div>
+                  <span className="text-muted-foreground block">Entrega</span>
+                  <span className="font-semibold tabular-nums">
+                    {formatLocalDateBR(selectedLoc.dataRetirada)}
                   </span>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
-              {itinerario.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground bg-background/50 rounded-xl border border-dashed border-border/40 flex flex-col items-center justify-center">
-                   <div className="w-10 h-10 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center mb-3 border border-green-200 dark:border-green-800/30">
-                     <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                     </svg>
-                   </div>
-                   <p className="text-sm font-bold text-foreground">Sua frota está em dia!</p>
-                   <p className="text-[10px] font-black uppercase tracking-[0.15em] opacity-50 mt-1">Nenhuma pendência operacional.</p>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                  {itinerario.map(loc => (
-                    <div
-                      key={loc.id}
-                      className={cn(
-                        "p-3.5 border-l-[4px] transition-all rounded-xl border border-border/10 shadow-sm flex flex-col h-full bg-background/80 hover:bg-background hover:shadow-md hover:border-border/30",
-                        loc.status === 'vencida' ? "border-l-red-500" : "border-l-blue-500"
-                      )}
-                    >
-                      <div className="flex justify-between items-center mb-2.5">
-                         <span className={cn(
-                             "text-[9px] font-black uppercase tracking-[0.15em] px-2 py-0.5 rounded-md",
-                             loc.status === 'vencida' ? "bg-red-50 text-red-800 dark:bg-red-900/40 dark:text-red-400" : "bg-blue-50 text-blue-800 dark:bg-blue-900/40 dark:text-blue-400"
-                          )}>
-                            {loc.status === 'vencida' ? 'Retirada' : 'Entrega'}
-                         </span>
-                      </div>
-                      <p className="font-bold text-sm leading-tight mb-0.5 truncate" title={loc.enderecoObra || ''}>
-                        {(loc.enderecoObra || '').split(',')[0] || 'Endereço não informado'}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground font-semibold mb-3 truncate">
-                        {controller.getClienteName(loc.clienteId)}
-                      </p>
-                      <div className="mt-auto pt-2.5 border-t border-border/10 flex items-center justify-between">
-                        <p className="text-[10px] font-bold text-foreground/60 flex items-center gap-1.5">
-                          {loc.status === 'vencida' ? 'Venceu ' : 'Para '}
-                          <span className={cn(
-                             "px-1.5 py-0.5 rounded text-[10px] font-black",
-                             loc.status === 'vencida' ? "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400" : "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                           )}>
-                             {new Date(loc.dataRetirada + 'T00:00:00').toLocaleDateString('pt-BR')}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <span className="text-muted-foreground block">Vencimento</span>
+                  <span className="font-semibold tabular-nums">
+                    {formatLocalDateBR(selectedLoc.dataDevolucaoPrevista)}
+                  </span>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <span className="text-muted-foreground block">Valor</span>
+                  <span className="font-bold tabular-nums">
+                    {selectedLoc.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+              </div>
+            )}
 
-      {/* ─── PAINEL DE FILTROS (MODAL OVERLAY) ─── */}
+            <div className="flex flex-wrap gap-2">
+              {selectedCacamba._resolvedLat != null && selectedCacamba._resolvedLng != null && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      controller.drawRoute(selectedCacamba._resolvedLat!, selectedCacamba._resolvedLng!)
+                    }
+                    disabled={controller.isRouting}
+                    className="min-h-[44px] flex-1 sm:flex-none whitespace-nowrap"
+                  >
+                    <Navigation className="w-4 h-4 mr-2 text-primary" />
+                    {controller.isRouting ? 'Calculando...' : 'Traçar Rota'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      controller.openGoogleMaps(
+                        selectedCacamba._resolvedLat!,
+                        selectedCacamba._resolvedLng!
+                      )
+                    }
+                    className="min-h-[44px] flex-1 sm:flex-none whitespace-nowrap"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2 text-info" />
+                    Google Maps
+                  </Button>
+                </>
+              )}
+
+              {selectedWhatsApp && (
+                <a
+                  href={selectedWhatsApp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-lg border border-border bg-background hover:bg-muted text-sm font-semibold whitespace-nowrap flex-1 sm:flex-none"
+                >
+                  <Phone className="w-4 h-4 mr-2 text-success" />
+                  WhatsApp
+                </a>
+              )}
+
+              {(selectedCacamba.historico?.length ?? 0) > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => controller.setHistoricoModal(selectedCacamba)}
+                  className="min-h-[44px] whitespace-nowrap"
+                >
+                  <History className="w-4 h-4 mr-2" />
+                  Histórico
+                </Button>
+              )}
+
+              {selectedLoc && advanceMeta && (
+                <Button
+                  type="button"
+                  onClick={() => setPendingAdvance({ cab: selectedCacamba, loc: selectedLoc })}
+                  className="min-h-[44px] flex-1 sm:ml-auto whitespace-nowrap"
+                >
+                  {selectedLoc.status === 'entrega_pendente' ? (
+                    <Truck className="w-4 h-4 mr-2" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                  )}
+                  {advanceMeta.buttonLabel}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Itinerário Operacional do Dia */}
+      <Card>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-5 bg-primary rounded-full" />
+            <CardTitle className="text-base">Itinerário Operacional</CardTitle>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-muted-foreground tabular-nums">
+            {itinerario.length} pendente{itinerario.length === 1 ? '' : 's'}
+          </span>
+        </CardHeader>
+        <CardContent>
+          {itinerario.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground rounded-lg border border-dashed border-border">
+              <CheckCircle2 className="w-8 h-8 text-success mx-auto mb-2" />
+              <p className="text-sm font-semibold text-foreground">Sua frota está em dia</p>
+              <p className="text-xs mt-1">Nenhuma entrega ou retirada urgente no momento.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {itinerario.map((loc) => {
+                const isRetirada = loc.status === 'vencida';
+                return (
+                  <button
+                    key={loc.id}
+                    type="button"
+                    onClick={() => focusFromLocacao(loc)}
+                    className={cn(
+                      'text-left p-3.5 rounded-xl border border-border border-l-4 bg-background hover:bg-muted/60 transition-colors flex flex-col gap-2 min-h-[116px]',
+                      isRetirada ? 'border-l-destructive' : 'border-l-info'
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2 w-full">
+                      <span
+                        className={cn(
+                          'text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded',
+                          isRetirada
+                            ? 'bg-destructive/15 text-destructive'
+                            : 'bg-info/15 text-info'
+                        )}
+                      >
+                        {isRetirada ? 'Retirada' : 'Entrega'}
+                      </span>
+                      <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+                        {formatLocalDateBR(loc.dataDevolucaoPrevista || loc.dataRetirada)}
+                      </span>
+                    </div>
+                    <p className="font-semibold text-sm text-foreground line-clamp-1">
+                      {(loc.enderecoObra || '').split(',')[0] || 'Endereço não informado'}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-auto flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 shrink-0" />
+                      {controller.getClienteName(loc.clienteId)}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <MapFilterPanel
         showFilters={controller.showFilters}
         setShowFilters={controller.setShowFilters}
@@ -286,6 +513,24 @@ export default function MapaView() {
         clearFilters={controller.clearFilters}
       />
 
+      <ConfirmModal
+        isOpen={!!pendingAdvance}
+        onClose={() => setPendingAdvance(null)}
+        onConfirm={() => {
+          if (pendingAdvance && pendingAdvance.loc.id) {
+            controller.advanceRentalStatus(pendingAdvance.loc.id);
+            setPendingAdvance(null);
+          }
+        }}
+        title={pendingAdvance ? getAdvanceActionMeta(pendingAdvance.loc.status).modalTitle : ''}
+        description={
+          pendingAdvance
+            ? `${pendingAdvance.cab.codigo} (${controller.getClienteName(pendingAdvance.loc.clienteId)}): ${getAdvanceActionMeta(pendingAdvance.loc.status).modalDescription}`
+            : ''
+        }
+        confirmText={pendingAdvance ? getAdvanceActionMeta(pendingAdvance.loc.status).buttonLabel : 'Confirmar'}
+        variant={pendingAdvance?.loc.status === 'vencida' ? 'default' : 'default'}
+      />
     </div>
   );
 }

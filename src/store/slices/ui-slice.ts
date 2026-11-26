@@ -14,6 +14,11 @@ export type Configuracoes = {
   pularConfirmacaoExclusao: boolean;
 };
 
+export type AddNotificacaoInput = Omit<Notificacao, 'id' | 'dataCriacao'> & {
+  id?: string;
+  dataCriacao?: string;
+};
+
 export interface UISlice {
   notificacoes: Notificacao[];
   configuracoes: Configuracoes;
@@ -22,7 +27,7 @@ export interface UISlice {
 
   setNotificacoes: (n: Notificacao[]) => void;
   updateConfiguracoes: (c: Partial<Configuracoes>) => void;
-  addNotificacao: (n: Omit<Notificacao, 'id' | 'dataCriacao'>) => void;
+  addNotificacao: (n: AddNotificacaoInput) => void;
   marcarNotificacaoLida: (id: string) => void;
   marcarTodasLidas: () => void;
   removeNotificacao: (id: string) => void;
@@ -44,43 +49,47 @@ export const createUISlice: StateCreator<UISlice> = (set) => ({
   updateConfiguracoes: (c) => set((state) => ({ 
     configuracoes: { ...state.configuracoes, ...c } 
   })),
-  addNotificacao: (n) => set((state) => ({
-    notificacoes: [{ 
-      ...n, 
-      id: Date.now().toString() + Math.random().toString(), 
-      dataCriacao: new Date().toISOString(),
-      lida: false,
-    }, ...state.notificacoes]
-  })),
-  
-  // Marca como lida e agenda remoção após 30 segundos
-  marcarNotificacaoLida: (id) => {
-    // Primeiro marca como lida
-    set((state) => ({
-      notificacoes: state.notificacoes.map(n => 
-        n.id === id ? { ...n, lida: true } : n
-      )
-    }));
-    
-    // Após 30 segundos, remove permanentemente
-    setTimeout(() => {
-      set((state) => ({
-        notificacoes: state.notificacoes.filter(n => n.id !== id)
-      }));
-    }, 30000);
-  },
-  
-  marcarTodasLidas: () => set((state) => {
-    const now = Date.now();
-    // Agenda remoção de todas após 30 segundos
-    setTimeout(() => {
-      set({ notificacoes: [] });
-    }, 30000);
-    
-    return {
-      notificacoes: state.notificacoes.map(n => ({ ...n, lida: true }))
-    };
+  addNotificacao: (n) => set((state) => {
+    const incomingId = (n as { id?: string }).id?.trim();
+    const fallbackId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const resolvedId = incomingId || fallbackId;
+    const signature = `${n.tipo}|${n.titulo}|${n.mensagem}`;
+
+    const alreadyExists = state.notificacoes.some(
+      (existing) =>
+        existing.id === resolvedId ||
+        `${existing.tipo}|${existing.titulo}|${existing.mensagem}` === signature
+    );
+    if (alreadyExists) {
+      return state;
+    }
+
+    const next = [
+      {
+        ...n,
+        id: resolvedId,
+        dataCriacao: (n as { dataCriacao?: string }).dataCriacao || new Date().toISOString(),
+        lida: false,
+      },
+      ...state.notificacoes,
+    ].slice(0, 100);
+
+    return { notificacoes: next };
   }),
+  
+  // Marca como lida preservando o item (evita que SyncEngine recrie alerta já visto)
+  marcarNotificacaoLida: (id) => set((state) => ({
+    notificacoes: state.notificacoes.map((n) =>
+      n.id === id ? { ...n, lida: true } : n
+    ),
+  })),
+
+  marcarTodasLidas: () => set((state) => ({
+    notificacoes: state.notificacoes.map((n) => ({ ...n, lida: true })),
+  })),
   
   removeNotificacao: (id) => set((state) => ({
     notificacoes: state.notificacoes.filter(n => n.id !== id)

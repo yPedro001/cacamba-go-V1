@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAppStore, useClientes, useLocacoes, usePerfil, useLocaisDescarte, useLocalDescartePadrao } from '@/store/useAppStore';
 import { CTRService } from '@/core/application/ctr-service';
 import { ctrDocumentService } from '@/infrastructure/services/ctr-document-service';
@@ -6,13 +6,13 @@ import { CTRFormData, CTRConflito, CTRPayload, LocalDescarte } from '@/core/doma
 import { Cliente, Locacao } from '@/core/domain/types';
 
 export function useCTRController() {
-  const usuarioAtual = useAppStore(s => s.usuarioAtual);
+  const usuarioAtual = useAppStore((s) => s.usuarioAtual);
   const clientes = useClientes();
   const locacoes = useLocacoes();
   const perfil = usePerfil();
   const locaisDescarte = useLocaisDescarte();
   const localDescartePadrao = useLocalDescartePadrao();
-  
+
   const {
     ctrs,
     ctrAtual,
@@ -40,6 +40,7 @@ export function useCTRController() {
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
   const [localDescarteSelecionado, setLocalDescarteSelecionado] = useState<LocalDescarte | null>(null);
   const [payloadPreview, setPayloadPreview] = useState<CTRPayload | null>(null);
+  const lastLoadedUserRef = useRef<string | null>(null);
 
   const service = useMemo(() => {
     if (usuarioAtual?.id) {
@@ -48,49 +49,56 @@ export function useCTRController() {
     return null;
   }, [usuarioAtual?.id]);
 
-  // Carregar dados quando o service estiver disponível
-  useEffect(() => {
-    if (service && !locaisDescarte.length) {
-      loadData();
-    }
-  }, [service, locaisDescarte.length]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!service) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const [locaisData, ctrsData] = await Promise.all([
         service.getLocaisDescarte(),
         service.getCTRs(),
       ]);
-      
+
       setLocaisDescarte(locaisData);
       setCTRs(ctrsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar dados');
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados de CTR');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [service, setLocaisDescarte, setCTRs]);
+
+  // Carrega dados de CTR uma única vez por usuário autenticado
+  useEffect(() => {
+    const uid = usuarioAtual?.id ?? null;
+    if (!uid || !service) {
+      lastLoadedUserRef.current = null;
+      return;
+    }
+    if (lastLoadedUserRef.current !== uid) {
+      lastLoadedUserRef.current = uid;
+      void loadData();
+    }
+  }, [usuarioAtual?.id, service, loadData]);
 
   const openEmitModal = useCallback(() => {
     const novoForm = generateNovoCTRForm();
     setCTRAtual(novoForm);
-    setCtrNumeroPendente(null); // Limpar número pendente ao iniciar novo CTR
+    setCtrNumeroPendente(null);
     setAlugueisSelecionados([]);
     setClienteSelecionado(null);
     setLocalDescarteSelecionado(localDescartePadrao || null);
     setConflitos([]);
     setPayloadPreview(null);
+    setError(null);
     setIsModalOpen(true);
   }, [generateNovoCTRForm, setCTRAtual, setCtrNumeroPendente, localDescartePadrao]);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
-    resetCTRForm(); // Limpa ctrAtual, ctrAtualId e ctrNumeroPendente
+    resetCTRForm();
     setAlugueisSelecionados([]);
     setClienteSelecionado(null);
     setLocalDescarteSelecionado(null);
@@ -102,19 +110,19 @@ export function useCTRController() {
   const handleSelectAlugueis = useCallback((alugueis: Locacao[]) => {
     setAlugueisSelecionados(alugueis);
     if (alugueis.length > 0) {
-      setClienteSelecionado(clientes.find(cliente => cliente.id === alugueis[0].clienteId) || null);
+      setClienteSelecionado(clientes.find((cliente) => cliente.id === alugueis[0].clienteId) || null);
     } else {
       setConflitos([]);
       if (service && clienteSelecionado && localDescarteSelecionado) {
         updateCTRAtual(service.autoFillFromCliente(clienteSelecionado, localDescarteSelecionado, perfil));
       }
     }
-    
+
     if (service && alugueis.length > 0 && localDescarteSelecionado) {
       const conflitosDetectados = service.validateConflitos(alugueis, clientes);
       setConflitos(conflitosDetectados);
-      
-      if (conflitosDetectados.filter(c => c.tipo === 'bloqueio').length === 0) {
+
+      if (conflitosDetectados.filter((c) => c.tipo === 'bloqueio').length === 0) {
         const autoFill = service.autoFillFromAlugueis(alugueis, clientes, localDescarteSelecionado, perfil);
         updateCTRAtual(autoFill);
       }
@@ -133,7 +141,7 @@ export function useCTRController() {
 
   const handleSelectLocalDescarte = useCallback((local: LocalDescarte | null) => {
     setLocalDescarteSelecionado(local);
-    
+
     if (local && service) {
       if (alugueisSelecionados.length > 0) {
         const autoFill = service.autoFillFromAlugueis(alugueisSelecionados, clientes, local, perfil);
@@ -190,13 +198,12 @@ export function useCTRController() {
 
   const previewDocument = useCallback(async () => {
     if (ctrAtual && localDescarteSelecionado && service) {
-      // Se já tem número pendente, reutilizar; caso contrário, gerar novo
       let numeroTemp = ctrNumeroPendente;
       if (!numeroTemp) {
         numeroTemp = await service.getProximoNumeroCTR();
-        setCtrNumeroPendente(numeroTemp); // Armazenar para reuse posterior
+        setCtrNumeroPendente(numeroTemp);
       }
-      
+
       const payload = ctrDocumentService.generatePayload(ctrAtual, localDescarteSelecionado, perfil, numeroTemp);
       setPayloadPreview(payload);
       return payload;
@@ -210,7 +217,7 @@ export function useCTRController() {
       return false;
     }
 
-    const conflitosBloqueio = conflitos.filter(c => c.tipo === 'bloqueio');
+    const conflitosBloqueio = conflitos.filter((c) => c.tipo === 'bloqueio');
     if (conflitosBloqueio.length > 0) {
       setError(conflitosBloqueio[0].mensagem);
       return false;
@@ -220,7 +227,6 @@ export function useCTRController() {
     setError(null);
 
     try {
-      // Passar o número pendente para garantir que use o mesmo número
       const novoCTR = await service.createCTR(
         ctrAtual,
         localDescarteSelecionado,
@@ -240,7 +246,6 @@ export function useCTRController() {
     }
   }, [service, ctrAtual, localDescarteSelecionado, alugueisSelecionados, clientes, conflitos, addCTR, closeModal, ctrNumeroPendente]);
 
-  // Salvar CTR como rascunho (sem "emitir" formalmente)
   const handleSalvarCTR = useCallback(async () => {
     if (!service || !ctrAtual || !localDescarteSelecionado) {
       setError('Dados incompletos para salvar CTR');
@@ -251,9 +256,8 @@ export function useCTRController() {
     setError(null);
 
     try {
-      // Usar o número pendente se existir, ou gerar novo
       const numero = ctrNumeroPendente || await service.getProximoNumeroCTR();
-      
+
       const novoCTR = await service.createCTR(
         ctrAtual,
         localDescarteSelecionado,
@@ -271,7 +275,7 @@ export function useCTRController() {
     } finally {
       setIsLoading(false);
     }
-  }, [service, ctrAtual, localDescarteSelecionado, alugueisSelecionados, clientes, ctrNumeroPendente, closeModal]);
+  }, [service, ctrAtual, localDescarteSelecionado, alugueisSelecionados, clientes, ctrNumeroPendente, addCTR, closeModal]);
 
   const downloadPDF = useCallback(async (payload: CTRPayload) => {
     try {
@@ -299,7 +303,7 @@ export function useCTRController() {
 
   const handleDeleteCTR = useCallback(async (id: string) => {
     if (!service) return;
-    
+
     setIsLoading(true);
     try {
       await service.deleteCTR(id);
@@ -318,12 +322,11 @@ export function useCTRController() {
       createdAt: new Date().toISOString(),
       usuarioId: usuarioAtual?.id || 'local',
     };
-    
+
     if (service) {
       setIsLoading(true);
       try {
         const savedLocal = await service.createLocalDescarte(local);
-        // Se for o primeiro local, definir como padrão
         if (locaisDescarte.length === 0 && savedLocal) {
           await service.updateLocalDescarte(savedLocal.id, { isPadrao: true });
           savedLocal.isPadrao = true;
@@ -357,11 +360,8 @@ export function useCTRController() {
         setIsLoading(false);
       }
     }
-    if (!service) {
-      updateLocalDescarte(id, updates);
-      return locaisDescarte.find(l => l.id === id);
-    }
-    return undefined;
+    updateLocalDescarte(id, updates);
+    return locaisDescarte.find((l) => l.id === id);
   }, [service, updateLocalDescarte, locaisDescarte]);
 
   const deleteLocalDescarteById = useCallback(async (id: string) => {
@@ -394,11 +394,13 @@ export function useCTRController() {
   }, [service, setLocalPadrao]);
 
   const hasBloqueioConflitos = useMemo(() => {
-    return conflitos.some(c => c.tipo === 'bloqueio');
+    return conflitos.some((c) => c.tipo === 'bloqueio');
   }, [conflitos]);
 
   const locacoesAtivas = useMemo(() => {
-    return locacoes.filter(l => l.status !== 'pago' && l.status !== 'concluida');
+    return locacoes.filter(
+      (l) => l.status !== 'pago' && l.status !== 'concluida' && l.status !== 'cancelada'
+    );
   }, [locacoes]);
 
   return {
@@ -418,7 +420,7 @@ export function useCTRController() {
     error,
     hasBloqueioConflitos,
     locacoesAtivas,
-    
+
     openEmitModal,
     closeModal,
     handleSelectAlugueis,

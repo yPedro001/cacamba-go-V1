@@ -1,4 +1,5 @@
 import type { Cliente } from '@/core/domain/types'
+import { escapeRegExp } from '@/lib/domain-helpers'
 
 /**
  * Retorna o nome de um cliente pelo ID.
@@ -15,7 +16,7 @@ export function formatBRL(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  }).format(value)
+  }).format(Number.isFinite(value) ? value : 0)
 }
 
 /**
@@ -30,10 +31,11 @@ export const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ag
 
 /**
  * Sugere o próximo código sequencial para uma caçamba.
- * Ex: Se o prefixo for "C-" e a última for "C-014", retorna "C-015".
+ * Escapa caracteres especiais no prefixo para evitar SyntaxError em RegExp.
  */
 export function suggestNextCacambaCode(cacambas: { codigo: string }[], prefix: string = 'C-'): string {
-  const regex = new RegExp(`^${prefix}(\\d+)$`, 'i')
+  const safePrefix = escapeRegExp(prefix)
+  const regex = new RegExp(`^${safePrefix}(\\d+)$`, 'i')
   let maxNum = 0
 
   cacambas.forEach(c => {

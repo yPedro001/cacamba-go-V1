@@ -1,5 +1,5 @@
-'use client'
-import React from 'react'
+"use client";
+import React from "react";
 import {
   BarChart,
   Bar,
@@ -9,51 +9,57 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from 'recharts'
+} from "recharts";
 
 type DashboardChartData = {
-  name: string
-  Arrecadação: number
-  Gastos: number
-}
+  name: string;
+  Arrecadação: number;
+  Gastos: number;
+};
 
 interface DashboardChartProps {
-  data: DashboardChartData[]
+  data: DashboardChartData[];
 }
 
-/**
- * Componente isolado do gráfico do Dashboard.
- * Encapsula todos os imports do Recharts para que o carregamento dinâmico
- * via `dynamic()` funcione corretamente e separe o bundle.
- */
 export default function DashboardChart({ data }: DashboardChartProps) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
-        <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+      <BarChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+        <XAxis
+          dataKey="name"
+          stroke="hsl(var(--muted-foreground))"
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+        />
         <YAxis
-          stroke="#888888"
+          stroke="hsl(var(--muted-foreground))"
           fontSize={12}
           tickLine={false}
           axisLine={false}
           tickFormatter={(value) => `R$${value}`}
         />
         <Tooltip
-          cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-          contentStyle={{ 
-            backgroundColor: 'hsl(var(--card))', 
-            borderColor: 'hsl(var(--border))',
-            borderRadius: '12px',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+          cursor={{ fill: "hsl(var(--muted) / 0.45)" }}
+          formatter={(value: any) =>
+            new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+              Number(value) || 0
+            )
+          }
+          contentStyle={{
+            backgroundColor: "hsl(var(--card))",
+            borderColor: "hsl(var(--border))",
+            borderRadius: "10px",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.25)",
           }}
-          itemStyle={{ color: 'hsl(var(--foreground))' }}
-          labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 'bold' }}
+          itemStyle={{ color: "hsl(var(--foreground))", fontSize: "12px", fontWeight: 600 }}
+          labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700, marginBottom: "4px" }}
         />
-        <Legend />
-        <Bar dataKey="Arrecadação" fill="#10b981" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
+        <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
+        <Bar dataKey="Arrecadação" fill="#16794C" radius={[4, 4, 0, 0]} maxBarSize={36} />
+        <Bar dataKey="Gastos" fill="#C42B22" radius={[4, 4, 0, 0]} maxBarSize={36} />
       </BarChart>
     </ResponsiveContainer>
-  )
+  );
 }

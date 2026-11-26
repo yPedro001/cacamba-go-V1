@@ -1,740 +1,876 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { CheckCircle2, UserPlus, Users, MapPin, Save, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { z } from 'zod';
-import { LocacaoSchema } from '@/core/domain/schemas';
-import { Locacao, Cliente, Perfil, Cacamba, ClienteEndereco } from '@/core/domain/types';
-import { calculateFinancials } from '@/core/domain/business-logic';
-import { AddressAutocomplete } from '@/components/AddressAutocomplete';
-import { geocodeService } from '@/infrastructure/api/geocode-service';
-import { DuplicateClientDialog } from '@/components/DuplicateClientDialog';
-import { cn } from '@/lib/utils';
-import { UnsavedChangesConfirmDialog } from '@/components/ui/unsaved-changes';
-import { Controller } from 'react-hook-form';
-import { formatCurrency } from '@/lib/currency-utils';
-import { SmartCurrencyInput } from '@/components/ui/smart-currency-input';
-import { cpfCnpjMask, phoneMask } from '@/lib/masks';
-import { ModalBase } from '@/components/ui/modal-base';
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { SmartCurrencyInput } from "@/components/ui/smart-currency-input";
+import {
+  Locacao,
+  Cliente,
+  Perfil,
+  Cacamba,
+  MetodoPagamento,
+} from "@/core/domain/types";
+import { LocacaoSchema } from "@/core/domain/schemas";
+import { calculateFinancials } from "@/core/domain/business-logic";
+import { DuplicateClientDialog } from "@/components/DuplicateClientDialog";
+import { UnsavedChangesConfirmDialog } from "@/components/ui/unsaved-changes";
+import { ModalBase } from "@/components/ui/modal-base";
+import {
+  UserPlus,
+  Users,
+  Save,
+  Loader2,
+  CreditCard,
+  Info,
+  AlertCircle,
+} from "lucide-react";
+import { geocodeService } from "@/infrastructure/api/geocode-service";
+import { cpfCnpjMask, phoneMask, cepMask } from "@/lib/masks";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { cn } from "@/lib/utils";
+import {
+  addDaysLocalISO,
+  getLocalTodayISO,
+} from "@/lib/domain-helpers";
+import { notify } from "@/lib/notificationService";
 
-// ================================================================
-// UTILIDADES DE CÁLCULO - CRÍTICO PARA EVITAR BUGS DE ARREDONDAMENTO
-// ================================================================
+const round2 = (v: number): number => Math.round((v + Number.EPSILON) * 100) / 100;
 
-/** Arredonda para 2 casas decimais, evitando floating point errors */
-const round2 = (n: number): number => Math.round(n * 100) / 100;
+const calcularValorTotal = (valorUnitario: number, quantidade: number): number =>
+  round2(valorUnitario * Math.max(1, quantidade));
 
-/**
- * Calcula o valor total a partir do unitário e quantidade.
- * Usa arredondamento para evitar: 300 * 3 = 900.0000000000001
- */
-const calcularValorTotal = (valorUnitario: number, quantidade: number): number => {
-  return round2(valorUnitario * quantidade);
-};
-
-/**
- * Deriva o valor unitário a partir do total e quantidade.
- * Importante para quando o usuário edita o total manualmente.
- */
 const derivarValorUnitario = (valorTotal: number, quantidade: number): number => {
   if (quantidade <= 0) return 0;
   return round2(valorTotal / quantidade);
 };
 
-// ================================================================
-// SCHEMA ESTENDIDO
-// ================================================================
-
-// Schema estendido para o form: clienteId é opcional quando isNovoCliente = true
 const LocacaoFormSchema = LocacaoSchema.extend({
-  clienteId: z.string().optional().default(''),
-  novoCliente: z.object({
-    nome: z.string().optional().default(''),
-    cpfCnpj: z.string().optional().default(''),
-    telefone: z.string().optional().default(''),
-    email: z.string().optional().default(''),
-  }).optional(),
+  clienteId: z.string().optional().default(""),
+  novoCliente: z
+    .object({
+      nome: z.string().optional().default(""),
+      cpfCnpj: z.string().optional().default(""),
+      telefone: z.string().optional().default(""),
+      email: z.string().optional().default(""),
+    })
+    .optional(),
   salvarEndereco: z.boolean().optional().default(false),
-  nomeEndereco: z.string().optional().default(''),
+  nomeEndereco: z.string().optional().default(""),
   enderecoDetalhes: z.any().optional(),
-  /** Valor unitário do aluguel (separado do total para permitir ajustes precisos) */
   valorUnitario: z.number().optional().default(300),
 });
 
 type LocacaoFormData = z.infer<typeof LocacaoFormSchema>;
 
+const selectBase =
+  "flex min-h-[44px] w-full rounded-lg border border-input bg-card px-3.5 py-2 text-base md:text-sm font-medium text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-[invalid=true]:border-destructive";
+
 interface LocacaoModalProps {
   isOpen: boolean;
   onClose: () => void;
   locacao?: Partial<Locacao>;
-  onSave: (data: Partial<Locacao> & { salvarEndereco?: boolean, nomeEndereco?: string, enderecoDetalhes?: any }) => void;
-  onAddClienteAndSave: (cliente: Partial<Cliente>, locacaoData: Partial<Locacao>, options?: { updateExisting?: boolean, useExistingId?: string }) => void;
+  onSave: (
+    data: Partial<Locacao> & {
+      salvarEndereco?: boolean;
+      nomeEndereco?: string;
+      enderecoDetalhes?: any;
+    }
+  ) => void | Promise<boolean>;
+  onAddClienteAndSave: (
+    cliente: Partial<Cliente>,
+    locacaoData: Partial<Locacao>,
+    options?: { updateExisting?: boolean; useExistingId?: string }
+  ) => void | Promise<boolean | void>;
   clientes: Cliente[];
   perfil: Perfil;
   cacambas: Cacamba[];
-  showCloseConfirm?: boolean; // Nova prop para forçar confirmação ao fechar
+  showCloseConfirm?: boolean;
 }
 
 export function LocacaoModal({
-  isOpen, onClose, locacao, onSave, onAddClienteAndSave, clientes, perfil, cacambas
+  isOpen,
+  onClose,
+  locacao,
+  onSave,
+  onAddClienteAndSave,
+  clientes,
+  perfil,
+  cacambas,
 }: LocacaoModalProps) {
   const [isCepLoading, setIsCepLoading] = useState(false);
   const [isNovoCliente, setIsNovoCliente] = useState(false);
-  const [duplicateCheck, setDuplicateCheck] = useState<{ isOpen: boolean, client?: Cliente }>({ isOpen: false });
-  const [selectedEnderecoId, setSelectedEnderecoId] = useState<string>('manual');
+  const [duplicateCheck, setDuplicateCheck] = useState<{ isOpen: boolean; client?: Cliente }>({
+    isOpen: false,
+  });
+  const [selectedEnderecoId, setSelectedEnderecoId] = useState<string>("manual");
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
-  
-  /**
-   * Flag que rastrea se o usuário fez edição MANUAL no valor total.
-   * Quando true, o cálculo automático NÃO sobrescreve o valor.
-   * 
-   * Fluxo:
-   * - Usuário abre modal (nova locação) → false (valor vem do padrão)
-   * - Usuário muda quantidade → false (recalcula automaticamente)
-   * - Usuário edita manualmente o valor total → true (protege a edição)
-   * - Usuário muda quantidade novamente → false (assume que quer recalcular)
-   */
   const [valorTotalEditadoManualmente, setValorTotalEditadoManualmente] = useState(false);
 
-  // Valor padrão do aluguel (R$ 300,00)
-  const valorPadrao = perfil.padroes?.valorAluguel ?? 300;
+  const valorPadrao = perfil.padroes?.valorAluguel || 300;
+  const taxaCartaoPadrao = perfil.padroes?.taxaMaquininhaPadrao ?? 0;
 
-  // Função para tratar o fechamento - sempre pede confirmação
-  const handleClose = () => {
-    setShowCloseConfirm(true);
-  };
-
-  const handleConfirmClose = () => {
-    setShowCloseConfirm(false);
-    onClose();
-  };
-
-  const handleCancelClose = () => {
-    setShowCloseConfirm(false);
-  };
-
-  const { register, handleSubmit, setValue, watch, reset, control, formState: { errors } } = useForm<LocacaoFormData>({
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    reset,
+    formState: { errors, isDirty },
+  } = useForm<LocacaoFormData>({
     resolver: zodResolver(LocacaoFormSchema) as any,
     defaultValues: {
       quantidadeCacambas: 1,
-      status: 'entrega_pendente',
-      metodoPagamento: 'pix',
+      status: "entrega_pendente",
+      metodoPagamento: "pix",
       valor: valorPadrao,
       valorUnitario: valorPadrao,
-      taxaCartaoPercent: perfil.padroes?.taxaMaquininhaPadrao ?? 0,
+      taxaCartaoPercent: 0,
       valorTaxa: 0,
       valorLiquido: valorPadrao,
       parcelas: 1,
       jurosPercent: 0,
       salvarEndereco: false,
-      nomeEndereco: '',
-      clienteId: '',
-      novoCliente: { nome: '', cpfCnpj: '', telefone: '', email: '' }
-    }
+      nomeEndereco: "",
+      clienteId: "",
+      enderecoObra: "",
+      novoCliente: { nome: "", cpfCnpj: "", telefone: "", email: "" },
+    },
   });
 
-  const watchValor = watch('valor') || 0;
-  const watchMetodo = watch('metodoPagamento');
-  const watchTaxaPercent = watch('taxaCartaoPercent') || 0;
-  const watchEndereco = watch('enderecoObra');
-  const watchClienteId = watch('clienteId');
-  const watchSalvarEndereco = watch('salvarEndereco');
-  const watchQuantidade = watch('quantidadeCacambas') || 1;
-  const watchValorUnitario = watch('valorUnitario') || valorPadrao;
+  const watchMetodo = watch("metodoPagamento") as MetodoPagamento | undefined;
+  const watchValor = watch("valor") ?? 0;
+  const watchTaxaPercent = watch("taxaCartaoPercent") ?? 0;
+  const watchParcelas = watch("parcelas") ?? 1;
+  const watchJuros = watch("jurosPercent") ?? 0;
+  const watchEndereco = watch("enderecoObra");
+  const watchClienteId = watch("clienteId");
+  const watchSalvarEndereco = watch("salvarEndereco");
+  const watchQuantidade = watch("quantidadeCacambas") || 1;
+  const watchValorUnitario = watch("valorUnitario") || valorPadrao;
 
-  const selectedClient = useMemo(() => 
-    clientes.find(c => c.id === watchClienteId), 
+  const selectedClient = useMemo(
+    () => clientes.find((c) => c.id === watchClienteId),
     [clientes, watchClienteId]
   );
 
-  // ================================================================
-  // EFEITO: Sincroniza estado quando o modal abre
-  // ================================================================
-  useEffect(() => {
-    if (isOpen) {
-      if (locacao?.id) {
-        // MODO EDIÇÃO: Carrega dados existentes
-        reset(locacao as any);
-        setIsNovoCliente(false);
-        setSelectedEnderecoId('manual');
-        // NÃO recalcula automaticamente - mantém o valor que está no banco
-        setValorTotalEditadoManualmente(false);
-      } else {
-        // MODO CRIAÇÃO: Inicializa com valores padrão
-        const hoje = new Date().toISOString().split('T')[0];
-        const daqui7 = new Date(); daqui7.setDate(daqui7.getDate() + 7);
-        const devolucao = daqui7.toISOString().split('T')[0];
-        
-        const defaultValor = valorPadrao;
-        reset({
-          quantidadeCacambas: 1,
-          dataRetirada: hoje,
-          dataDevolucaoPrevista: devolucao,
-          status: 'entrega_pendente',
-          metodoPagamento: 'pix',
-          valor: defaultValor,
-          valorUnitario: defaultValor,
-          taxaCartaoPercent: perfil.padroes?.taxaMaquininhaPadrao ?? 0,
-          valorTaxa: 0,
-          valorLiquido: defaultValor,
-          parcelas: 1,
-          jurosPercent: 0,
-          salvarEndereco: false,
-          nomeEndereco: '',
-          clienteId: '',
-          novoCliente: { nome: '', cpfCnpj: '', telefone: '', email: '' }
-        });
-        setIsNovoCliente(false);
-        setSelectedEnderecoId('manual');
-        setValorTotalEditadoManualmente(false); // Nova locação começa sem edição manual
-      }
-    }
-  }, [isOpen, locacao, reset, perfil, valorPadrao]);
-
-  // ================================================================
-  // EFEITO: Calcula valor total automaticamente quando quantidade muda
-  // 
-  // REGRAS:
-  // 1. EM CRIAÇÃO: Sempre recalcula (usuário pode mudar quantidade livremente)
-  // 2. EM EDIÇÃO: Só recalcula se o valor atual for exatamente o calculado
-  //    (isso significa que o usuário NÃO editou manualmente)
-  // ================================================================
+  // Inicialização limpa ao abrir modal
   useEffect(() => {
     if (!isOpen) return;
-    
-    const quantidade = watchQuantidade || 1;
-    const unitario = watchValorUnitario || valorPadrao;
-    
-    if (locacao?.id) {
-      // MODO EDIÇÃO: Verifica se o valor atual é "automático" ou "manual"
-      // Se o valor atual = unitário * quantidade, assume que é automático
-      // Se for diferente, o usuário editou manualmente e não deve ser sobrescrito
-      const valorEsperado = calcularValorTotal(unitario, quantidade);
-      const valorAtual = watchValor;
-      
-      // Tolerância de 0.01 para evitar problemas de floating point
-      const isAutomatico = Math.abs(valorAtual - valorEsperado) < 0.01;
-      
-      if (isAutomatico) {
-        // Recalcula automaticamente - o valor estava "limpo"
-        const novoTotal = calcularValorTotal(unitario, quantidade);
-        setValue('valor', novoTotal);
-        setValue('valorLiquido', novoTotal);
-        setValorTotalEditadoManualmente(false);
-      }
-      // Se isAutomatico=false, não faz nada - mantém valor manual
+
+    if (locacao && locacao.id) {
+      const qtd = locacao.quantidadeCacambas || 1;
+      const total = locacao.valor ?? valorPadrao;
+      const isCard =
+        locacao.metodoPagamento === "credito" || locacao.metodoPagamento === "debito";
+      reset({
+        ...locacao,
+        quantidadeCacambas: qtd,
+        valor: total,
+        valorUnitario: derivarValorUnitario(total, qtd),
+        taxaCartaoPercent: isCard ? (locacao.taxaCartaoPercent ?? taxaCartaoPadrao) : 0,
+        parcelas: locacao.parcelas ?? 1,
+        jurosPercent: locacao.jurosPercent ?? 0,
+        salvarEndereco: false,
+        nomeEndereco: "",
+      });
+      setIsNovoCliente(false);
+      setSelectedEnderecoId("manual");
+      setValorTotalEditadoManualmente(false);
     } else {
-      // MODO CRIAÇÃO: Sempre recalcula
-      const novoTotal = calcularValorTotal(unitario, quantidade);
-      setValue('valor', novoTotal);
-      setValue('valorLiquido', novoTotal);
+      const todayISO = getLocalTodayISO();
+      const plus7ISO = addDaysLocalISO(todayISO, 7);
+      const defaultQtd = 1;
+      const defaultTotal = calcularValorTotal(valorPadrao, defaultQtd);
+      reset({
+        dataRetirada: todayISO,
+        dataDevolucaoPrevista: plus7ISO,
+        quantidadeCacambas: defaultQtd,
+        status: "entrega_pendente",
+        metodoPagamento: "pix",
+        valor: defaultTotal,
+        valorUnitario: valorPadrao,
+        taxaCartaoPercent: 0,
+        valorTaxa: 0,
+        valorLiquido: defaultTotal,
+        parcelas: 1,
+        jurosPercent: 0,
+        salvarEndereco: false,
+        nomeEndereco: "",
+        clienteId: "",
+        enderecoObra: "",
+        observacoes: "",
+        novoCliente: { nome: "", cpfCnpj: "", telefone: "", email: "" },
+      });
+      setIsNovoCliente(false);
+      setSelectedEnderecoId("manual");
       setValorTotalEditadoManualmente(false);
     }
-  }, [isOpen, watchQuantidade, watchValorUnitario, locacao?.id, setValue, valorPadrao, watchValor]);
+    setShowCloseConfirm(false);
+  }, [isOpen, locacao, reset, valorPadrao, taxaCartaoPadrao]);
 
-  // ================================================================
-  // EFEITO: Calcula valor unitário quando o total é editado manualmente
-  // (Isso permite que o usuário edite o total e o unitário se ajuste)
-  // ================================================================
-  const handleValorTotalChange = useCallback((novoValor: number) => {
-    const quantidade = watchQuantidade || 1;
-    const unitarioDerivado = derivarValorUnitario(novoValor, quantidade);
-    
-    // Atualiza valor total
-    setValue('valor', novoValor);
-    
-    // Atualiza valor unitário derivado (para manter consistência visual)
-    setValue('valorUnitario', unitarioDerivado);
-    
-    // Marca como edição manual para proteger de sobrescrita
-    setValorTotalEditadoManualmente(true);
-  }, [setValue, watchQuantidade]);
+  const handleAttemptClose = useCallback(() => {
+    if (isDirty || isNovoCliente) {
+      setShowCloseConfirm(true);
+    } else {
+      onClose();
+    }
+  }, [isDirty, isNovoCliente, onClose]);
 
-  // ================================================================
-  // EFEITO: Calcula valor total quando o unitário é editado manualmente
-  // ================================================================
-  const handleValorUnitarioChange = useCallback((novoUnitario: number) => {
-    const quantidade = watchQuantidade || 1;
-    const totalCalculado = calcularValorTotal(novoUnitario, quantidade);
-    
-    // Atualiza unitário
-    setValue('valorUnitario', novoUnitario);
-    
-    // Atualiza total baseado no novo unitário
-    setValue('valor', totalCalculado);
-    
-    // Recalcula líquido
-    const watchJuros = watch('jurosPercent') || 0;
-    const taxa = watchTaxaPercent || 0;
-    const { valorTaxa, valorLiquido } = calculateFinancials(totalCalculado, taxa, watchJuros);
-    setValue('valorTaxa', valorTaxa);
-    setValue('valorLiquido', valorLiquido);
-    
-    // Marca como edição manual do unitário (não deve ser sobrescrito pela quantidade)
-    setValorTotalEditadoManualmente(true);
-  }, [setValue, watchQuantidade, watchTaxaPercent, watch('jurosPercent')]);
+  const confirmDiscard = () => {
+    setShowCloseConfirm(false);
+    onClose();
+  };
 
-  // Se o cliente selecionado tiver apenas 1 endereço, seleciona automaticamente
+  // Auto-preenchimento de endereço quando escolhe endereço salvo do cliente
   useEffect(() => {
-    if (selectedClient && !locacao?.id) {
-      const enderecos = selectedClient.enderecos || [];
-      if (enderecos.length === 1) {
-        const end = enderecos[0];
-        setSelectedEnderecoId(end.id!);
-        setValue('enderecoObra', `${end.rua}, ${end.numero} - ${end.cidade}`);
-        setValue('lat', end.lat);
-        setValue('lng', end.lng);
-      } else if (enderecos.length > 1) {
-        setSelectedEnderecoId('');
-      } else {
-        setSelectedEnderecoId('manual');
+    if (!isOpen || isNovoCliente || !selectedClient || selectedEnderecoId === "manual") return;
+    const end = selectedClient.enderecos?.find((e) => e.id === selectedEnderecoId);
+    if (end) {
+      setValue("enderecoObra", `${end.rua}, ${end.numero || "S/N"} - ${end.cidade}`, {
+        shouldDirty: true,
+      });
+      if (end.cep) setValue("cep", end.cep);
+      if (end.lat !== undefined) setValue("lat", end.lat);
+      if (end.lng !== undefined) setValue("lng", end.lng);
+    }
+  }, [isOpen, selectedEnderecoId, selectedClient, isNovoCliente, setValue]);
+
+  // Recalcula valor total ao mudar quantidade ou unitário quando não foi editado manualmente (watchValor fora das deps!)
+  useEffect(() => {
+    if (!isOpen || valorTotalEditadoManualmente) return;
+    if (locacao?.id) return;
+    const novoTotal = calcularValorTotal(watchValorUnitario, watchQuantidade);
+    setValue("valor", novoTotal);
+  }, [isOpen, watchQuantidade, watchValorUnitario, locacao?.id, valorTotalEditadoManualmente, setValue]);
+
+  const handleValorTotalChange = useCallback(
+    (novoValor: number) => {
+      const unitarioDerivado = derivarValorUnitario(novoValor, watchQuantidade);
+      setValue("valor", novoValor, { shouldDirty: true });
+      setValue("valorUnitario", unitarioDerivado);
+      setValorTotalEditadoManualmente(true);
+    },
+    [watchQuantidade, setValue]
+  );
+
+  const handleValorUnitarioChange = useCallback(
+    (novoUnitario: number) => {
+      const totalCalculado = calcularValorTotal(novoUnitario, watchQuantidade);
+      setValue("valorUnitario", novoUnitario, { shouldDirty: true });
+      setValue("valor", totalCalculado, { shouldDirty: true });
+      setValorTotalEditadoManualmente(false);
+    },
+    [watchQuantidade, setValue]
+  );
+
+  // Ao mudar método de pagamento, garante que taxa de cartão só existe em Crédito/Débito
+  const handleMetodoChange = (novoMetodo: MetodoPagamento) => {
+    setValue("metodoPagamento", novoMetodo, { shouldDirty: true });
+    if (novoMetodo === "credito" || novoMetodo === "debito") {
+      if (!watchTaxaPercent && taxaCartaoPadrao > 0) {
+        setValue("taxaCartaoPercent", taxaCartaoPadrao);
       }
+      if (novoMetodo === "debito") {
+        setValue("parcelas", 1);
+        setValue("jurosPercent", 0);
+      }
+    } else {
+      setValue("taxaCartaoPercent", 0);
+      setValue("parcelas", 1);
+      setValue("jurosPercent", 0);
     }
-  }, [selectedClient, setValue, locacao?.id]);
+  };
 
-  // Lógica de cálculo financeiro
+  // Recalcula taxas e juros automaticamente sempre que método/parcelas/valor mudar
   useEffect(() => {
-    let taxa = 0;
-    if (watchMetodo === 'credito') taxa = 4.5;
-    if (watchMetodo === 'debito') taxa = 1.9;
-    
-    const finalTaxa = watchTaxaPercent > 0 ? watchTaxaPercent : taxa;
-    const watchJuros = watch('jurosPercent') || 0;
-    const { valorTaxa, valorLiquido } = calculateFinancials(watchValor, finalTaxa, watchJuros);
-    
-    setValue('valorTaxa', valorTaxa);
-    setValue('valorLiquido', valorLiquido);
-    if (watchTaxaPercent === 0 && taxa > 0) setValue('taxaCartaoPercent', taxa);
+    const limiteSemJuros = perfil.padroes?.parcelasSemJuros ?? 1;
+    const taxaJurosPadrao = perfil.padroes?.jurosParcelamento ?? 0;
 
-    const watchParcelas = watch('parcelas') || 1;
-    if (!locacao?.id) {
-       const limiteSemJuros = perfil.padroes?.parcelasSemJuros || 1;
-       const taxaJurosPadrao = perfil.padroes?.jurosParcelamento || 0;
-       
-       if (watchParcelas > limiteSemJuros && watchJuros === 0) {
-         setValue('jurosPercent', taxaJurosPadrao);
-       } else if (watchParcelas <= limiteSemJuros && watchJuros === taxaJurosPadrao) {
-         setValue('jurosPercent', 0);
-       }
+    let effectiveJuros = watchJuros;
+    if (watchMetodo === "credito" && watchParcelas > limiteSemJuros && taxaJurosPadrao > 0 && watchJuros === 0) {
+      effectiveJuros = taxaJurosPadrao;
+      setValue("jurosPercent", taxaJurosPadrao);
+    } else if (
+      (watchMetodo !== "credito" || watchParcelas <= limiteSemJuros) &&
+      watchJuros === taxaJurosPadrao &&
+      taxaJurosPadrao > 0
+    ) {
+      effectiveJuros = 0;
+      setValue("jurosPercent", 0);
     }
-  }, [watchValor, watchMetodo, watchTaxaPercent, watch('parcelas'), watch('jurosPercent'), setValue, perfil.padroes, locacao?.id]);
+
+    const { valorTaxa, valorLiquido } = calculateFinancials(
+      watchValor,
+      watchMetodo,
+      watchTaxaPercent,
+      effectiveJuros
+    );
+    setValue("valorTaxa", valorTaxa);
+    setValue("valorLiquido", valorLiquido);
+  }, [watchValor, watchMetodo, watchTaxaPercent, watchParcelas, watchJuros, setValue, perfil.padroes]);
 
   const handleCepLookup = async (cep: string) => {
+    const clean = cep.replace(/\D/g, "");
+    if (clean.length !== 8) return;
     setIsCepLoading(true);
     const data = await geocodeService.fetchByCep(cep);
     setIsCepLoading(false);
     if (data) {
-      setValue('enderecoObra', `${data.rua}, ${data.cidade}`);
-      if (data.lat && data.lng) {
-        setValue('lat', data.lat);
-        setValue('lng', data.lng);
-      }
-    }
-  };
-
-  const handleEnderecoSelection = (id: string) => {
-    setSelectedEnderecoId(id);
-    if (id === 'manual') {
-      setValue('enderecoObra', '');
-      setValue('lat', undefined);
-      setValue('lng', undefined);
+      const fullAddress = `${data.rua}, ${data.cidade}${data.bairro ? ` (${data.bairro})` : ""}`;
+      setValue("enderecoObra", fullAddress, { shouldDirty: true });
+      if (data.lat) setValue("lat", data.lat);
+      if (data.lng) setValue("lng", data.lng);
     } else {
-      const end = selectedClient?.enderecos?.find(e => e.id === id);
-      if (end) {
-        setValue('enderecoObra', `${end.rua}, ${end.numero} - ${end.cidade}`);
-        setValue('lat', end.lat);
-        setValue('lng', end.lng);
-      }
+      notify.warning("CEP não encontrado. Preencha o endereço manualmente.");
     }
   };
 
-  const internalOnSave = (data: LocacaoFormData) => {
+  const onSubmit = async (data: LocacaoFormData) => {
     if (isNovoCliente) {
-      // Guard: garante que novoCliente existe antes de acessar suas propriedades
       const novoClienteData = data.novoCliente;
       if (!novoClienteData?.nome?.trim()) {
-        alert('Por favor, preencha o nome do novo cliente.');
+        notify.error("Informe o nome do novo cliente.");
         return;
       }
-      
-      const cpfCnpjValue = novoClienteData?.cpfCnpj || '';
-      const existing = cpfCnpjValue
-        ? clientes.find(c => c.cpfCnpj === cpfCnpjValue)
+      const docDigits = (novoClienteData.cpfCnpj || "").replace(/\D/g, "");
+      const existing = docDigits
+        ? clientes.find((c) => (c.cpfCnpj || "").replace(/\D/g, "") === docDigits)
         : undefined;
 
       if (existing) {
         setDuplicateCheck({ isOpen: true, client: existing });
         return;
       }
+      await onAddClienteAndSave(novoClienteData, data as Partial<Locacao>);
+      onClose();
+      return;
+    }
 
-      onAddClienteAndSave(novoClienteData, data as any);
-    } else {
-      if (!data.clienteId) {
-        alert('Por favor, selecione um cliente.');
-        return;
-      }
-      onSave(data as any);
+    if (!data.clienteId) {
+      notify.error("Selecione um cliente para a locação.");
+      return;
+    }
+
+    const saved = await onSave(data as Partial<Locacao>);
+    if (saved !== false) {
+      onClose();
     }
   };
 
-  const handleDuplicateResolution = (option: 'create_new' | 'link_existing' | 'update_and_link') => {
+  const onFormError = () => {
+    notify.error("Revise os campos destacados antes de salvar a locação.");
+  };
+
+  const handleDuplicateOption = async (
+    option: "create_new" | "link_existing" | "update_and_link"
+  ) => {
+    const existing = duplicateCheck.client;
+    if (!existing) return;
     const data = watch();
-    const existing = duplicateCheck.client!;
     setDuplicateCheck({ isOpen: false });
 
-    if (option === 'create_new') {
-      onAddClienteAndSave(data.novoCliente! as any, data as any);
-    } else if (option === 'link_existing') {
-        onSave({ ...data, clienteId: existing.id } as any);
-    } else if (option === 'update_and_link') {
-      onAddClienteAndSave(data.novoCliente! as any, data as any, { updateExisting: true, useExistingId: existing.id });
+    if (option === "create_new") {
+      await onAddClienteAndSave(data.novoCliente || {}, data as Partial<Locacao>);
+    } else if (option === "link_existing") {
+      await onSave({ ...data, clienteId: existing.id } as Partial<Locacao>);
+    } else if (option === "update_and_link") {
+      await onAddClienteAndSave(data.novoCliente || {}, data as Partial<Locacao>, {
+        updateExisting: true,
+        useExistingId: existing.id,
+      });
     }
+    onClose();
   };
 
-  if (!isOpen) return null;
+  const formatCurrency = (v: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 
-  // ================================================================
-  // RENDER
-  // ================================================================
+  const cacambasDisponiveis = cacambas.filter((c) => c.status === "disponivel");
+  const isCardMetodo = watchMetodo === "credito" || watchMetodo === "debito";
+
   return (
     <>
-    <ModalBase
-      isOpen={isOpen}
-      onClose={handleClose}
-      maxWidth="2xl"
-      title={<>{locacao?.id ? 'Editar' : 'Nova'} <span className="text-accent">Locação</span></>}
-      subtitle={<><span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />SaaS Enterprise v1.0</>}
-      footer={
-        <>
-          <Button type="button" variant="ghost" onClick={handleClose} className="px-8 font-black text-xs uppercase tracking-widest h-12 rounded-2xl text-muted-foreground hover:bg-muted/30 hover:text-foreground">Cancelar</Button>
-          <Button type="submit" form="locacao-form" className="bg-accent hover:bg-accent-dark text-white font-black px-12 text-xs uppercase tracking-widest h-12 rounded-2xl shadow-xl shadow-accent/20 transition-all active:scale-95 disabled:opacity-50">
-            {locacao?.id ? 'Atualizar Contrato' : 'Efetivar Locação'}
-          </Button>
-        </>
-      }
-    >
-        <form 
+      <ModalBase
+        isOpen={isOpen}
+        onClose={handleAttemptClose}
+        maxWidth="2xl"
+        title={locacao?.id ? "Editar Locação" : "Nova Locação"}
+        subtitle="Informe cliente, obra, período e condições de recebimento."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAttemptClose}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="locacao-form"
+              className="w-full sm:w-auto"
+            >
+              {locacao?.id ? "Salvar Alterações" : "Confirmar Locação"}
+            </Button>
+          </>
+        }
+      >
+        <form
           id="locacao-form"
-          onSubmit={handleSubmit(internalOnSave)}
-          className="space-y-8"
+          onSubmit={handleSubmit(onSubmit, onFormError)}
+          className="space-y-5"
         >
-            {/* Seletor de Cliente / Novo Cliente */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between ml-1">
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Informações do Cliente</label>
-                {!locacao?.id && (
-                  <button 
-                    type="button"
-                    onClick={() => setIsNovoCliente(!isNovoCliente)}
-                    className={cn(
-                      "flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all border",
-                      isNovoCliente 
-                        ? "bg-accent text-white border-accent" 
-                        : "bg-muted text-muted-foreground border-border hover:text-foreground"
-                    )}
-                  >
-                    {isNovoCliente ? <Users size={12} /> : <UserPlus size={12} />}
-                    {isNovoCliente ? "Usar Cliente Existente" : "Cadastrar Novo Cliente"}
-                  </button>
-                )}
-              </div>
-
-              {isNovoCliente ? (
-                <div className="p-5 rounded-2xl border border-accent/30 bg-accent/5 space-y-4 animate-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center gap-2 text-accent text-[11px] font-black uppercase tracking-widest mb-1">
-                    <UserPlus size={14} /> Novo Cadastro Rápido
-                  </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    <Input 
-                      placeholder="Nome completo ou Razão Social" 
-                      className="h-11 rounded-xl bg-background border-input text-foreground placeholder:text-muted-foreground/50" 
-                      {...register('novoCliente.nome')}
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <Controller
-                        name="novoCliente.cpfCnpj"
-                        control={control}
-                        render={({ field }) => (
-                          <Input 
-                            {...field}
-                            value={field.value ?? ''}
-                            placeholder="CPF ou CNPJ" 
-                            className="h-11 rounded-xl bg-background border-input font-mono text-sm text-foreground placeholder:text-muted-foreground/50" 
-                            onChange={(e) => field.onChange(cpfCnpjMask(e.target.value))}
-                          />
-                        )}
-                      />
-                      <Controller
-                        name="novoCliente.telefone"
-                        control={control}
-                        render={({ field }) => (
-                          <Input 
-                            {...field}
-                            value={field.value ?? ''}
-                            placeholder="WhatsApp / Telefone" 
-                            className="h-11 rounded-xl bg-background border-input text-foreground placeholder:text-muted-foreground/50" 
-                            onChange={(e) => field.onChange(phoneMask(e.target.value))}
-                          />
-                        )}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="relative group">
-                  <select
-                    {...register('clienteId')}
-                    className="w-full h-12 px-4 py-2 rounded-2xl border border-input bg-background text-foreground text-sm font-semibold outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all appearance-none shadow-sm"
-                  >
-                    <option value="">Selecione o Cliente...</option>
-                    {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground group-hover:text-accent transition-colors">
-                    <Users size={16} />
-                  </div>
-                </div>
+          {/* Seleção ou cadastro rápido de Cliente */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label htmlFor="loc-cliente" className="text-xs font-semibold text-foreground">
+                Cliente / Solicitante *
+              </label>
+              {!locacao?.id && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isNovoCliente ? "default" : "outline"}
+                  onClick={() => setIsNovoCliente((v) => !v)}
+                >
+                  {isNovoCliente ? (
+                    <Users className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  {isNovoCliente ? "Usar Cliente Existente" : "Cadastrar Novo Cliente"}
+                </Button>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Quantidade</label>
-                <Input className="h-11 rounded-2xl font-bold px-4 bg-background border-input text-foreground" type="number" min={1} {...register('quantidadeCacambas', { valueAsNumber: true })} />
+            {isNovoCliente ? (
+              <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                  <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                  Cadastro Rápido de Cliente
+                </p>
+                <Input
+                  placeholder="Nome completo / Razão Social *"
+                  aria-label="Nome do novo cliente"
+                  {...register("novoCliente.nome")}
+                />
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+                  <Controller
+                    name="novoCliente.cpfCnpj"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        placeholder="CPF ou CNPJ (para CTR)"
+                        aria-label="CPF ou CNPJ"
+                        className="font-mono"
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(cpfCnpjMask(e.target.value))}
+                      />
+                    )}
+                  />
+                  <Controller
+                    name="novoCliente.telefone"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        placeholder="WhatsApp / Telefone"
+                        aria-label="Telefone"
+                        className="font-mono"
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(phoneMask(e.target.value))}
+                      />
+                    )}
+                  />
+                </div>
+                <Input
+                  type="email"
+                  placeholder="E-mail (opcional)"
+                  aria-label="E-mail do cliente"
+                  {...register("novoCliente.email")}
+                />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Status Operacional</label>
-                <select {...register('status')} className="w-full h-11 px-4 py-2 rounded-2xl border border-input bg-background text-foreground text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20 shadow-sm appearance-none">
-                  <option value="entrega_pendente">🚀 Pendente</option>
-                  <option value="em_uso">🏗️ Em Uso</option>
-                  <option value="vencida">🚨 Vencida</option>
-                  <option value="pago">✅ Pago</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Caçamba Especificada</label>
+            ) : (
               <select
-                {...register('cacambaId')}
-                className="w-full h-11 px-4 py-2 rounded-2xl border border-input bg-background text-foreground text-sm font-semibold outline-none focus:ring-2 focus:ring-accent/20 shadow-sm appearance-none"
+                id="loc-cliente"
+                {...register("clienteId")}
+                className={selectBase}
               >
-                <option value="">Definição Automática</option>
-                {cacambas.filter(c => c.status === 'disponivel' || c.id === watch('cacambaId')).map(c => (
-                  <option key={c.id} value={c.id}>{c.codigo}</option>
+                <option value="">Selecione um cliente...</option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome} {c.cpfCnpj ? `(${c.cpfCnpj})` : ""}
+                  </option>
                 ))}
               </select>
-            </div>
+            )}
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Data de Início</label>
-                <Input className="h-11 rounded-2xl font-mono text-sm px-4 bg-background border-input text-foreground" type="date" {...register('dataRetirada')} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 text-accent">Previsão Fim</label>
-                <Input className="h-11 rounded-2xl font-mono text-sm px-4 bg-background border-input text-foreground" type="date" {...register('dataDevolucaoPrevista')} />
-              </div>
-            </div>
-
-            <div className="space-y-4 p-5 rounded-3xl border border-border bg-muted/30 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 blur-3xl group-hover:bg-accent/10 transition-colors pointer-events-none" />
-              
-              <div className="flex items-center justify-between relative">
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                   📍 Localização da Entrega
-                </label>
-                
-                {selectedClient && (selectedClient.enderecos?.length || 0) > 0 && (
-                  <select
-                    value={selectedEnderecoId}
-                    onChange={(e) => handleEnderecoSelection(e.target.value)}
-                    className="text-[10px] font-black uppercase tracking-widest bg-accent/10 text-accent border-none rounded-full px-2 py-1 outline-none focus:ring-1 focus:ring-accent"
-                  >
-                    <option value="manual">➕ Entrada Manual</option>
-                    {selectedClient.enderecos?.map(e => (
-                      <option key={e.id} value={e.id}>🏠 {e.nome || 'Endereço sem nome'}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {(selectedEnderecoId === 'manual' || !selectedClient) ? (
-                <div className="space-y-3 animate-in fade-in duration-300">
-                  <AddressAutocomplete 
-                    value={watchEndereco || ''} 
-                    onChange={(val, lat, lng, details) => {
-                      setValue('enderecoObra', val);
-                      if (lat && lng) { setValue('lat', lat); setValue('lng', lng); }
-                      if (details) { setValue('enderecoDetalhes', details); }
-                    }} 
-                    placeholder="Busque o endereço da obra..."
-                    forceLightText={true}
-                  />
-                  <div className="relative">
-                    <Input className="h-11 rounded-2xl pl-10 text-sm font-bold bg-background border-input text-foreground placeholder:text-muted-foreground/50" placeholder="CEP para busca rápida" onBlur={e => handleCepLookup(e.target.value)} />
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/50">
-                      <MapPin size={16} />
-                    </div>
-                    {isCepLoading && <div className="absolute right-4 top-3.5 h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>}
-                  </div>
-
-                  {selectedClient && !locacao?.id && (
-                    <div className="pt-2 flex flex-col gap-3 p-4 rounded-xl bg-muted/50 border border-border">
-                      <div className="flex items-center gap-3">
-                        <input 
-                          type="checkbox"
-                          id="salvarEndereco"
-                          className="w-4 h-4 rounded border-border bg-background text-accent focus:ring-accent accent-accent cursor-pointer"
-                          checked={!!watchSalvarEndereco}
-                          onChange={(e) => setValue('salvarEndereco', e.target.checked)}
-                        />
-                        <label htmlFor="salvarEndereco" className="text-xs font-bold text-foreground cursor-pointer flex items-center gap-1.5">
-                          <Save size={12} className="text-accent" /> Salvar este endereço no cadastro do cliente?
-                        </label>
-                      </div>
-                      
-                      {watchSalvarEndereco && (
-                        <div className="animate-in slide-in-from-left-2 duration-200">
-                          <Input 
-                            placeholder="Nome para este endereço (Ex: Obra Centro)" 
-                            className="h-10 rounded-xl text-xs font-bold bg-background border-input text-foreground placeholder:text-muted-foreground/50"
-                            {...register('nomeEndereco')}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-accent/10 border border-accent/20 flex items-start gap-4 animate-in zoom-in-95 duration-300">
-                  <div className="h-10 w-10 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
-                    <MapPin className="text-accent" size={20} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[10px] font-black text-accent uppercase tracking-widest mb-1">Endereço Selecionado</p>
-                    <p className="text-sm font-bold text-foreground leading-snug">{watchEndereco}</p>
-                    <button 
-                      type="button" 
-                      onClick={() => handleEnderecoSelection('manual')}
-                      className="text-[10px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-tighter mt-2 inline-flex items-center gap-1 transition-colors"
-                    >
-                      Alterar para entrada manual
-                    </button>
-                  </div>
-                </div>
+          {/* Endereço da Obra */}
+          <div className="space-y-3 p-4 rounded-xl border border-border bg-muted/30">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label htmlFor="loc-cep" className="text-xs font-semibold text-foreground">
+                Endereço da Obra *
+              </label>
+              {!isNovoCliente && selectedClient && (selectedClient.enderecos?.length ?? 0) > 0 && (
+                <select
+                  aria-label="Escolher endereço salvo do cliente"
+                  className="min-h-[36px] max-w-full rounded-lg border border-primary/30 bg-card px-2.5 text-xs font-semibold text-primary"
+                  value={selectedEnderecoId}
+                  onChange={(e) => setSelectedEnderecoId(e.target.value)}
+                >
+                  <option value="manual">Digitar endereço manual</option>
+                  {selectedClient.enderecos?.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.nome} — {e.rua}, {e.numero}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
 
-            {/* ================================================================ */}
-            {/* SEÇÃO DE VALORES - CÁLCULO AUTOMÁTICO COM FLEXIBILIDADE          */}
-            {/* ================================================================ */}
-            <div className="grid grid-cols-2 gap-4">
-                {/* Valor Unitário */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-1">
-                    Valor Unitário
-                    {valorTotalEditadoManualmente && (
-                      <span className="text-[8px] text-amber-500 ml-1">(editado)</span>
-                    )}
-                  </label>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="relative">
+                <Controller
+                  name="cep"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      id="loc-cep"
+                      placeholder="CEP"
+                      className="font-mono pr-8"
+                      value={field.value || ""}
+                      onChange={(e) => {
+                        const val = cepMask(e.target.value);
+                        field.onChange(val);
+                        if (val.replace(/\D/g, "").length === 8) void handleCepLookup(val);
+                      }}
+                    />
+                  )}
+                />
+                {isCepLoading && (
+                  <Loader2
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary"
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
+
+              <div className="sm:col-span-3">
+                <Controller
+                  name="enderecoObra"
+                  control={control}
+                  render={({ field }) => (
+                    <AddressAutocomplete
+                      value={field.value || ""}
+                      onChange={(val, lat, lng, details) => {
+                        field.onChange(val);
+                        if (lat !== undefined) setValue("lat", lat);
+                        if (lng !== undefined) setValue("lng", lng);
+                        if (details) setValue("enderecoDetalhes", details);
+                      }}
+                      placeholder="Rua, número e cidade da entrega..."
+                    />
+                  )}
+                />
+              </div>
+            </div>
+            {errors.enderecoObra && (
+              <p className="text-xs font-medium text-status-danger-ink flex items-center gap-1">
+                <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                {errors.enderecoObra.message}
+              </p>
+            )}
+
+            {!isNovoCliente && watchClienteId && selectedEnderecoId === "manual" && watchEndereco && (
+              <div className="pt-2 border-t border-border/60 space-y-2">
+                <label
+                  htmlFor="salvarEndereco"
+                  className="inline-flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    id="salvarEndereco"
+                    className="h-4 w-4 accent-primary rounded"
+                    checked={Boolean(watchSalvarEndereco)}
+                    onChange={(e) => setValue("salvarEndereco", e.target.checked)}
+                  />
+                  <Save className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                  Salvar este endereço no cadastro do cliente
+                </label>
+                {watchSalvarEndereco && (
+                  <Input
+                    placeholder="Apelido para este endereço (Ex: Obra Centro)"
+                    {...register("nomeEndereco")}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Quantidade, Caçamba e Status */}
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label htmlFor="loc-qtd" className="text-xs font-semibold text-foreground">
+                Quantidade de caçambas
+              </label>
+              <Input
+                id="loc-qtd"
+                type="number"
+                min={1}
+                {...register("quantidadeCacambas", { valueAsNumber: true })}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="loc-status" className="text-xs font-semibold text-foreground">
+                Status da locação
+              </label>
+              <select id="loc-status" {...register("status")} className={selectBase}>
+                <option value="entrega_pendente">Entrega Pendente</option>
+                <option value="em_uso">Em Uso na Obra</option>
+                <option value="vencida">Vencida</option>
+                <option value="pago">Pago</option>
+                <option value="concluida">Concluída</option>
+                <option value="cancelada">Cancelada</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="loc-cab" className="text-xs font-semibold text-foreground">
+              Caçamba específica (opcional)
+            </label>
+            <select id="loc-cab" {...register("cacambaId")} className={selectBase}>
+              <option value="">
+                Selecionar automaticamente ({cacambasDisponiveis.length} disponíveis)
+              </option>
+              {cacambasDisponiveis.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.codigo} — {c.tamanho}³
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Datas */}
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label htmlFor="loc-dt-ini" className="text-xs font-semibold text-foreground">
+                Data de Entrega / Início *
+              </label>
+              <Input
+                id="loc-dt-ini"
+                type="date"
+                aria-invalid={Boolean(errors.dataRetirada)}
+                {...register("dataRetirada")}
+              />
+              {errors.dataRetirada && (
+                <p className="text-xs text-status-danger-ink">{errors.dataRetirada.message}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="loc-dt-fim" className="text-xs font-semibold text-foreground">
+                Previsão de Retirada *
+              </label>
+              <Input
+                id="loc-dt-fim"
+                type="date"
+                aria-invalid={Boolean(errors.dataDevolucaoPrevista)}
+                {...register("dataDevolucaoPrevista")}
+              />
+              {errors.dataDevolucaoPrevista && (
+                <p className="text-xs text-status-danger-ink">
+                  {errors.dataDevolucaoPrevista.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Financeiro */}
+          <div className="p-4 rounded-xl border border-border bg-muted/30 space-y-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label htmlFor="loc-unit" className="text-xs font-semibold text-foreground">
+                  Valor unitário (por caçamba)
+                </label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                    R$
+                  </span>
                   <Controller
                     name="valorUnitario"
                     control={control}
                     render={({ field }) => (
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-muted-foreground/50 z-10 pointer-events-none">R$</span>
-                        <SmartCurrencyInput
-                          value={field.value || 0}
-                          onChange={(val) => {
-                            handleValorUnitarioChange(val);
-                          }}
-                          className="h-11 rounded-2xl pl-10 font-black text-lg tabular-nums bg-background border-input text-foreground"
-                          placeholder="0,00"
-                        />
-                      </div>
+                      <SmartCurrencyInput
+                        id="loc-unit"
+                        value={field.value ?? valorPadrao}
+                        onChange={handleValorUnitarioChange}
+                        className="pl-9 font-mono font-bold tabular-nums"
+                        placeholder="0,00"
+                      />
                     )}
                   />
                 </div>
+              </div>
 
-                {/* Valor Total */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 flex items-center gap-1">
-                    Valor Total ({watchQuantidade} x)
-                    {valorTotalEditadoManualmente && (
-                      <span className="text-[8px] text-amber-500 ml-1">(ajustado)</span>
-                    )}
-                  </label>
+              <div className="space-y-1.5">
+                <label htmlFor="loc-total" className="text-xs font-semibold text-foreground">
+                  Valor total
+                </label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                    R$
+                  </span>
                   <Controller
                     name="valor"
                     control={control}
                     render={({ field }) => (
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-muted-foreground/50 z-10 pointer-events-none">R$</span>
-                        <SmartCurrencyInput
-                          value={field.value || 0}
-                          onChange={(val) => {
-                            handleValorTotalChange(val);
-                          }}
-                          className="h-11 rounded-2xl pl-10 font-black text-lg tabular-nums bg-background border-accent text-accent"
-                          placeholder="0,00"
-                        />
-                      </div>
+                      <SmartCurrencyInput
+                        id="loc-total"
+                        value={field.value ?? 0}
+                        onChange={handleValorTotalChange}
+                        className="pl-9 font-mono font-bold tabular-nums"
+                        placeholder="0,00"
+                      />
                     )}
                   />
                 </div>
+                {watchQuantidade > 1 && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Info className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    {watchQuantidade}x de {formatCurrency(watchValorUnitario)}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Forma de Pagamento */}
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Forma Pagto</label>
-                  <select {...register('metodoPagamento')} className="w-full h-11 px-4 py-2 rounded-2xl border border-input bg-background text-foreground text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20 appearance-none shadow-sm">
-                    <option value="pix">💎 PIX</option>
-                    <option value="debito">💳 Débito</option>
-                    <option value="credito">🏦 Crédito</option>
-                    <option value="boleto">📄 Boleto</option>
-                  </select>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <CreditCard className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                Forma de Pagamento
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {(["pix", "debito", "credito", "boleto"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => handleMetodoChange(m)}
+                    className={cn(
+                      "min-h-[42px] rounded-lg border text-xs font-bold uppercase transition-colors",
+                      watchMetodo === m
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-muted-foreground border-border hover:text-foreground"
+                    )}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {isCardMetodo && (
+              <div className="grid grid-cols-1 min-[420px]:grid-cols-3 gap-3 pt-1">
+                <div className="space-y-1">
+                  <label htmlFor="loc-taxa" className="text-xs font-medium text-muted-foreground">
+                    Taxa maquininha (%)
+                  </label>
+                  <Input
+                    id="loc-taxa"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    max={99}
+                    {...register("taxaCartaoPercent", { valueAsNumber: true })}
+                  />
                 </div>
-            </div>
 
-            {/* Resumo Financeiro Premium */}
-            <div className="rounded-3xl border border-accent/20 bg-accent/10 p-6 space-y-2 relative overflow-hidden group shadow-lg shadow-accent/5">
-               <div className="absolute bottom-0 right-0 w-32 h-32 bg-accent/20 blur-[100px] pointer-events-none" />
-               <div className="flex justify-between items-baseline relative">
-                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Valor Bruto Total</span>
-                 <span className="text-xl font-black tabular-nums text-foreground">
-                   {formatCurrency(round2((watchValor || 0) * (1 + (watch('jurosPercent') || 0) / 100)))}
-                 </span>
-               </div>
-               <div className="flex justify-between items-baseline border-t border-accent/10 pt-2 mt-2 relative">
-                 <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Recebimento Estimado</span>
-                 <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
-                   {formatCurrency(watch('valorLiquido') || 0)}
-                 </span>
-               </div>
+                {watchMetodo === "credito" && (
+                  <>
+                    <div className="space-y-1">
+                      <label htmlFor="loc-parc" className="text-xs font-medium text-muted-foreground">
+                        Parcelas
+                      </label>
+                      <Input
+                        id="loc-parc"
+                        type="number"
+                        min={1}
+                        max={24}
+                        {...register("parcelas", { valueAsNumber: true })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="loc-juros" className="text-xs font-medium text-muted-foreground">
+                        Juros repasse (%)
+                      </label>
+                      <Input
+                        id="loc-juros"
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        max={99}
+                        {...register("jurosPercent", { valueAsNumber: true })}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Resumo Líquido */}
+            <div className="rounded-lg border border-border bg-card px-3.5 py-2.5 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total ao cliente:</span>
+                <span className="font-mono font-bold tabular-nums text-foreground">
+                  {formatCurrency(round2(watchValor * (1 + watchJuros / 100)))}
+                </span>
+              </div>
+              {isCardMetodo && (watch("valorTaxa") || 0) > 0 && (
+                <div className="flex items-center justify-between text-status-danger-ink">
+                  <span>Taxa maquininha ({watchTaxaPercent}%):</span>
+                  <span className="font-mono tabular-nums">
+                    - {formatCurrency(watch("valorTaxa") || 0)}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-1.5 border-t border-border">
+                <span className="font-semibold text-foreground">Valor líquido previsto:</span>
+                <span className="font-mono text-base font-bold tabular-nums text-status-success-ink">
+                  {formatCurrency(watch("valorLiquido") || 0)}
+                </span>
+              </div>
             </div>
+          </div>
+
+          {/* Observações */}
+          <div className="space-y-1.5">
+            <label htmlFor="loc-obs" className="text-xs font-semibold text-foreground">
+              Observações (opcional)
+            </label>
+            <Input
+              id="loc-obs"
+              placeholder="Ex: Deixar caçamba próxima ao portão lateral"
+              {...register("observacoes")}
+            />
+          </div>
         </form>
-    </ModalBase>
+      </ModalBase>
 
-      {duplicateCheck.client && (
-        <DuplicateClientDialog 
-          isOpen={duplicateCheck.isOpen}
-          onClose={() => setDuplicateCheck({ isOpen: false })}
-          existingClient={duplicateCheck.client}
-          onOptionSelected={handleDuplicateResolution}
-        />
-      )}
+      <DuplicateClientDialog
+        isOpen={duplicateCheck.isOpen}
+        existingClient={duplicateCheck.client!}
+        onClose={() => setDuplicateCheck({ isOpen: false })}
+        onOptionSelected={handleDuplicateOption}
+      />
 
-      {/* Diálogo de confirmação de fechamento - sempre aparece ao tentar fechar */}
       <UnsavedChangesConfirmDialog
         isOpen={showCloseConfirm}
-        onConfirm={handleConfirmClose}
-        onCancel={handleCancelClose}
-        message="Tem certeza que deseja cancelar o cadastro? Os dados preenchidos serão perdidos."
-        confirmText="Sim, cancelar"
-        cancelText="Não, continuar"
+        onConfirm={confirmDiscard}
+        onCancel={() => setShowCloseConfirm(false)}
       />
     </>
   );

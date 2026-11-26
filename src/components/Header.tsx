@@ -1,53 +1,91 @@
-"use client"
-import { ModeToggle } from "./ModeToggle"
-import { LogOut, Menu } from "lucide-react"
-import { useAppStore } from "@/store/useAppStore"
-import { useAuthActions } from "@/core/application/useAuthActions"
-import { NotificationBell } from "./NotificationBell"
+"use client";
+import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Plus, UserCircle } from "lucide-react";
+import { ModeToggle } from "./ModeToggle";
+import { NotificationBell } from "./NotificationBell";
+import { Button } from "@/components/ui/button";
+import { useAppStore } from "@/store/useAppStore";
 
-export function Header() {
-  const { usuarioAtual, toggleSidebar } = useAppStore()
-  const { logout } = useAuthActions()
+const ROUTE_TITLES: Record<string, string> = {
+  "/": "Visão Geral",
+  "/alugueis": "Locações & Entregas",
+  "/clientes": "Clientes",
+  "/gerenciamento": "Frota & Pendências",
+  "/mapa": "Mapa Operacional",
+  "/ctr": "Emissão de CTR",
+  "/relatorios": "Relatórios & Gastos",
+  "/perfil": "Perfil & Configurações",
+  "/documentacoes": "Guia do Sistema",
+};
+
+interface HeaderProps {
+  onOpenQuickRental?: () => void;
+}
+
+export function Header({ onOpenQuickRental }: HeaderProps) {
+  const pathname = usePathname();
+  const usuarioAtual = useAppStore((s) => s.usuarioAtual);
+  const perfil = useAppStore((s) => s.perfil);
+  const pageTitle = ROUTE_TITLES[pathname] || "CaçambaGo";
+
   return (
-    <header className="flex h-16 w-full items-center justify-between border-b border-border bg-background/80 backdrop-blur-xl px-6 sticky top-0 z-40 shadow-sm transition-colors duration-300">
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={toggleSidebar}
-          className="md:hidden p-2 rounded-xl bg-foreground/5 text-muted-foreground hover:text-foreground transition-all active:scale-95"
+    <header className="sticky top-0 z-[300] h-14 border-b border-border bg-card/95 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2.5 min-w-0">
+        {/* Marca compacta no mobile (sidebar está oculta < md) */}
+        <Link
+          href="/"
+          className="md:hidden flex items-center gap-2 min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring rounded-md"
         >
-          <Menu size={20} />
-        </button>
-        <h2 className="text-xl font-black sm:hidden text-foreground italic tracking-tighter">
-          Caçamba<span className="text-accent">Go</span>
-        </h2>
-        {/* Breadcrumb indicator (Visual Only) */}
-        <div className="hidden md:flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-           Live Monitoring
+          <img src="/favicon.svg" alt="CaçambaGo" className="h-7 w-7 shrink-0" />
+          <span className="font-display text-sm font-bold text-foreground truncate">
+            {pathname === "/" ? (
+              <>
+                Caçamba<span className="text-primary">Go</span>
+              </>
+            ) : (
+              pageTitle
+            )}
+          </span>
+        </Link>
+
+        {/* Título de contexto no desktop */}
+        <div className="hidden md:flex items-center gap-2.5 min-w-0">
+          <h2 className="font-display text-base font-bold text-foreground truncate">{pageTitle}</h2>
+          {perfil.nomeEmpresa && (
+            <span className="hidden lg:inline-flex items-center rounded-md border border-border bg-muted/60 px-2 py-0.5 text-xs font-medium text-muted-foreground truncate max-w-[240px]">
+              {perfil.nomeEmpresa}
+            </span>
+          )}
         </div>
       </div>
-      <div className="flex items-center space-x-5">
+
+      <div className="flex items-center gap-2 shrink-0">
+        {onOpenQuickRental && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={onOpenQuickRental}
+            className="hidden sm:inline-flex min-h-[40px]"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            <span>Nova Locação</span>
+          </Button>
+        )}
+
         <ModeToggle />
         <NotificationBell />
-        <div className="w-px h-4 bg-border" />
-        <div className="flex items-center gap-3 bg-foreground/5 px-3 py-1.5 rounded-2xl border border-border">
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-accent to-indigo-400 flex items-center justify-center text-white font-black shadow-lg shadow-accent/20">
-            {usuarioAtual?.nome.charAt(0) || 'U'}
-          </div>
-          <div className="hidden lg:block">
-            <p className="text-xs font-black text-foreground leading-none">{usuarioAtual?.nome || 'Usuário'}</p>
-            <p className="text-[9px] text-muted-foreground uppercase tracking-widest font-mono mt-0.5">Admin Hub</p>
-          </div>
-        </div>
-        
-        <button 
-          onClick={() => logout()} 
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-95" 
-          title="Sair"
+
+        <Link
+          href="/perfil"
+          aria-label="Ir para Perfil e Configurações"
+          className="hidden md:inline-flex items-center gap-2 min-h-[40px] rounded-lg border border-border bg-background/60 px-2.5 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors whitespace-nowrap"
         >
-          <LogOut size={20} />
-        </button>
+          <UserCircle className="h-4 w-4 text-primary shrink-0" aria-hidden="true" />
+          <span className="max-w-[130px] truncate">{usuarioAtual?.nome || "Perfil"}</span>
+        </Link>
       </div>
     </header>
-  )
+  );
 }

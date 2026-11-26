@@ -38,24 +38,18 @@ export const createDescarteSlice: StateCreator<DescarteSlice> = (set, get) => ({
   },
   
   updateLocalDescarte: (id, updates) => {
-    const { locaisDescarte } = get();
-    
-    if (updates.isPadrao) {
-      const updatedLocais = locaisDescarte.map(l => ({
-        ...l,
-        isPadrao: l.id === id
-      }));
-      set({ 
-        locaisDescarte: updatedLocais,
-        localDescartePadraoId: id
-      });
-    } else {
-      set({
-        locaisDescarte: locaisDescarte.map(l => 
-          l.id === id ? { ...l, ...updates } : l
-        )
-      });
-    }
+    const { locaisDescarte, localDescartePadraoId } = get();
+    const updatedLocais = locaisDescarte.map((l) => {
+      if (l.id === id) {
+        return { ...l, ...updates };
+      }
+      return updates.isPadrao ? { ...l, isPadrao: false } : l;
+    });
+
+    set({
+      locaisDescarte: updatedLocais,
+      localDescartePadraoId: updates.isPadrao ? id : localDescartePadraoId,
+    });
   },
   
   removeLocalDescarte: (id) => {

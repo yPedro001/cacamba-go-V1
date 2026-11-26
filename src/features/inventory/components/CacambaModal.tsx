@@ -1,18 +1,18 @@
-import React from 'react';
-import { AlertCircle } from 'lucide-react';
-import { cepMask } from '@/lib/masks';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { AddressAutocomplete } from '@/components/AddressAutocomplete';
-import { Cacamba, Perfil } from '@/core/domain/types';
-import { ModalBase } from '@/components/ui/modal-base';
+import React, { useEffect, useState } from "react";
+import { AlertCircle, Loader2, MapPin } from "lucide-react";
+import { cepMask } from "@/lib/masks";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { Cacamba, Perfil } from "@/core/domain/types";
+import { ModalBase } from "@/components/ui/modal-base";
 
 interface CacambaModalProps {
   isOpen: boolean;
   onClose: () => void;
   isEditing: boolean;
   currentCacamba: Partial<Cacamba>;
-  setCurrentCacamba: (v: any) => void;
+  setCurrentCacamba: (v: Partial<Cacamba>) => void;
   batchQuantity: number;
   setBatchQuantity: (v: number) => void;
   isCepLoading: boolean;
@@ -22,77 +22,107 @@ interface CacambaModalProps {
   perfil: Perfil;
 }
 
-// Classe base semântica para todos os inputs — funciona em light e dark
-const inputBase = "h-12 rounded-2xl px-4 bg-background border-input text-foreground placeholder:text-muted-foreground/60 focus:ring-accent focus:border-accent";
-const selectBase = "w-full h-12 px-4 py-2 rounded-2xl border border-input bg-background text-foreground text-sm font-bold outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent appearance-none transition-all";
+const selectBase =
+  "flex min-h-[44px] w-full rounded-lg border border-input bg-card px-3.5 py-2 text-base md:text-sm font-medium text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export function CacambaModal({
-  isOpen, onClose, isEditing, currentCacamba, setCurrentCacamba,
-  batchQuantity, setBatchQuantity, isCepLoading, handleCepLookup,
-  onSave, alertMessage, perfil
+  isOpen,
+  onClose,
+  isEditing,
+  currentCacamba,
+  setCurrentCacamba,
+  batchQuantity,
+  setBatchQuantity,
+  isCepLoading,
+  handleCepLookup,
+  onSave,
+  alertMessage,
+  perfil,
 }: CacambaModalProps) {
-  const [cepSearch, setCepSearch] = React.useState('');
+  const [cepSearch, setCepSearch] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCepSearch("");
+    }
+  }, [isOpen]);
 
   return (
     <ModalBase
       isOpen={isOpen}
       onClose={onClose}
       maxWidth="md"
-      title={<>{isEditing ? 'Editar' : 'Nova'} <span className="text-accent">Caçamba</span></>}
-      subtitle={<><span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />SaaS Enterprise v1.0</>}
+      title={isEditing ? "Editar Caçamba" : "Nova Caçamba"}
+      subtitle="Defina código, capacidade cúbica e ponto de localização."
       footer={
         <>
-          <Button variant="ghost" onClick={onClose} className="px-8 font-black text-xs uppercase tracking-widest h-12 rounded-2xl text-muted-foreground hover:text-foreground hover:bg-muted/30">Descartar</Button>
-          <Button onClick={onSave} className="bg-accent hover:bg-accent/90 text-white font-black px-12 text-xs uppercase tracking-widest h-12 rounded-2xl shadow-xl shadow-accent/20 transition-all active:scale-95 italic">
-            {isEditing ? 'Salvar Alterações' : 'Confirmar Cadastro'}
+          <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
+            Cancelar
+          </Button>
+          <Button type="button" onClick={onSave} className="w-full sm:w-auto">
+            {isEditing ? "Salvar Alterações" : "Cadastrar Caçamba"}
           </Button>
         </>
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {alertMessage && (
-          <div className="flex gap-2 items-start p-4 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 text-xs font-bold uppercase tracking-wider">
-            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <div
+            role="alert"
+            className="flex gap-2 items-start p-3 rounded-xl bg-status-danger-bg text-status-danger-ink border border-destructive/30 text-xs sm:text-sm font-medium"
+          >
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" aria-hidden="true" />
             <span>{alertMessage}</span>
           </div>
         )}
-        
+
         {!isEditing && perfil.endereco && (
-          <div className="p-3 rounded-2xl bg-blue-500/5 text-blue-500 dark:text-blue-400 border border-blue-500/10 text-[10px] font-black uppercase tracking-widest flex gap-2 items-center">
-            <span className="opacity-50">📍 Pátio padrão:</span> {perfil.endereco}
+          <div className="p-3 rounded-xl bg-status-info-bg text-status-info-ink border border-blue-500/20 text-xs font-medium flex gap-2 items-center">
+            <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">Pátio padrão: {perfil.endereco}</span>
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Código</label>
-            <Input 
-              className={`${inputBase} font-black`}
-              value={currentCacamba.codigo || ''} 
-              onChange={e => setCurrentCacamba({...currentCacamba, codigo: e.target.value})} 
-              placeholder="C-000" 
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label htmlFor="cab-codigo" className="text-xs font-semibold text-foreground">
+              Código identificador *
+            </label>
+            <Input
+              id="cab-codigo"
+              className="font-mono font-bold"
+              value={currentCacamba.codigo || ""}
+              onChange={(e) => setCurrentCacamba({ ...currentCacamba, codigo: e.target.value })}
+              placeholder="C-001"
             />
           </div>
           {!isEditing && (
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-accent uppercase tracking-[0.2em] ml-1">Qtd. Lote</label>
-              <Input 
-                className={`${inputBase} font-black`}
-                type="number" min="1" max="50" 
-                value={batchQuantity} 
-                onChange={e => setBatchQuantity(parseInt(e.target.value) || 1)} 
+            <div className="space-y-1.5">
+              <label htmlFor="cab-lote" className="text-xs font-semibold text-foreground">
+                Quantidade no lote
+              </label>
+              <Input
+                id="cab-lote"
+                type="number"
+                min={1}
+                max={50}
+                value={batchQuantity}
+                onChange={(e) => setBatchQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
               />
             </div>
           )}
         </div>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Tamanho</label>
-            <select 
+
+        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label htmlFor="cab-tamanho" className="text-xs font-semibold text-foreground">
+              Capacidade
+            </label>
+            <select
+              id="cab-tamanho"
               className={selectBase}
-              value={currentCacamba.tamanho || '5m'} 
-              onChange={e => setCurrentCacamba({...currentCacamba, tamanho: e.target.value})}
+              value={currentCacamba.tamanho || "5m"}
+              onChange={(e) => setCurrentCacamba({ ...currentCacamba, tamanho: e.target.value })}
             >
               <option value="3m">3m³</option>
               <option value="4m">4m³</option>
@@ -100,47 +130,68 @@ export function CacambaModal({
               <option value="7m">7m³</option>
             </select>
           </div>
-          <div className="space-y-3">
-              <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">Status</label>
-              <select 
-                className={selectBase}
-                value={currentCacamba.status || 'disponivel'} 
-                onChange={e => setCurrentCacamba({...currentCacamba, status: e.target.value as any})}
-              >
-                <option value="disponivel">✅ Disponível</option>
-                <option value="locada">🏗️ Locada</option>
-                <option value="entrega_pendente">🚀 Pendente</option>
-              </select>
+          <div className="space-y-1.5">
+            <label htmlFor="cab-status" className="text-xs font-semibold text-foreground">
+              Status inicial
+            </label>
+            <select
+              id="cab-status"
+              className={selectBase}
+              value={currentCacamba.status || "disponivel"}
+              onChange={(e) =>
+                setCurrentCacamba({ ...currentCacamba, status: e.target.value as Cacamba["status"] })
+              }
+            >
+              <option value="disponivel">Disponível</option>
+              <option value="entrega_pendente">Entrega Pendente</option>
+              <option value="locada">Locada / Em Uso</option>
+              <option value="vencida">Vencida</option>
+            </select>
           </div>
         </div>
-        
-        <div className="space-y-5 p-6 rounded-[32px] border border-border bg-muted/20 relative overflow-hidden group">
-          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2 relative">
-             📍 Localização Atual
+
+        <div className="space-y-1.5">
+          <label htmlFor="cab-cep" className="text-xs font-semibold text-foreground">
+            Buscar endereço por CEP (opcional)
           </label>
-          <AddressAutocomplete 
-            value={currentCacamba.enderecoAtual || ''} 
-            onChange={(val, lat, lng) => {
-              setCurrentCacamba((prev: any) => ({ ...prev, enderecoAtual: val, lat: lat || prev.lat, lng: lng || prev.lng }));
-            }} 
-            placeholder="Endereço do Pátio ou Localização..." 
-          />
           <div className="relative">
-            <Input 
-              className={`${inputBase} text-sm font-black`}
-              placeholder="00000-000 para busca"
+            <Input
+              id="cab-cep"
+              className="font-mono pr-10"
+              placeholder="00000-000"
               value={cepSearch}
-              onChange={e => {
-                const maskedValue = cepMask(e.target.value);
-                setCepSearch(maskedValue);
-                if (maskedValue.length === 9) {
-                  handleCepLookup(maskedValue);
-                }
+              onChange={(e) => {
+                const v = cepMask(e.target.value);
+                setCepSearch(v);
+                if (v.replace(/\D/g, "").length === 8) handleCepLookup(v);
               }}
-              onBlur={e => handleCepLookup(e.target.value)}
             />
-            {isCepLoading && <div className="absolute right-4 top-4 h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />}
+            {isCepLoading && (
+              <Loader2
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary"
+                aria-hidden="true"
+              />
+            )}
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="cab-endereco" className="text-xs font-semibold text-foreground">
+            Localização atual
+          </label>
+          <AddressAutocomplete
+            id="cab-endereco"
+            value={currentCacamba.enderecoAtual || ""}
+            onChange={(val, lat, lng) =>
+              setCurrentCacamba({
+                ...currentCacamba,
+                enderecoAtual: val,
+                lat: lat ?? currentCacamba.lat,
+                lng: lng ?? currentCacamba.lng,
+              })
+            }
+            placeholder="Digite o endereço do pátio ou obra..."
+          />
         </div>
       </div>
     </ModalBase>

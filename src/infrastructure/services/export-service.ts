@@ -1,3 +1,5 @@
+import { sanitizeSpreadsheetCell } from '@/lib/domain-helpers';
+
 /**
  * Interface para os dados de exportação
  */
@@ -9,20 +11,26 @@ export interface ExportData {
   logoText?: string;
 }
 
+function getExcelColumnLetter(index: number): string {
+  let col = '';
+  let n = Math.max(1, index);
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    col = String.fromCharCode(65 + rem) + col;
+    n = Math.floor((n - 1) / 26);
+  }
+  return col || 'A';
+}
+
 /**
  * ExportService: Centraliza a geração de documentos profissionais.
- *
- * Dependências:
  * - PDF: jsPDF + jspdf-autotable
- * - Excel: ExcelJS (substitui xlsx que possuía vulnerabilidades CVE-2023 conhecidas)
+ * - Excel: ExcelJS com sanitização contra formula injection
  */
 class ExportService {
-  private primaryColor = '#FACC15'; // Amarelo CaçambaGo
-  private secondaryColor = '#1E293B'; // Slate-800
+  private primaryColor = '#D97706'; // Âmbar CaçambaGo
+  private secondaryColor = '#191715'; // Grafite CaçambaGo
 
-  /**
-   * Exporta os dados para um PDF profissional
-   */
   async exportPDF({ title, filename, headers, data }: ExportData): Promise<void> {
     const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
       import('jspdf'),
@@ -31,57 +39,53 @@ class ExportService {
     const doc = new jsPDF();
     const date = new Date().toLocaleString('pt-BR');
 
-    // 1. Cabeçalho (Logo Simbolizada)
     doc.setFillColor(this.primaryColor);
-    doc.rect(10, 10, 15, 15, 'F'); // Ícone estilizado
+    doc.rect(10, 10, 15, 15, 'F');
     doc.setTextColor(this.secondaryColor);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(22);
-    doc.text('Caçamba', 28, 18);
+    doc.text('Caçamba', 28, 20);
     doc.setTextColor(this.primaryColor);
-    doc.text('Go', 62, 18);
+    doc.text('Go', 64, 20);
 
-    // 2. Título e Data
     doc.setTextColor(this.secondaryColor);
-    doc.setFontSize(16);
-    doc.text(title, 10, 40);
+    doc.setFontSize(15);
+    doc.text(title, 10, 38);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`Gerado em: ${date}`, 10, 48);
-    doc.line(10, 50, 200, 50);
+    doc.text(`Gerado em: ${date}`, 10, 46);
+    doc.line(10, 49, 200, 49);
 
-    // 3. Tabela de Conteúdo
     autoTable(doc, {
-      startY: 55,
+      startY: 54,
       head: [headers],
       body: data,
       theme: 'striped',
       headStyles: {
-        fillColor: [250, 204, 21],
-        textColor: [30, 41, 59],
-        fontSize: 11,
+        fillColor: [217, 119, 6],
+        textColor: [255, 255, 255],
+        fontSize: 10,
         fontStyle: 'bold',
       },
       styles: {
-        fontSize: 10,
+        fontSize: 9.5,
         cellPadding: 4,
         overflow: 'linebreak',
       },
       alternateRowStyles: {
-        fillColor: [248, 250, 252],
+        fillColor: [248, 247, 244],
       },
       margin: { top: 30 },
       didDrawPage: (pageData) => {
-        // Rodapé
         doc.setFontSize(8);
-        doc.setTextColor(150);
+        doc.setTextColor(130);
         doc.text(
           `Página ${pageData.pageNumber}`,
           doc.internal.pageSize.width - 25,
           doc.internal.pageSize.height - 10
         );
         doc.text(
-          '© 2026 CaçambaGo - Gestão Profissional de Resíduos',
+          'CaçambaGo - Gestão Operacional de Caçambas',
           10,
           doc.internal.pageSize.height - 10
         );
@@ -91,22 +95,17 @@ class ExportService {
     doc.save(`${filename}.pdf`);
   }
 
-  /**
-   * Exporta os dados para uma planilha Excel estruturada (.xlsx)
-   * Utiliza ExcelJS — biblioteca ativa e sem vulnerabilidades conhecidas.
-   */
   async exportExcel({ title, filename, headers, data }: ExportData): Promise<void> {
     const { default: ExcelJS } = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'CaçambaGo';
     workbook.created = new Date();
 
-    const sheetName = title.slice(0, 31); // Excel limita nome do sheet a 31 chars
+    const sheetName = title.slice(0, 31);
     const worksheet = workbook.addWorksheet(sheetName, {
-      views: [{ state: 'frozen', ySplit: 1 }], // Congela cabeçalho
+      views: [{ state: 'frozen', ySplit: 1 }],
     });
 
-    // --- Largura dinâmica das colunas ---
     worksheet.columns = headers.map((header, i) => {
       let maxLength = header.length;
       data.forEach((row) => {
@@ -116,37 +115,38 @@ class ExportService {
       return {
         header,
         key: `col_${i}`,
-        width: maxLength + 5,
+        width: Math.min(60, maxLength + 5),
       };
     });
 
-    // --- Estilo do cabeçalho ---
     const headerRow = worksheet.getRow(1);
     headerRow.eachCell((cell) => {
-      cell.font = { bold: true, color: { argb: 'FF1E293B' }, size: 11 };
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FFFACC15' }, // Amarelo CaçambaGo
+        fgColor: { argb: 'FFD97706' },
       };
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
       cell.border = {
-        bottom: { style: 'thin', color: { argb: 'FF1E293B' } },
+        bottom: { style: 'thin', color: { argb: 'FF191715' } },
       };
     });
-    headerRow.height = 22;
+    headerRow.height = 24;
 
-    // --- Adiciona os dados com zebra striping ---
     data.forEach((rowData, rowIndex) => {
       const row = worksheet.addRow(
-        headers.reduce((acc, _, i) => ({ ...acc, [`col_${i}`]: rowData[i] ?? '' }), {})
+        headers.reduce<Record<string, string | number>>(
+          (acc, _, i) => ({ ...acc, [`col_${i}`]: sanitizeSpreadsheetCell(rowData[i] ?? '') }),
+          {}
+        )
       );
       if (rowIndex % 2 !== 0) {
         row.eachCell((cell) => {
           cell.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FFF8FAFC' }, // Cinza muito claro
+            fgColor: { argb: 'FFF8F7F4' },
           };
         });
       }
@@ -155,11 +155,9 @@ class ExportService {
       });
     });
 
-    // --- Auto-filtro no intervalo completo ---
-    const lastCol = String.fromCharCode(64 + headers.length); // ex: "D" para 4 colunas
+    const lastCol = getExcelColumnLetter(headers.length);
     worksheet.autoFilter = `A1:${lastCol}1`;
 
-    // --- Download no browser via Blob ---
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -168,8 +166,11 @@ class ExportService {
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = `${filename}.xlsx`;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
     anchor.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(anchor);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 }
 

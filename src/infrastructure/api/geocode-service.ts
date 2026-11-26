@@ -98,55 +98,31 @@ export const geocodeService = {
   },
 
   /**
-   * Reverses geocoding: finds CEP from address (rua, cidade, uf)
-   * Returns null if no CEP found or low confidence
-   */
+  /**
+    * Reverse geocodes: finds CEP from address (rua, cidade, uf) via internal /api/geocode proxy
+    * Returns null if no CEP found or low confidence
+    */
   async fetchCepByAddress(rua: string, cidade: string, uf: string): Promise<ReverseCepResult | null> {
     if (!rua || !cidade || !uf) return null;
-    
-    // Need minimum address info to search
     if (rua.length < 3 || cidade.length < 3) return null;
 
     try {
-      // Build search query: "rua, cidade, UF, Brasil"
       const query = `${rua}, ${cidade}, ${uf}, Brasil`;
-      
-      // Use Nominatim for reverse geocoding
-      const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`;
-      
-      const res = await fetch(searchUrl, {
-        headers: {
-          'User-Agent': 'CacambaGo/1.0'
-        }
-      });
-      
+      const res = await fetch(`${NOMINATIM_BASE_URL}?type=nominatim&q=${encodeURIComponent(query)}`);
       if (!res.ok) return null;
-      
+
       const data = await res.json();
-      if (!data || data.length === 0) return null;
-      
-      const result = data[0];
-      const address = result.address || {};
-      
-      // Extract CEP from different possible fields
-      let cep = address.postcode || '';
-      
-      // Clean CEP (remove spaces, dashes)
-      cep = cep.replace(/\D/g, '');
-      
-      // Validate if we got a valid 8-digit CEP
+      if (!Array.isArray(data) || data.length === 0) return null;
+
+      const address = data[0]?.address || {};
+      const cep = String(address.postcode || '').replace(/\D/g, '');
       if (cep.length !== 8) {
-        console.warn('[GeocodeService] CEP not found in reverse geocoding result');
         return null;
       }
-      
-      // Calculate confidence based on match quality
-      // If the returned address has a postcode, confidence is high
-      const confidence = address.postcode ? 0.9 : 0.5;
-      
+
       return {
-        cep: cep,
-        confidence
+        cep,
+        confidence: address.postcode ? 0.9 : 0.5,
       };
     } catch (error) {
       console.error('[GeocodeService] Error in fetchCepByAddress:', error);

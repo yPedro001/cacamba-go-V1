@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useEffect, useCallback } from 'react';
-import * as Dialog from '@radix-ui/react-dialog';
-import { AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import React, { useCallback } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export interface UnsavedChangesConfirmDialogProps {
   isOpen: boolean;
@@ -17,7 +17,7 @@ export interface UnsavedChangesConfirmDialogProps {
   cancelText?: string;
   autoCloseOnConfirm?: boolean;
   className?: string;
-  theme?: 'auto' | 'light' | 'dark';
+  theme?: "auto" | "light" | "dark";
 }
 
 export function UnsavedChangesConfirmDialog({
@@ -25,52 +25,42 @@ export function UnsavedChangesConfirmDialog({
   onConfirm,
   onCancel,
   onOpenChange,
-  message = 'Tem certeza que deseja fechar? Seu progresso até aqui será perdido.',
-  title = 'Alterações Não Salvas',
-  confirmText = 'Sim, fechar',
-  cancelText = 'Não, continuar preenchendo',
-  autoCloseOnConfirm = true,
+  message = "Tem certeza que deseja fechar? As alterações não salvas serão perdidas.",
+  title = "Alterações Não Salvas",
+  confirmText = "Descartar e fechar",
+  cancelText = "Continuar editando",
   className,
-  theme = 'auto',
+  theme = "auto",
 }: UnsavedChangesConfirmDialogProps) {
-  const handleOpenChange = useCallback((open: boolean) => {
-    if (!open && onCancel) {
-      onCancel();
-    }
-    onOpenChange?.(open);
-  }, [onCancel, onOpenChange]);
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && onCancel) {
+        onCancel();
+      }
+      onOpenChange?.(open);
+    },
+    [onCancel, onOpenChange]
+  );
 
   const handleConfirm = useCallback(() => {
     onConfirm();
-  }, [autoCloseOnConfirm, onConfirm]);
+  }, [onConfirm]);
 
-  const contentClass = theme === 'dark'
-    ? 'bg-slate-900 text-slate-50'
-    : theme === 'light'
-    ? 'bg-white text-slate-900'
-    : 'bg-card text-card-foreground';
-
-  const overlayClass = theme === 'dark'
-    ? 'bg-slate-950/80'
-    : theme === 'light'
-    ? 'bg-black/50'
-    : 'bg-black/60';
+  const surfaceClass =
+    theme === "dark"
+      ? "bg-[#24211D] text-[#F1EEE7] border-[#45403A]"
+      : theme === "light"
+        ? "bg-[#FCFBF8] text-[#231E1A] border-[#D0CBC0]"
+        : "bg-card text-card-foreground border-border";
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay 
-          className={cn(
-            "fixed inset-0 z-[10099] backdrop-blur-sm flex items-center justify-center p-4",
-            overlayClass
-          )}
-        >
+        <Dialog.Overlay className="fixed inset-0 z-[450] bg-stone-950/65 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <Dialog.Content
             className={cn(
-              "relative w-full max-w-md p-6 sm:p-8 rounded-[28px] border shadow-[0_32px_64px_-15px_rgba(0,0,0,0.5)] z-[10100]",
-              "animate-in zoom-in-95 duration-200",
-              "focus:outline-none",
-              contentClass,
+              "relative w-full sm:max-w-md rounded-t-[20px] sm:rounded-2xl border p-5 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl focus:outline-none",
+              surfaceClass,
               className
             )}
             onEscapeKeyDown={(e) => {
@@ -81,68 +71,25 @@ export function UnsavedChangesConfirmDialog({
               e.preventDefault();
             }}
           >
-            <div className="flex justify-center mb-6">
-              <div className={cn(
-                "h-16 w-16 rounded-full flex items-center justify-center",
-                theme === 'dark'
-                  ? 'bg-red-500/20'
-                  : theme === 'light'
-                  ? 'bg-red-100'
-                  : 'bg-red-500/20'
-              )}>
-                <AlertTriangle 
-                  className={cn(
-                    "h-8 w-8",
-                    theme === 'dark'
-                      ? 'text-red-400'
-                      : theme === 'light'
-                      ? 'text-red-600'
-                      : 'text-red-400'
-                  )} 
-                />
+            <div className="flex justify-center mb-4">
+              <div className="h-12 w-12 rounded-xl bg-status-danger-bg border border-destructive/30 flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6 text-status-danger-ink" aria-hidden="true" />
               </div>
             </div>
 
-            <Dialog.Title className={cn(
-              "text-center text-xl font-black uppercase tracking-tight mb-3",
-              theme === 'dark' ? 'text-slate-50' : 'text-foreground'
-            )}>
+            <Dialog.Title className="font-display text-center text-lg font-bold tracking-tight mb-2">
               {title}
             </Dialog.Title>
 
-            <Dialog.Description className={cn(
-              "text-center text-sm sm:text-base font-medium mb-8",
-              theme === 'dark' ? 'text-slate-400' : 'text-muted-foreground'
-            )}>
+            <Dialog.Description className="text-center text-sm text-muted-foreground mb-6 leading-relaxed">
               {message}
             </Dialog.Description>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                className={cn(
-                  "flex-1 h-12 rounded-2xl font-black text-xs uppercase tracking-widest",
-                  "border-2 transition-all active:scale-95",
-                  theme === 'dark'
-                    ? 'border-slate-700 hover:bg-slate-800 text-slate-300'
-                    : theme === 'light'
-                    ? 'border-slate-300 hover:bg-slate-100 text-slate-700'
-                    : 'border-border hover:bg-accent/10 text-muted-foreground hover:text-foreground'
-                )}
-              >
+            <div className="flex flex-col-reverse sm:flex-row gap-2.5">
+              <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
                 {cancelText}
               </Button>
-              <Button
-                type="button"
-                onClick={handleConfirm}
-                className={cn(
-                  "flex-1 h-12 rounded-2xl font-black text-xs uppercase tracking-widest",
-                  "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20",
-                  "transition-all active:scale-95"
-                )}
-              >
+              <Button type="button" variant="destructive" onClick={handleConfirm} className="flex-1">
                 {confirmText}
               </Button>
             </div>
@@ -197,13 +144,16 @@ export function useUnsavedChangesGuard({
     onClose();
   }, [onClose]);
 
-  const ConfirmDialog = React.useMemo(() => (
-    <UnsavedChangesConfirmDialog
-      isOpen={showConfirm}
-      onConfirm={forceClose}
-      onCancel={() => setShowConfirm(false)}
-    />
-  ), [showConfirm, forceClose]);
+  const ConfirmDialog = React.useMemo(
+    () => (
+      <UnsavedChangesConfirmDialog
+        isOpen={showConfirm}
+        onConfirm={forceClose}
+        onCancel={() => setShowConfirm(false)}
+      />
+    ),
+    [showConfirm, forceClose]
+  );
 
   React.useEffect(() => {
     if (isModalOpen) {

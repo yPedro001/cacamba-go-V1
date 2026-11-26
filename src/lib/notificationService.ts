@@ -179,4 +179,6 @@ export const toastNotify = {
     notificationService.promise(p, opts),
 };
 
+export const notify = toastNotify;
+
 export default notificationService;

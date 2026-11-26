@@ -1,365 +1,562 @@
-"use client"
-import React, { useRef } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
-import { Printer, Receipt } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useAppStore } from '@/store/useAppStore'
-import { Locacao, MetodoPagamento } from '@/core/domain/types'
-import { generatePixPayload } from '@/core/domain/pix-utils'
-import { ModalBase } from '@/components/ui/modal-base'
+"use client";
+import React, { useMemo, useRef, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { Button } from "@/components/ui/button";
+import { Locacao, MetodoPagamento } from "@/core/domain/types";
+import { useAppStore } from "@/store/useAppStore";
+import {
+  Printer,
+  Share2,
+  X,
+  Download,
+  Loader2,
+  Copy,
+  Check,
+  FileText,
+  Smartphone,
+} from "lucide-react";
+import { generatePixPayload } from "@/core/domain/pix-utils";
+import {
+  buildWhatsAppUrl,
+  escapeHtml,
+  formatLocalDateBR,
+} from "@/lib/domain-helpers";
+import { notify } from "@/lib/notificationService";
+import { cn } from "@/lib/utils";
 
 interface ReciboModalProps {
-  locacao: Locacao
-  onClose: () => void
+  locacao: Locacao;
+  onClose: () => void;
 }
 
 const metodoPagamentoLabel: Record<MetodoPagamento, string> = {
-  pix: 'PIX',
-  debito: 'Cartão de Débito',
-  credito: 'Cartão de Crédito',
-  boleto: 'Boleto Bancário',
-}
+  pix: "PIX",
+  debito: "Cartão de Débito",
+  credito: "Cartão de Crédito",
+  boleto: "Boleto Bancário",
+};
 
 function mascaraDocumento(doc: string): string {
-  if (!doc) return '—'
-  const soDigitos = doc.replace(/\D/g, '')
-  if (soDigitos.length === 11) {
-    return soDigitos.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.***.***-$4')
+  if (!doc) return "—";
+  const d = doc.replace(/\D/g, "");
+  if (d.length === 11) {
+    return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
   }
-  return doc
+  if (d.length === 14) {
+    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+  }
+  return doc;
 }
 
-function formatarDataBR(dateStr: string | undefined | null): string {
-  if (!dateStr) return '—'
-  const [year, month, day] = dateStr.split('-').map(Number)
-  return new Date(year, month - 1, day).toLocaleDateString('pt-BR')
-}
-
-function formatarEnderecoCompacto(addr: string): string {
-  if (!addr) return '—'
-  const parts = addr.split(',').map(s => s.trim())
-  if (parts.length <= 2) return addr
-  return `${parts[0]}, ${parts[1]}${parts[2] ? ` - ${parts[2]}` : ''}`
-}
-
-function sanitizeFilename(name: string): string {
-  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/gi, '_')
+function buildDeterministicReceiptCode(locacao: Locacao): string {
+  const seed = `${locacao.id || "0"}-${locacao.dataRetirada || ""}-${locacao.valor || 0}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return `${(locacao.id || "REC").slice(-4).toUpperCase()}-${hash.toString(36).toUpperCase().padStart(6, "0")}`;
 }
 
 export function ReciboModal({ locacao, onClose }: ReciboModalProps) {
-  const { clientes, perfil } = useAppStore()
-  const reciboRef = useRef<HTMLDivElement>(null)
+  const clientes = useAppStore((s) => s.clientes);
+  const perfil = useAppStore((s) => s.perfil);
+  const reciboRef = useRef<HTMLDivElement>(null);
+  const [mobileTab, setMobileTab] = useState<"resumo" | "folha">("resumo");
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [copiedPix, setCopiedPix] = useState(false);
 
-  const cliente = clientes.find(c => c.id === locacao.clienteId)
-  const juros = locacao.jurosPercent || 0
-  const valorFinal = (locacao.valor ?? 0) * (1 + juros / 100)
-  const metodo = locacao.metodoPagamento
-  const qtd = locacao.quantidadeCacambas ?? 1
-  const dataEmissao = new Date().toLocaleDateString('pt-BR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-  const vencimento = formatarDataBR(locacao.dataDevolucaoPrevista)
+  const cliente = clientes.find((c) => c.id === locacao.clienteId);
+  const juros = locacao.jurosPercent || 0;
+  const valorFinal = Number(((locacao.valor ?? 0) * (1 + juros / 100)).toFixed(2));
+  const metodo = locacao.metodoPagamento;
+  const qtd = locacao.quantidadeCacambas ?? 1;
+  const dataEmissao = formatLocalDateBR(locacao.dataRetirada);
+  const vencimento = formatLocalDateBR(locacao.dataDevolucaoPrevista);
+  const isPago = locacao.status === "pago" || locacao.status === "concluida";
 
-  const getCapturedCanvas = async () => {
-    if (!reciboRef.current) return null
-    const html2canvas = (await import('html2canvas')).default
-    return await html2canvas(reciboRef.current, {
-      scale: 3,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      windowWidth: 794,
-      logging: false,
-    })
-  }
+  const formatMoney = (v: number) =>
+    v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const handleDownload = async () => {
-    const canvas = await getCapturedCanvas()
-    if (!canvas) return
-    const jsPDF = (await import('jspdf')).default
-    const imgData = canvas.toDataURL('image/png', 1.0)
-    const pdf = new jsPDF('p', 'mm', 'a4')
-    const pdfWidth = pdf.internal.pageSize.getWidth()
-    const pdfHeight = pdf.internal.pageSize.getHeight()
-    const canvasRatio = canvas.height / canvas.width
-    let finalWidth = pdfWidth
-    let finalHeight = pdfWidth * canvasRatio
-    if (finalHeight > pdfHeight) {
-      finalHeight = pdfHeight
-      finalWidth = pdfHeight / canvasRatio
+  const pixPayload = useMemo(() => {
+    if (metodo !== "pix" || isPago || !perfil.chavePix) return "";
+    return generatePixPayload(perfil.chavePix, valorFinal, perfil.nomeEmpresa);
+  }, [metodo, isPago, perfil.chavePix, perfil.nomeEmpresa, valorFinal]);
+
+  const numeroRecibo = locacao.id ? locacao.id.slice(-8).toUpperCase() : "00000000";
+  const hashVerificacao = buildDeterministicReceiptCode(locacao);
+
+  const handleCopyPix = async () => {
+    if (!pixPayload) return;
+    try {
+      await navigator.clipboard.writeText(pixPayload);
+      setCopiedPix(true);
+      notify.success("Código Pix Copia e Cola copiado!");
+      setTimeout(() => setCopiedPix(false), 2500);
+    } catch {
+      notify.error("Não foi possível copiar o código Pix automaticamente.");
     }
-    const marginX = (pdfWidth - finalWidth) / 2
-    pdf.addImage(imgData, 'PNG', marginX, 0, finalWidth, finalHeight, undefined, 'FAST')
-    const filename = `${sanitizeFilename(cliente?.nome || 'Cliente')}-Recibo.pdf`
-    pdf.save(filename)
-  }
+  };
 
-  const handlePrint = async () => {
-    const canvas = await getCapturedCanvas()
-    if (!canvas) return
-    const imgData = canvas.toDataURL('image/png')
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) return
+  const handlePrint = () => {
+    const content = reciboRef.current?.innerHTML;
+    if (!content) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      notify.error("Permita pop-ups para imprimir o recibo.");
+      return;
+    }
+    printWindow.opener = null;
+
+    const safeName = escapeHtml(cliente?.nome || "Cliente");
+    const baseHref = window.location.origin;
+
     printWindow.document.write(`
-      <html>
+      <!DOCTYPE html>
+      <html lang="pt-BR">
         <head>
-          <title>Imprimir Recibo - ${cliente?.nome ?? ''}</title>
+          <meta charset="utf-8" />
+          <base href="${baseHref}/" />
+          <title>Recibo #${escapeHtml(numeroRecibo)} - ${safeName}</title>
+          <script src="https://cdn.tailwindcss.com"></script>
           <style>
-            @page { size: auto; margin: 0; }
-            body { margin: 0; display: flex; justify-content: center; align-items: flex-start; background: #fff; }
-            img { width: 100%; height: auto; max-width: 210mm; display: block; }
+            @page { size: A4 portrait; margin: 12mm; }
+            @font-face {
+              font-family: 'PlaywriteCOGuides';
+              src: url('/fonts/PlaywriteCOGuides-Regular.ttf') format('truetype');
+              font-weight: normal;
+              font-style: normal;
+              font-display: block;
+            }
+            html, body { width: 100%; background: #ffffff !important; color: #0f172a !important; font-family: Arial, sans-serif; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           </style>
         </head>
         <body>
-          <img src="${imgData}" />
+          <div style="width: 100%; max-width: 780px; margin: 0 auto;">${content}</div>
           <script>
-            window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 300); };
+            window.onload = function() {
+              setTimeout(function() { window.focus(); window.print(); }, 400);
+            };
           </script>
         </body>
       </html>
-    `)
-    printWindow.document.close()
-  }
+    `);
+    printWindow.document.close();
+  };
 
   const handleWhatsApp = () => {
-    const isPago = locacao.status === 'pago'
-    let msg = ''
-    if (isPago) {
-      msg = `*CONFIRMAÇÃO DE PAGAMENTO - ${perfil.nomeEmpresa}*\n\n` +
-        `Olá, *${cliente?.nome}*!\n\n` +
-        `Confirmamos o recebimento do pagamento referente à locação de caçamba(s). 🎉\n\n` +
-        `*DETALHES:*\n` +
-        `• *Quantidade:* ${qtd}\n` +
-        `• *Local:* ${locacao.enderecoObra}\n` +
-        `• *Início:* ${formatarDataBR(locacao.dataRetirada)}\n` +
-        `• *Vencimento:* ${vencimento}\n` +
-        `• *Valor:* R$ ${valorFinal.toFixed(2)}\n` +
-        `• *Pagamento:* ${metodo ? metodoPagamentoLabel[metodo] : 'À vista'}\n\n` +
-        `Obrigado pela preferência! 🙏\n\n*Equipe ${perfil.nomeEmpresa}*`
-    } else {
-      msg = `*RECIBO DE LOCAÇÃO (PENDENTE) - ${perfil.nomeEmpresa}*\n\n` +
-        `Olá, *${cliente?.nome}*!\n\n` +
-        `Seu pagamento ainda consta como *pendente*. 🕒\n\n` +
-        `*DADOS:*\n` +
-        `• *Quantidade:* ${qtd} caçamba(s)\n` +
-        `• *Local:* ${locacao.enderecoObra}\n` +
-        `• *Valor:* R$ ${valorFinal.toFixed(2)}\n` +
-        `• *Vencimento:* ${vencimento}\n\n` +
-        `*Chave Pix:* ${perfil.chavePix || 'Não informada'}\n\n` +
-        `*Equipe ${perfil.nomeEmpresa}*`
-    }
-    const url = `https://wa.me/${cliente?.telefone?.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`
-    window.open(url, '_blank')
-  }
+    const texto = [
+      `*RECIBO DE LOCAÇÃO - ${perfil.nomeEmpresa || "CaçambaGo"}*`,
+      ``,
+      `*Nº:* #${numeroRecibo}`,
+      `*Cliente:* ${cliente?.nome || "Não identificado"}`,
+      `*Endereço da Obra:* ${locacao.enderecoObra}`,
+      `*Quantidade:* ${qtd} caçamba(s)`,
+      `*Período:* ${dataEmissao} a ${vencimento}`,
+      `*Valor:* R$ ${formatMoney(valorFinal)}`,
+      metodo ? `*Pagamento:* ${metodoPagamentoLabel[metodo]}` : null,
+      `*Status:* ${isPago ? "PAGO" : "PENDENTE"}`,
+      pixPayload ? `\n*Pix Copia e Cola:*\n${pixPayload}` : null,
+    ]
+      .filter((line) => line !== null)
+      .join("\n");
 
-  const watermarkBase64 = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='200'%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='16' font-weight='900' fill='%2394a3b8' text-anchor='middle' opacity='0.05' transform='rotate(-20 150 100)'%3E${encodeURIComponent(perfil.nomeEmpresa)}%3C/text%3E%3C/svg%3E`
+    const url = buildWhatsAppUrl(cliente?.telefone, texto);
+    if (!url) {
+      notify.error("Cliente sem telefone válido para envio no WhatsApp.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!reciboRef.current || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
+      const source = reciboRef.current;
+      const sandbox = document.createElement("div");
+      sandbox.style.position = "fixed";
+      sandbox.style.left = "-10000px";
+      sandbox.style.top = "0";
+      sandbox.style.width = "794px";
+      sandbox.style.background = "#ffffff";
+      sandbox.appendChild(source.cloneNode(true));
+      document.body.appendChild(sandbox);
+
+      try {
+        const canvas = await html2canvas(sandbox.firstElementChild as HTMLElement, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          windowWidth: 794,
+        });
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`recibo-${numeroRecibo}.pdf`);
+        notify.success("PDF do recibo baixado.");
+      } finally {
+        sandbox.remove();
+      }
+    } catch (err) {
+      console.error("Erro ao gerar PDF do recibo:", err);
+      notify.error("Não foi possível gerar o PDF. Use a opção Imprimir.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
-    <ModalBase
-      isOpen={true}
-      onClose={onClose}
-      maxWidth="3xl"
-      hideCloseButton={false}
-      title={
-        <div className="flex items-center gap-3">
-          <div className="bg-accent/15 p-2 rounded-xl shrink-0">
-            <Receipt className="h-5 w-5 text-accent" />
-          </div>
-          <div>
-            <span className="text-lg font-black tracking-tight leading-none">Recibo de Locação</span>
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">{cliente?.nome}</p>
-          </div>
-        </div>
-      }
-      footer={
-        <div className="flex gap-3 w-full">
-          <Button variant="ghost" onClick={onClose} className="px-6 font-bold text-muted-foreground hover:text-foreground hover:bg-muted/50 h-12 rounded-2xl">
-            Sair
-          </Button>
-          <div className="flex-1 flex gap-3">
-            <Button onClick={handleWhatsApp} variant="secondary" className="flex-1 bg-green-500/10 text-green-400 hover:bg-green-500/20 border-none font-black text-xs uppercase tracking-widest h-12 rounded-xl">
-              WhatsApp
-            </Button>
-            <Button onClick={handleDownload} variant="secondary" className="flex-1 bg-muted/50 text-foreground hover:bg-white/10 border-none font-black text-xs uppercase tracking-widest h-12 rounded-xl">
-              Baixar PDF
-            </Button>
-            <Button onClick={handlePrint} className="flex-1 bg-accent hover:bg-accent-dark text-foreground border-none font-black text-xs uppercase tracking-widest h-12 rounded-xl shadow-lg shadow-accent/20">
-              <Printer className="h-4 w-4 mr-2" />
-              Imprimir
-            </Button>
-          </div>
-        </div>
-      }
+    <div
+      className="fixed inset-0 z-[400] flex items-end md:items-center justify-center bg-stone-950/75 backdrop-blur-[2px] p-0 md:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Recibo ${numeroRecibo}`}
+      onClick={onClose}
     >
-      {/* Preview A4 — scroll interno gerenciado pelo ModalBase */}
-      <div className="bg-slate-100 -mx-8 -mt-8 -mb-8 p-6 flex justify-center min-h-0">
-        <div
-          ref={reciboRef}
-          className="bg-white p-[20mm] shadow-2xl relative overflow-hidden flex flex-col"
-          style={{
-            width: '210mm',
-            minHeight: '297mm',
-            maxHeight: '298mm',
-            boxShadow: '0 25px 60px -15px rgba(0,0,0,0.15)',
-            backgroundImage: `url("${watermarkBase64}")`,
-            backgroundRepeat: 'repeat',
-          }}
-        >
-          {/* Cabeçalho */}
-          <div className="relative z-10 flex items-center gap-6 mb-6 pb-4 border-b-2 border-slate-100">
-            {perfil.logoUrl ? (
-              <img src={perfil.logoUrl} alt="Logo" className="w-28 h-28 object-contain rounded-2xl shadow-sm border border-slate-50" />
-            ) : (
-              <div className="w-16 h-16 rounded-2xl bg-accent p-0.5 shadow-xl">
-                <div className="w-full h-full rounded-[12px] bg-white flex items-center justify-center text-accent font-black text-2xl">
-                  {perfil.nomeEmpresa.charAt(0)}
-                </div>
-              </div>
-            )}
-            <div className="flex-1">
-              <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-1 leading-none">{perfil.nomeEmpresa}</h1>
-              <div className="flex gap-4 items-center">
-                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">CNPJ: {perfil.cnpj}</p>
-                <span className="w-1.5 h-1.5 bg-slate-200 rounded-full" />
-                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">{perfil.telefone}</p>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1 font-medium italic border-l-4 border-slate-100 pl-2">{perfil.endereco}</p>
-            </div>
-          </div>
-
-          {/* Título */}
-          <div className="relative z-10 text-center border-y-2 border-slate-100 py-2 mb-6 bg-slate-50/20">
-            <h2 className="text-xl font-black uppercase tracking-[0.4em] text-slate-900 border-x-4 border-slate-200 px-4 inline-block">Recibo</h2>
-          </div>
-
-          {/* Conteúdo */}
-          <div className="relative z-10 grid grid-cols-1 gap-6">
-            <section className="space-y-2">
-              <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-slate-100 pb-1.5">Informações do Locatário</h3>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase">Nome</span>
-                <span className="text-lg font-black text-slate-800">{cliente?.nome ?? 'Cliente Não Informado'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase">Documento</span>
-                <span className="text-sm font-bold text-slate-700 font-mono tracking-widest">{mascaraDocumento(cliente?.cpfCnpj ?? '')}</span>
-              </div>
-            </section>
-
-            <section className="space-y-2">
-              <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] border-b border-slate-100 pb-1.5">Detalhes da Locação</h3>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase">Descrição</span>
-                <span className="text-sm font-bold text-slate-800 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                  Aluguel de {qtd.toString().padStart(2, '0')} caçamba(s)
-                </span>
-              </div>
-              <div className="flex justify-between items-start">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase mt-0.5">Local</span>
-                <span className="text-sm font-bold text-slate-800 text-right max-w-[70%] leading-tight">
-                  {formatarEnderecoCompacto(locacao.enderecoObra || '')}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase">Data de Início</span>
-                  <span className="text-sm font-black text-slate-800 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 text-center">
-                    {formatarDataBR(locacao.dataRetirada)}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase text-right">Data de Vencimento</span>
-                  <span className="text-sm font-black text-accent bg-accent/5 px-3 py-1.5 rounded-xl border border-accent/10 text-center">
-                    {vencimento}
-                  </span>
-                </div>
-              </div>
-            </section>
-
-            {/* Valor */}
-            <div className="bg-slate-900 rounded-3xl p-4 text-center shadow-xl relative overflow-hidden flex flex-col items-center justify-center">
-              <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-[0.3em] mb-2">Valor Total da Prestação</p>
-              <div className="flex items-baseline justify-center gap-2">
-                <span className="text-lg font-bold text-accent">R$</span>
-                <p className="text-4xl font-black text-white tracking-tighter tabular-nums leading-none">
-                  {valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-              {locacao.status === 'pago' && (
-                <div className="absolute bottom-2 left-3 pointer-events-none select-none">
-                  <div className="border-[3px] border-red-500/50 text-red-500/50 px-3 py-0.5 rounded-lg font-black text-lg uppercase rotate-[-5deg] tracking-tight bg-muted/50">
-                    PAGO {formatarDataBR(locacao.dataPagamento)}
-                  </div>
-                </div>
-              )}
-              <div className="mt-2 text-[9px] text-white/60 font-black uppercase tracking-widest bg-white/10 px-3 py-0.5 rounded-full">
-                {metodo ? metodoPagamentoLabel[metodo] : 'À vista'}
-              </div>
-            </div>
-
-            {/* QR Code Pix */}
-            {metodo === 'pix' && locacao.status !== 'pago' && perfil.chavePix && (
-              <div className="flex flex-col items-center gap-3 py-4 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-                <p className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-2">
-                  <span className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-                  Pagamento Via Pix
-                </p>
-                <div className="bg-white p-3 rounded-2xl shadow-lg border border-slate-100">
-                  <QRCodeSVG value={generatePixPayload(perfil.chavePix, valorFinal)} size={110} level="H" includeMargin={true} />
-                </div>
-              </div>
-            )}
-
-{/* Assinatura */}
-            <div className="pt-2 flex flex-col items-center text-center">
-              <div className="relative w-[280px] mb-1">
-                <svg width="280" height="60" viewBox="0 0 320 70" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <style>{`
-                      @font-face {
-                        font-family: 'PlaywriteCOGuides';
-                        src: url('/fonts/PlaywriteCOGuides-Regular.ttf') format('truetype');
-                      }
-                    `}</style>
-                  </defs>
-                  <g fill="none" stroke="#000080" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M40 55 C100 48 220 40 280 35" opacity="0.06" />
-                  </g>
-                  <text
-                    x="50%"
-                    y="50"
-                    textAnchor="middle"
-                    fontFamily="'PlaywriteCOGuides', cursive"
-                    fontSize="32"
-                    fontWeight="400"
-                    fill="#1e3a5f"
-                    stroke="none"
-                  >
-                    {perfil.nomeEmpresa}
-                  </text>
-                </svg>
-              </div>
-              <div className="w-[160px] border-t border-slate-700 pt-2">
-                <p className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-900">Assinatura</p>
-                <p className="text-[7px] text-muted-foreground font-bold uppercase mt-0.5 tracking-wider">Responsável Autorizado</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Rodapé */}
-          <div className="mt-auto pt-6 text-center">
-            <div className="inline-block px-6 py-1.5 bg-slate-50 rounded-full border border-slate-100">
-              <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest tabular-nums">
-                Emitido em {dataEmissao} · Hash: {Math.random().toString(36).substring(7).toUpperCase()}
-              </p>
-            </div>
-            <p className="mt-3 text-[8px] text-muted-foreground font-medium italic max-w-sm mx-auto leading-relaxed">
-              Este documento comprova a prestação de serviços. A quitação definitiva ocorre após a confirmação do crédito bancário.
+      <div
+        className="w-full md:w-[95vw] md:max-w-4xl h-[92dvh] md:h-[90vh] flex flex-col rounded-t-[20px] md:rounded-2xl border border-border bg-card text-card-foreground shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header fixo */}
+        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 border-b border-border bg-card shrink-0">
+          <div className="min-w-0">
+            <h3 className="font-display text-base sm:text-lg font-bold text-foreground truncate">
+              Recibo <span className="font-mono text-primary">#{numeroRecibo}</span>
+            </h3>
+            <p className="text-xs text-muted-foreground truncate">
+              {cliente?.nome || "Cliente"} · R$ {formatMoney(valorFinal)}
             </p>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Fechar recibo"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </div>
+
+        {/* Seletor de visualização no mobile */}
+        <div className="md:hidden grid grid-cols-2 gap-1.5 px-4 py-2 border-b border-border bg-muted/40 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileTab("resumo")}
+            className={cn(
+              "inline-flex items-center justify-center gap-1.5 min-h-[40px] rounded-lg text-xs font-semibold transition-colors",
+              mobileTab === "resumo"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground"
+            )}
+          >
+            <Smartphone className="h-3.5 w-3.5" aria-hidden="true" />
+            Resumo / PIX
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("folha")}
+            className={cn(
+              "inline-flex items-center justify-center gap-1.5 min-h-[40px] rounded-lg text-xs font-semibold transition-colors",
+              mobileTab === "folha"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground"
+            )}
+          >
+            <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+            Folha A4
+          </button>
+        </div>
+
+        {/* Corpo */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-muted/30">
+          {/* Visão Resumo de Campo no Mobile */}
+          {mobileTab === "resumo" && (
+            <div className="md:hidden space-y-4">
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Valor Total
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-md px-2.5 py-0.5 text-xs font-bold",
+                      isPago
+                        ? "bg-status-success-bg text-status-success-ink"
+                        : "bg-status-warning-bg text-status-warning-ink"
+                    )}
+                  >
+                    {isPago ? "PAGO" : "PENDENTE"}
+                  </span>
+                </div>
+                <p className="font-mono text-2xl font-bold text-foreground tabular-nums">
+                  R$ {formatMoney(valorFinal)}
+                </p>
+                <div className="text-xs text-muted-foreground space-y-1 border-t border-border/60 pt-2.5">
+                  <p>
+                    <strong className="text-foreground">Cliente:</strong>{" "}
+                    {cliente?.nome || "Não identificado"}
+                  </p>
+                  <p>
+                    <strong className="text-foreground">Obra:</strong> {locacao.enderecoObra}
+                  </p>
+                  <p>
+                    <strong className="text-foreground">Período:</strong> {dataEmissao} a{" "}
+                    {vencimento}
+                  </p>
+                </div>
+              </div>
+
+              {pixPayload && (
+                <div className="rounded-xl border border-border bg-card p-4 text-center space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Pagamento instantâneo via PIX
+                  </p>
+                  <div className="inline-block rounded-xl bg-white p-3 border border-border">
+                    <QRCodeSVG value={pixPayload} size={172} />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCopyPix}
+                    className="w-full"
+                  >
+                    {copiedPix ? (
+                      <Check className="h-4 w-4 text-status-success-ink" aria-hidden="true" />
+                    ) : (
+                      <Copy className="h-4 w-4" aria-hidden="true" />
+                    )}
+                    {copiedPix ? "Código Pix Copiado!" : "Copiar Pix Copia e Cola"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Documento A4 Oficial (sempre montado para captura PDF/Impressão) */}
+          <div
+            className={cn(
+              "overflow-x-auto",
+              mobileTab === "resumo" ? "hidden md:block" : "block"
+            )}
+          >
+            <div
+              ref={reciboRef}
+              className="mx-auto bg-white text-slate-900 shadow-lg w-[210mm] min-h-[297mm] p-[14mm] flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-5">
+                  <div className="flex items-start gap-4">
+                    {perfil.logoUrl && (
+                      <img
+                        src={perfil.logoUrl}
+                        alt="Logo da empresa"
+                        className="h-16 w-auto max-w-[140px] object-contain"
+                      />
+                    )}
+                    <div className="space-y-1">
+                      <h1 className="text-lg font-extrabold uppercase tracking-tight text-slate-900">
+                        {perfil.nomeEmpresa || "CaçambaGo Locações"}
+                      </h1>
+                      {perfil.cnpj && (
+                        <p className="text-xs text-slate-600 font-medium">
+                          CNPJ: {mascaraDocumento(perfil.cnpj)}
+                        </p>
+                      )}
+                      {perfil.endereco && (
+                        <p className="text-xs text-slate-600">{perfil.endereco}</p>
+                      )}
+                      <div className="flex flex-wrap gap-3 text-xs text-slate-600">
+                        {perfil.telefone && <span>Tel: {perfil.telefone}</span>}
+                        {perfil.email && <span>{perfil.email}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="inline-block border-2 border-slate-900 px-3 py-1 text-xs font-extrabold uppercase tracking-widest">
+                      RECIBO DE LOCAÇÃO
+                    </span>
+                    <p className="font-mono text-sm font-bold text-slate-900 mt-1.5">
+                      #{numeroRecibo}
+                    </p>
+                    <p className="text-[11px] text-slate-500">Emissão: {dataEmissao}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-5 border border-slate-200 rounded-lg p-3.5 bg-slate-50">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Dados do Cliente
+                    </p>
+                    <p className="text-sm font-bold text-slate-900">
+                      {cliente?.nome || "Não identificado"}
+                    </p>
+                    {cliente?.cpfCnpj && (
+                      <p className="text-xs text-slate-600">
+                        CPF/CNPJ: {mascaraDocumento(cliente.cpfCnpj)}
+                      </p>
+                    )}
+                    {cliente?.telefone && (
+                      <p className="text-xs text-slate-600">Tel: {cliente.telefone}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Local da Obra e Vigência
+                    </p>
+                    <p className="text-xs font-semibold text-slate-800">{locacao.enderecoObra}</p>
+                    <p className="text-xs text-slate-600">
+                      Retirada/Início: <strong>{dataEmissao}</strong>
+                    </p>
+                    <p className="text-xs text-slate-600">
+                      Devolução Prevista: <strong>{vencimento}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <table className="w-full border-collapse border border-slate-300 text-xs mb-5">
+                  <thead>
+                    <tr className="bg-slate-900 text-white">
+                      <th className="text-left p-2.5 font-bold uppercase tracking-wider">
+                        Descrição do Serviço
+                      </th>
+                      <th className="text-center p-2.5 font-bold uppercase tracking-wider w-20">
+                        Qtd.
+                      </th>
+                      <th className="text-right p-2.5 font-bold uppercase tracking-wider w-32">
+                        Unitário
+                      </th>
+                      <th className="text-right p-2.5 font-bold uppercase tracking-wider w-32">
+                        Total
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-slate-200">
+                      <td className="p-3">
+                        <p className="font-bold text-slate-900">
+                          Locação de Caçamba Estacionária para Entulho
+                        </p>
+                        {locacao.observacoes && (
+                          <p className="text-[11px] text-slate-600 mt-0.5">
+                            Obs: {locacao.observacoes}
+                          </p>
+                        )}
+                      </td>
+                      <td className="p-3 text-center font-mono font-bold">{qtd}</td>
+                      <td className="p-3 text-right font-mono">
+                        R$ {formatMoney(valorFinal / Math.max(1, qtd))}
+                      </td>
+                      <td className="p-3 text-right font-mono font-bold">
+                        R$ {formatMoney(valorFinal)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div className="flex justify-between items-start gap-6 mb-6">
+                  <div className="flex-1 border border-slate-200 rounded-lg p-3.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                      Condições de Pagamento
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      <strong>Forma:</strong>{" "}
+                      {metodo ? metodoPagamentoLabel[metodo] : "Não especificada"}
+                      {metodo === "credito" && locacao.parcelas && locacao.parcelas > 1
+                        ? ` (${locacao.parcelas}x)`
+                        : ""}
+                    </p>
+                    <p className="text-xs text-slate-700 mt-1">
+                      <strong>Situação:</strong>{" "}
+                      <span
+                        className={
+                          isPago ? "text-emerald-700 font-bold" : "text-amber-700 font-bold"
+                        }
+                      >
+                        {isPago ? "QUITADO" : "AGUARDANDO PAGAMENTO"}
+                      </span>
+                    </p>
+                  </div>
+
+                  {pixPayload && (
+                    <div className="flex items-center gap-3 border border-slate-300 rounded-lg p-3 bg-slate-50">
+                      <QRCodeSVG value={pixPayload} size={84} />
+                      <div className="text-[11px] text-slate-700 max-w-[160px]">
+                        <p className="font-bold text-slate-900">Pague via PIX</p>
+                        <p>Aponte a câmera do seu app bancário para o QR Code.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-slate-300 pt-5 mt-8">
+                <div className="grid grid-cols-2 gap-10 mb-6 text-center">
+                  <div>
+                    <div className="h-10 border-b border-slate-400" />
+                    <p className="text-[11px] font-bold text-slate-700 mt-1.5">
+                      {perfil.nomeEmpresa || "Empresa Locadora"}
+                    </p>
+                    <p className="text-[10px] text-slate-500 uppercase">Responsável / Entrega</p>
+                  </div>
+                  <div>
+                    <div className="h-10 border-b border-slate-400" />
+                    <p className="text-[11px] font-bold text-slate-700 mt-1.5">
+                      {cliente?.nome || "Cliente"}
+                    </p>
+                    <p className="text-[10px] text-slate-500 uppercase">Assinatura do Cliente</p>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center text-[10px] text-slate-500 border-t border-slate-200 pt-2">
+                  <span>Documento não fiscal — Controle interno CaçambaGo</span>
+                  <span className="font-mono">Ref.: {hashVerificacao}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer com botões responsivos */}
+        <div className="shrink-0 border-t border-border bg-card px-4 py-3 sm:px-6 pb-[max(0.75rem,env(safe-area-inset-bottom))] grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleWhatsApp}
+            className="text-status-success-ink border-emerald-500/35 hover:bg-status-success-bg"
+          >
+            <Share2 className="h-4 w-4" aria-hidden="true" />
+            <span>WhatsApp</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleDownloadPDF}
+            disabled={isDownloading}
+          >
+            {isDownloading ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="h-4 w-4" aria-hidden="true" />
+            )}
+            <span>Baixar PDF</span>
+          </Button>
+          <Button type="button" onClick={handlePrint}>
+            <Printer className="h-4 w-4" aria-hidden="true" />
+            <span>Imprimir</span>
+          </Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
         </div>
       </div>
-    </ModalBase>
-  )
+    </div>
+  );
 }
-

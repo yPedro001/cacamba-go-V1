@@ -1,14 +1,15 @@
 /**
  * Utilitário para geração de Payload Pix (BR Code) estático seguindo o padrão EMVCo/Bacen.
- * Versão 3: Foco em compatibilidade máxima e simplicidade.
  */
+
+import { isValidCPF } from '@/lib/domain-helpers';
 
 function crc16(str: string): string {
   const bytes = new TextEncoder().encode(str);
   let crc = 0xFFFF;
   const polynomial = 0x1021;
   for (let i = 0; i < bytes.length; i++) {
-    crc ^= (bytes[i] << 8);
+    crc ^= bytes[i] << 8;
     for (let j = 0; j < 8; j++) {
       if ((crc & 0x8000) !== 0) {
         crc = (crc << 1) ^ polynomial;
@@ -25,59 +26,96 @@ function formatField(id: string, value: string): string {
   return `${id}${len}${value}`;
 }
 
-export function generatePixPayload(key: string, amount: number): string {
+function sanitizePixAscii(input: string | undefined, maxLen: number, fallback: string): string {
+  if (!input || !input.trim()) return fallback;
+  const clean = input
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLen)
+    .toUpperCase();
+  return clean || fallback;
+}
+
+/**
+ * Normaliza a chave Pix segundo regras Bacen:
+ * - E-mail e EVP (UUID) preservados como estão;
+ * - Chaves explícitas com `+55` preservadas;
+ * - 14 dígitos numéricos tratados como CNPJ;
+ * - 11 dígitos validados como CPF primeiro (`isValidCPF`); se não for CPF válido ou tiver 10 dígitos, trata como telefone `+55`.
+ */
+export function normalizePixKey(key: string): string {
+  const raw = key.trim();
+  if (!raw) return '';
+
+  if (raw.includes('@')) return raw.toLowerCase();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+    return raw.toLowerCase();
+  }
+  if (raw.startsWith('+')) {
+    return `+${raw.slice(1).replace(/\D/g, '')}`;
+  }
+
+  const digitsOnly = raw.replace(/\D/g, '');
+
+  // Se o usuário digitou explicitamente com máscara de telefone (ex: (11) 99999-9999), trata como telefone
+  const looksLikeFormattedPhone = /^\(?\d{2}\)?\s*9?\d{4}-?\d{4}$/.test(raw) && !raw.includes('.');
+  if (looksLikeFormattedPhone && (digitsOnly.length === 10 || digitsOnly.length === 11)) {
+    return `+55${digitsOnly}`;
+  }
+
+  if (digitsOnly.length === 14) {
+    return digitsOnly;
+  }
+
+  if (digitsOnly.length === 11) {
+    if (isValidCPF(digitsOnly)) {
+      return digitsOnly;
+    }
+    return `+55${digitsOnly}`;
+  }
+
+  if (digitsOnly.length === 10) {
+    return `+55${digitsOnly}`;
+  }
+
+  return raw;
+}
+
+export function generatePixPayload(
+  key: string,
+  amount: number,
+  merchantName?: string,
+  merchantCity?: string
+): string {
   if (!key) return '';
 
-  // 1. Limpeza e Formatação da Chave
-  let formattedKey = key.trim();
-  const digitsOnly = formattedKey.replace(/\D/g, '');
-  
-  // Detecção e tratamento de Celular (Brasil)
-  if (digitsOnly.length >= 10 && digitsOnly.length <= 11 && !formattedKey.includes('@')) {
-    formattedKey = `+55${digitsOnly}`;
-  } else if (digitsOnly.length === 11 || digitsOnly.length === 14) {
-    // CPF ou CNPJ
-    formattedKey = digitsOnly;
-  }
-  // E-mail e Chave Aleatória são usados como estão
+  const formattedKey = normalizePixKey(key);
+  if (!formattedKey) return '';
 
-  // --- MONTAGEM DO PAYLOAD ---
+  const safeMerchantName = sanitizePixAscii(merchantName, 25, 'CACAMBAGO');
+  const safeMerchantCity = sanitizePixAscii(merchantCity, 15, 'BRASIL');
 
-  // 00: Payload Format Indicator
   let payload = formatField('00', '01');
 
-  // 26: Merchant Account Information
   const gui = formatField('00', 'br.gov.bcb.pix');
   const keyField = formatField('01', formattedKey);
   payload += formatField('26', `${gui}${keyField}`);
 
-  // 52: Merchant Category Code (0000 = Not Specific)
   payload += formatField('52', '0000');
-
-  // 53: Transaction Currency (986 = BRL)
   payload += formatField('53', '986');
 
-  // 54: Transaction Amount (Se > 0)
-  if (amount > 0) {
+  if (Number.isFinite(amount) && amount > 0) {
     payload += formatField('54', amount.toFixed(2));
   }
 
-  // 58: Country Code
   payload += formatField('58', 'BR');
-
-  // 59: Merchant Name
-  // Usar um valor fixo seguro para evitar problemas com nomes reais do perfil
-  payload += formatField('59', 'PIX');
-
-  // 60: Merchant City
-  // Usar um valor fixo seguro
-  payload += formatField('60', 'SAO PAULO');
-
-  // 62: Additional Data Field (TXID)
-  // O TXID é obrigatório em muitos bancos, mesmo que seja '***' para estáticos
+  payload += formatField('59', safeMerchantName);
+  payload += formatField('60', safeMerchantCity);
   payload += formatField('62', formatField('05', '***'));
 
-  // 63: CRC16
   payload += '6304';
   payload += crc16(payload);
 

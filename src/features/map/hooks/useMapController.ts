@@ -119,8 +119,9 @@ export function useMapController() {
           const loc = locacaoMap[c.id];
           if (!loc?.dataDevolucaoPrevista) return false;
           const devDate = new Date(loc.dataDevolucaoPrevista + 'T00:00:00');
-          const diffDays = Math.ceil((devDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-          if (diffDays > parseInt(filterVencimento)) return false;
+          const diffDays = Math.ceil((devDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          const maxDays = parseInt(filterVencimento, 10);
+          if (diffDays < 0 || diffDays > maxDays) return false;
         }
         return true;
       });
@@ -204,10 +205,14 @@ export function useMapController() {
   const drawRoute = useCallback(async (lat: number, lng: number) => {
     if (!userPos || isRouting) return;
     setIsRouting(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
     try {
       const res = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${userPos[1]},${userPos[0]};${lng},${lat}?overview=simplified&geometries=geojson`
+        `https://router.project-osrm.org/route/v1/driving/${userPos[1]},${userPos[0]};${lng},${lat}?overview=simplified&geometries=geojson`,
+        { signal: controller.signal }
       );
+      if (!res.ok) return;
       const data = await res.json();
       if (data.routes?.[0]) {
         const r = data.routes[0];
@@ -216,14 +221,14 @@ export function useMapController() {
           distance: (r.distance / 1000).toFixed(1),
           time: String(Math.round(r.duration / 60)),
         });
-        // Centraliza o mapa na caçamba quando gera rota
         if (mapRef.current) {
           mapRef.current.flyTo([lat, lng], 16, { duration: 1.2 });
         }
       }
     } catch {
-      // Não quebra o mapa por falha de rota; simplesmente fecha loading
+      // Não quebra o mapa por falha de rota externa; apenas libera loading
     } finally {
+      clearTimeout(timer);
       setIsRouting(false);
     }
   }, [userPos, isRouting]);
@@ -233,7 +238,7 @@ export function useMapController() {
     const url = origin
       ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${lat},${lng}&travelmode=driving`
       : `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   }, [userPos]);
 
   return useMemo(() => ({
