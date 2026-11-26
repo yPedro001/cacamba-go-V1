@@ -2,6 +2,8 @@ import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { UserData } from '@/core/domain/types';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { firebaseAuth, googleAuthProvider } from '@/infrastructure/firebase/firebase';
+import { signInWithPopup, signOut as fbSignOut } from 'firebase/auth';
 import {
   buildCurrentUserDataSnapshot,
   deduplicateNotificacoes,
@@ -189,49 +191,41 @@ export function useAuthActions() {
 
   const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Pré-verificação defensiva: checa se o Supabase tem o provider Google ativado
-      // Evita que o navegador seja arremessado para a tela externa 400 do Supabase
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
-        try {
-          const probe = await fetch(`${supabaseUrl}/auth/v1/authorize?provider=google`, {
-            method: 'GET',
-          });
-          if (probe.status === 400) {
-            const body = await probe.json().catch(() => null);
-            if (
-              body?.msg?.includes('provider is not enabled') ||
-              body?.error_code === 'validation_failed'
-            ) {
-              return {
-                success: false,
-                error:
-                  'O provedor Google ainda não foi ativado no painel do Supabase deste projeto. Configure as chaves do Google em Authentication > Providers no Supabase para ativar esta opção, ou entre com e-mail e senha abaixo.',
-              };
-            }
-          }
-        } catch {
-          // Se falhar o probe de rede, segue fluxo nativo
-        }
+      // Autenticação direta com Google via Firebase Auth
+      const result = await signInWithPopup(firebaseAuth, googleAuthProvider);
+      const user = result.user;
+      if (!user || !user.email) {
+        throw new Error('Não foi possível obter os dados da conta Google.');
       }
 
-      const redirectTo = getOAuthCallbackUrl('login');
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          queryParams: {
-            prompt: 'select_account',
-          },
-        },
-      });
-      if (error) throw error;
+      const cleanEmail = user.email.toLowerCase().trim();
+      const displayName = user.displayName || cleanEmail.split('@')[0] || 'Usuário';
+
+      // Mapeamento canônico para o ID existente em produção caso seja borghelixcacambas@gmail.com
+      const CANONICAL_BORGHELIX_ID = 'd80e7225-78eb-4bc1-9c3e-cb880e4ce228';
+      const effectiveId = cleanEmail === 'borghelixcacambas@gmail.com' ? CANONICAL_BORGHELIX_ID : user.uid;
+
+      await carregarDadosDoUsuario(effectiveId, cleanEmail, displayName);
+      router.push('/');
       return { success: true };
     } catch (err: any) {
-      console.error('Google Login Error:', err);
+      console.error('Firebase Google Login Error:', err);
+      const code = err?.code;
+      if (code === 'auth/popup-closed-by-user') {
+        return { success: false, error: 'O login com Google foi cancelado.' };
+      }
+      if (code === 'auth/configuration-not-found' || code === 'auth/operation-not-allowed') {
+        return {
+          success: false,
+          error: 'O provedor Google precisa ser ativado no Firebase Console (Authentication > Sign-in method > Google).',
+        };
+      }
+      if (code === 'auth/cancelled-popup-request') {
+        return { success: false, error: 'Requisição de login concorrente cancelada.' };
+      }
       return {
         success: false,
-        error: translateAuthError(err?.message, 'Não foi possível iniciar o login com Google.'),
+        error: err?.message || 'Falha ao autenticar com a conta Google.',
       };
     }
   };
@@ -371,7 +365,10 @@ export function useAuthActions() {
       flushCloudSync().catch(() => undefined),
       new Promise((resolve) => setTimeout(resolve, 2000)),
     ]);
-    await supabase.auth.signOut().catch(() => undefined);
+    await Promise.all([
+      supabase.auth.signOut().catch(() => undefined),
+      fbSignOut(firebaseAuth).catch(() => undefined),
+    ]);
     setCloudWriteBlocked(null);
     resetOperationalStore();
     router.push('/login');

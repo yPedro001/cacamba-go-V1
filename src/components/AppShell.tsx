@@ -11,6 +11,8 @@ import { Toaster } from "@/components/ui/Toaster";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { firebaseAuth } from "@/infrastructure/firebase/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { useAuthActions } from "@/core/application/useAuthActions";
 import { isCloudWriteBlocked, resetOperationalStore } from "@/core/application/session-utils";
 import { LocacaoModal } from "@/features/rentals/components/LocacaoModal";
@@ -153,9 +155,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       }
     });
 
+    const unsubFb = onAuthStateChanged(firebaseAuth, async (fbUser) => {
+      if (!active) return;
+      if (fbUser && !useAppStore.getState().usuarioAtual) {
+        const cleanEmail = fbUser.email?.toLowerCase().trim() || "";
+        const displayName = fbUser.displayName || cleanEmail.split("@")[0] || "Usuário";
+        const CANONICAL_BORGHELIX_ID = "d80e7225-78eb-4bc1-9c3e-cb880e4ce228";
+        const effectiveId = cleanEmail === "borghelixcacambas@gmail.com" ? CANONICAL_BORGHELIX_ID : fbUser.uid;
+        try {
+          await carregarDadosDoUsuario(effectiveId, cleanEmail, displayName);
+        } catch (e) {
+          console.error("[AppShell] onAuthStateChanged Firebase load error:", e);
+        }
+      }
+    });
+
     return () => {
       active = false;
       listener?.subscription.unsubscribe();
+      unsubFb();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
