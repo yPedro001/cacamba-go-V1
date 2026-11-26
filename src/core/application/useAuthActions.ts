@@ -214,6 +214,12 @@ export function useAuthActions() {
       if (code === 'auth/popup-closed-by-user') {
         return { success: false, error: 'O login com Google foi cancelado.' };
       }
+      if (code === 'auth/unauthorized-domain') {
+        return {
+          success: false,
+          error: 'Domínio não autorizado. Adicione "cg.lyvox.com.br" na aba "Configurações" > "Domínios autorizados" do Firebase Authentication.',
+        };
+      }
       if (code === 'auth/configuration-not-found' || code === 'auth/operation-not-allowed') {
         return {
           success: false,
