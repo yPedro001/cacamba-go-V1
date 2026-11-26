@@ -57,14 +57,20 @@ export function useCTRController() {
 
     try {
       const [locaisData, ctrsData] = await Promise.all([
-        service.getLocaisDescarte(),
-        service.getCTRs(),
+        service.getLocaisDescarte().catch((e) => {
+          console.warn('[useCTRController] Falha ao ler locais remotos, usando cache local:', e);
+          return useAppStore.getState().locaisDescarte || [];
+        }),
+        service.getCTRs().catch((e) => {
+          console.warn('[useCTRController] Falha ao ler CTRs remotos, usando cache local:', e);
+          return useAppStore.getState().ctrs || [];
+        }),
       ]);
 
-      setLocaisDescarte(locaisData);
-      setCTRs(ctrsData);
+      if (locaisData && locaisData.length > 0) setLocaisDescarte(locaisData);
+      if (ctrsData && ctrsData.length > 0) setCTRs(ctrsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao carregar dados de CTR');
+      console.warn('[useCTRController] Fallback para store local:', err);
     } finally {
       setIsLoading(false);
     }

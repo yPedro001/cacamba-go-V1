@@ -228,7 +228,7 @@ export default function AlugueisPage() {
                 <div className="text-right">
                   <span className="text-muted-foreground block">Valor</span>
                   <span className="font-bold text-foreground tabular-nums">
-                    R$ {Number(locacao.valor).toFixed(2)}
+                    R$ {(Number(locacao.valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
@@ -310,7 +310,7 @@ export default function AlugueisPage() {
                     {locacao.enderecoObra}
                   </TableCell>
                   <TableCell className="font-semibold tabular-nums">
-                    R$ {Number(locacao.valor).toFixed(2)}
+                    R$ {(Number(locacao.valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell>
                     {locacao.metodoPagamento ? (

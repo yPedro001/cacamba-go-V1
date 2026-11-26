@@ -189,6 +189,32 @@ export function useAuthActions() {
 
   const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
     try {
+      // Pré-verificação defensiva: checa se o Supabase tem o provider Google ativado
+      // Evita que o navegador seja arremessado para a tela externa 400 do Supabase
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+        try {
+          const probe = await fetch(`${supabaseUrl}/auth/v1/authorize?provider=google`, {
+            method: 'GET',
+          });
+          if (probe.status === 400) {
+            const body = await probe.json().catch(() => null);
+            if (
+              body?.msg?.includes('provider is not enabled') ||
+              body?.error_code === 'validation_failed'
+            ) {
+              return {
+                success: false,
+                error:
+                  'O provedor Google ainda não foi ativado no painel do Supabase deste projeto. Configure as chaves do Google em Authentication > Providers no Supabase para ativar esta opção, ou entre com e-mail e senha abaixo.',
+              };
+            }
+          }
+        } catch {
+          // Se falhar o probe de rede, segue fluxo nativo
+        }
+      }
+
       const redirectTo = getOAuthCallbackUrl('login');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',

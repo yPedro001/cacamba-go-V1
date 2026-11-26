@@ -272,58 +272,58 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[100dvh] w-full bg-background text-foreground grid lg:grid-cols-12">
-      {/* Coluna institucional desktop */}
-      <div className="hidden lg:flex lg:col-span-5 bg-[#191715] text-[#F1EEE7] p-10 flex-col justify-between border-r border-[#322E29]">
+      {/* Coluna institucional desktop — Lyvox Dark Premium */}
+      <div className="hidden lg:flex lg:col-span-5 bg-card text-card-foreground p-10 flex-col justify-between border-r border-border">
         <div className="flex items-center gap-3">
           <img src="/favicon.svg" alt="CaçambaGo" className="h-10 w-10" />
           <div>
-            <span className="font-display text-xl font-bold tracking-tight">
-              Caçamba<span className="text-[#F18F24]">Go</span>
+            <span className="font-display text-xl font-bold tracking-tight text-foreground">
+              Caçamba<span className="text-primary">Go</span>
             </span>
-            <span className="block text-xs text-[#B0A99F]">Gestão Operacional de Caçambas</span>
+            <span className="block text-xs text-muted-foreground">Gestão Operacional de Caçambas</span>
           </div>
         </div>
 
         <div className="space-y-6 max-w-md">
-          <h1 className="font-display text-3xl font-bold tracking-tight leading-tight text-[#FCFBF8]">
+          <h1 className="font-display text-3xl font-bold tracking-tight leading-tight text-foreground">
             Controle de pátio, mapa, financeiro e CTR em um só lugar.
           </h1>
-          <p className="text-sm text-[#B0A99F] leading-relaxed">
+          <p className="text-sm text-muted-foreground leading-relaxed">
             Feito para a rotina real de pequenas locadoras de caçambas — no escritório ou direto do celular na obra.
           </p>
 
           <div className="space-y-3 pt-2">
             <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-lg bg-[#24211D] border border-[#322E29] flex items-center justify-center text-[#F18F24] shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-background border border-border flex items-center justify-center text-primary shrink-0">
                 <Truck className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#FCFBF8]">Agenda & Estoque Sincronizados</p>
-                <p className="text-xs text-[#B0A99F]">Entregas, prazos vencidos e caçambas disponíveis no pátio.</p>
+                <p className="text-sm font-semibold text-foreground">Agenda &amp; Estoque Sincronizados</p>
+                <p className="text-xs text-muted-foreground">Entregas, prazos vencidos e caçambas disponíveis no pátio.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-lg bg-[#24211D] border border-[#322E29] flex items-center justify-center text-[#F18F24] shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-background border border-border flex items-center justify-center text-primary shrink-0">
                 <MapPin className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#FCFBF8]">Mapa Operacional & Rotas</p>
-                <p className="text-xs text-[#B0A99F]">Localize cada caçamba e abra a rota em segundos no celular.</p>
+                <p className="text-sm font-semibold text-foreground">Mapa Operacional &amp; Rotas</p>
+                <p className="text-xs text-muted-foreground">Localize cada caçamba e abra a rota em segundos no celular.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="h-9 w-9 rounded-lg bg-[#24211D] border border-[#322E29] flex items-center justify-center text-[#F18F24] shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-background border border-border flex items-center justify-center text-primary shrink-0">
                 <FileText className="h-4 w-4" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#FCFBF8]">CTR & Recibo com PIX</p>
-                <p className="text-xs text-[#B0A99F]">Emissão em PDF/Word e comprovantes prontos para WhatsApp.</p>
+                <p className="text-sm font-semibold text-foreground">CTR &amp; Recibo com PIX</p>
+                <p className="text-xs text-muted-foreground">Emissão em PDF/Word e comprovantes prontos para WhatsApp.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <p className="text-xs text-[#B0A99F]">
+        <p className="text-xs text-muted-foreground">
           Dados protegidos com sessão autenticada e histórico na nuvem.
         </p>
       </div>
@@ -396,9 +396,18 @@ export default function LoginPage() {
 
                 <form onSubmit={submitLogin} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label htmlFor="login-email" className="text-xs font-semibold text-foreground">
-                      E-mail
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="login-email" className="text-xs font-semibold text-foreground">
+                        E-mail
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setEmail("borghelixcacambas@gmail.com")}
+                        className="text-[11px] font-medium text-muted-foreground hover:text-primary transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring rounded px-1"
+                      >
+                        Usar borghelixcacambas@gmail.com
+                      </button>
+                    </div>
                     <Input
                       id="login-email"
                       type="email"

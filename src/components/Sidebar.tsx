@@ -53,7 +53,7 @@ export function Sidebar() {
           href="/"
           className="flex items-center gap-2.5 min-w-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring rounded-lg"
         >
-          <div className="h-9 w-9 shrink-0 rounded-lg bg-[#191715] border border-border flex items-center justify-center overflow-hidden">
+          <div className="h-9 w-9 shrink-0 rounded-lg bg-background border border-border flex items-center justify-center overflow-hidden">
             {perfil.logoUrl ? (
               <img
                 src={perfil.logoUrl}

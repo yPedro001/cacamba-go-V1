@@ -14,34 +14,34 @@
     --z-confirm: 450;
     --z-toast: 500;
 
-    /* Light Mode — "Concreto Diurno" (Legibilidade sob sol / escritório) */
-    --background: 36 22% 95%;
-    --foreground: 28 14% 12%;
+    /* Light Mode — Lyvox Clean & Professional */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
 
-    --card: 40 30% 98%;
-    --card-foreground: 28 14% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 40 30% 98%;
-    --popover-foreground: 28 14% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 24 85% 42%;
-    --primary-foreground: 40 30% 98%;
+    --primary: 38 92% 48%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 36 16% 89%;
-    --secondary-foreground: 28 14% 16%;
+    --secondary: 214 16% 93%;
+    --secondary-foreground: 222 47% 14%;
 
-    --muted: 36 16% 89%;
-    --muted-foreground: 30 10% 34%;
+    --muted: 214 16% 93%;
+    --muted-foreground: 217 15% 42%;
 
-    --accent: 24 85% 42%;
-    --accent-foreground: 40 30% 98%;
+    --accent: 38 92% 48%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 3 72% 43%;
-    --destructive-foreground: 40 30% 98%;
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 36 13% 79%;
-    --input: 35 12% 66%;
-    --ring: 214 82% 41%;
+    --border: 214 20% 86%;
+    --input: 214 20% 80%;
+    --ring: 38 92% 48%;
     --radius: 0.75rem;
 
     /* Semânticos operacionais */
@@ -56,44 +56,44 @@
   }
 
   .dark {
-    /* Dark Mode — "Grafite Noturno" (Cabine / pátio / baixa fadiga visual) */
-    --background: 30 10% 9%;
-    --foreground: 38 18% 93%;
+    /* Dark Mode — Lyvox Dark Premium Oficial (Azul Noturno Profundo & Dourado/Âmbar Nobre) */
+    --background: 222 20% 7%;
+    --foreground: 215 20% 95%;
 
-    --card: 30 10% 13%;
-    --card-foreground: 38 18% 93%;
+    --card: 222 18% 11%;
+    --card-foreground: 215 20% 95%;
 
-    --popover: 30 10% 13%;
-    --popover-foreground: 38 18% 93%;
+    --popover: 222 18% 11%;
+    --popover-foreground: 215 20% 95%;
 
-    --primary: 31 89% 54%;
-    --primary-foreground: 28 20% 9%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 30 9% 18%;
-    --secondary-foreground: 38 18% 90%;
+    --secondary: 222 15% 16%;
+    --secondary-foreground: 215 20% 90%;
 
-    --muted: 30 9% 18%;
-    --muted-foreground: 34 10% 66%;
+    --muted: 222 15% 15%;
+    --muted-foreground: 217 15% 65%;
 
-    --accent: 31 89% 54%;
-    --accent-foreground: 28 20% 9%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
 
-    --destructive: 5 86% 68%;
-    --destructive-foreground: 28 20% 9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 30 8% 25%;
-    --input: 30 8% 34%;
-    --ring: 204 90% 65%;
+    --border: 222 14% 19%;
+    --input: 222 14% 24%;
+    --ring: 38 92% 50%;
 
     /* Semânticos operacionais Dark */
-    --status-success-bg: 151 35% 16%;
-    --status-success-ink: 151 56% 60%;
-    --status-info-bg: 213 46% 18%;
-    --status-info-ink: 212 95% 71%;
-    --status-warning-bg: 37 49% 15%;
-    --status-warning-ink: 40 90% 61%;
-    --status-danger-bg: 5 42% 17%;
-    --status-danger-ink: 5 92% 71%;
+    --status-success-bg: 151 40% 14%;
+    --status-success-ink: 151 60% 64%;
+    --status-info-bg: 213 46% 16%;
+    --status-info-ink: 212 95% 72%;
+    --status-warning-bg: 37 49% 14%;
+    --status-warning-ink: 40 92% 64%;
+    --status-danger-bg: 0 45% 16%;
+    --status-danger-ink: 0 92% 70%;
   }
 
   * {

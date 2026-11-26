@@ -111,9 +111,9 @@ export default function MapaView() {
       .sort((a, b) => {
         if (a.status === 'vencida' && b.status !== 'vencida') return -1;
         if (a.status !== 'vencida' && b.status === 'vencida') return 1;
-        return (a.dataDevolucaoPrevista || a.dataRetirada).localeCompare(
-          b.dataDevolucaoPrevista || b.dataRetirada
-        );
+        const dateA = String(a.dataDevolucaoPrevista || a.dataRetirada || '');
+        const dateB = String(b.dataDevolucaoPrevista || b.dataRetirada || '');
+        return dateA.localeCompare(dateB);
       })
       .slice(0, 8);
   }, [locacoes]);

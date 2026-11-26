@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { notify } from '@/lib/notificationService';
+import { translateAuthError } from '@/core/application/session-utils';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function AuthCallbackPage() {
       if (oauthError) {
         if (!active) return;
         setStatus('error');
-        setErrorMessage(decodeURIComponent(oauthError));
+        setErrorMessage(translateAuthError(decodeURIComponent(oauthError), 'Falha na autenticação externa com Google.'));
         return;
       }
 

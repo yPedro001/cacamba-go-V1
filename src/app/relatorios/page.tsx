@@ -126,29 +126,38 @@ export default function RelatoriosPage() {
     const mesesMap: Record<string, RelatorioPontoMensal> = {};
 
     locacoesReceita.forEach((l) => {
-      const refData = l.dataPagamento || l.dataRetirada;
-      const [ano, mes] = refData.split('-');
+      const refData = String(l.dataPagamento || l.dataRetirada || '');
+      if (!refData.includes('-')) return;
+      const parts = refData.split('-');
+      const ano = parts[0] || '';
+      const mes = parts[1] || '';
+      if (!ano || !mes) return;
       const mesIdx = Math.max(0, Math.min(11, parseInt(mes, 10) - 1));
-      const label = `${MESES_ABREV[mesIdx]}/${ano.slice(2)}`;
+      const label = `${MESES_ABREV[mesIdx] || mes}/${ano.slice(2)}`;
       const key = `${ano}-${mes}`;
       if (!mesesMap[key]) {
         mesesMap[key] = { name: label, Bruto: 0, Líquido: 0, Taxas: 0, Gastos: 0, count: 0 };
       }
-      mesesMap[key].Bruto += l.valor ?? 0;
-      mesesMap[key].Taxas += l.valorTaxa ?? 0;
-      mesesMap[key].Líquido += l.valorLiquido ?? l.valor ?? 0;
+      mesesMap[key].Bruto += Number(l.valor) || 0;
+      mesesMap[key].Taxas += Number(l.valorTaxa) || 0;
+      mesesMap[key].Líquido += Number(l.valorLiquido ?? l.valor) || 0;
       mesesMap[key].count++;
     });
 
     gastosFiltrados.forEach((g) => {
-      const [ano, mes] = g.data.split('-');
+      const refData = String(g.data || '');
+      if (!refData.includes('-')) return;
+      const parts = refData.split('-');
+      const ano = parts[0] || '';
+      const mes = parts[1] || '';
+      if (!ano || !mes) return;
       const mesIdx = Math.max(0, Math.min(11, parseInt(mes, 10) - 1));
-      const label = `${MESES_ABREV[mesIdx]}/${ano.slice(2)}`;
+      const label = `${MESES_ABREV[mesIdx] || mes}/${ano.slice(2)}`;
       const key = `${ano}-${mes}`;
       if (!mesesMap[key]) {
         mesesMap[key] = { name: label, Bruto: 0, Líquido: 0, Taxas: 0, Gastos: 0, count: 0 };
       }
-      mesesMap[key].Gastos += g.valor;
+      mesesMap[key].Gastos += Number(g.valor) || 0;
     });
 
     const sorted = Object.entries(mesesMap)
