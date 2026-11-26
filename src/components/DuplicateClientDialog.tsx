@@ -18,6 +18,8 @@ export function DuplicateClientDialog({
   existingClient,
   onOptionSelected,
 }: DuplicateClientDialogProps) {
+  if (!isOpen || !existingClient) return null;
+
   return (
     <ModalBase
       isOpen={isOpen}
@@ -39,7 +41,7 @@ export function DuplicateClientDialog({
       <div className="flex flex-col gap-4">
         <p className="text-sm text-foreground/90 leading-relaxed">
           Identificamos que o documento informado já pertence a{" "}
-          <strong className="text-foreground">{existingClient.nome}</strong>. Como deseja prosseguir?
+          <strong className="text-foreground">{existingClient?.nome || "Cliente"}</strong>. Como deseja prosseguir?
         </p>
 
         <div className="grid grid-cols-1 gap-2.5">

@@ -64,11 +64,7 @@ export default function CTRPage() {
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   // Detectar se há alterações não salvas
-  const hasUnsavedChanges = ctrAtual && (
-    ctrAtual.origem.endereco.length > 0 || 
-    ctrAtual.gerador.nome.length > 0 ||
-    ctrAtual.residuo.descricao.length > 0
-  );
+  const hasUnsavedChanges = Boolean(ctrAtual && ((ctrAtual.origem?.endereco?.length ?? 0) > 0 || (ctrAtual.gerador?.nome?.length ?? 0) > 0 || (ctrAtual.residuo?.descricao?.length ?? 0) > 0));
 
   // Handler para confirmar fechamento
   const handleConfirmClose = () => {
@@ -116,7 +112,7 @@ export default function CTRPage() {
 
   // Gera o payload para visualização do CTR histórico
   const generateViewPayload = (ctr: CTR): CTRPayload | null => {
-    const localDescarte = locaisDescarte.find(l => l.nome === ctr.destinatarioNome);
+    const localDescarte = (locaisDescarte || []).find(l => l && l.nome === ctr.destinatarioNome);
     if (!localDescarte) return null;
 
     return ctrDocumentService.generatePayload(
@@ -202,7 +198,7 @@ export default function CTRPage() {
   };
 
   const handlePrintHistoric = async (ctr: CTR) => {
-    const localDescarte = locaisDescarte.find(l => l.nome === ctr.destinatarioNome);
+    const localDescarte = (locaisDescarte || []).find(l => l && l.nome === ctr.destinatarioNome);
     if (!localDescarte) return;
 
     const payload = ctrDocumentService.generatePayload(
@@ -414,7 +410,7 @@ export default function CTRPage() {
                                 : 'bg-background border-border hover:border-accent/20'
                             }`}
                           >
-                            <p className="font-bold text-sm truncate">{local.nome}</p>
+                            <p className="font-bold text-sm truncate">{local?.nome || "Local de Descarte"}</p>
                             <p className="text-xs text-muted-foreground truncate">
                               {local.rua}, {local.cidade} - {local.uf}
                             </p>

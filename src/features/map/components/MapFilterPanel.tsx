@@ -113,9 +113,9 @@ export function MapFilterPanel({
             className={selectClass}
           >
             <option value="todos">Todos os clientes</option>
-            {clientes.map((c) => (
+            {(clientes || []).filter(Boolean).map((c) => (
               <option key={c.id} value={c.id}>
-                {c.nome}
+                {c.nome || "Cliente"}
               </option>
             ))}
           </select>

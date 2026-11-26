@@ -320,14 +320,14 @@ export class CTRService {
       });
     }
 
-    const clientesDoCTR = clienteIds.map((id) => clientes.find((c) => c.id === id)).filter(Boolean);
+    const clientesDoCTR = clienteIds.map((id) => (clientes || []).find((c) => c && c.id === id)).filter(Boolean);
     if (clientesDoCTR.length > 0) {
-      const nomesClientes = clientesDoCTR.map((c) => c!.nome).join(', ');
+      const nomesClientes = clientesDoCTR.map((c) => c?.nome || 'Cliente').join(', ');
       conflitos.push({
         tipo: 'aviso',
         campo: 'cliente_nomes',
         mensagem: `Clientes selecionados: ${nomesClientes}`,
-        valores: clientesDoCTR.map((c) => c!.nome),
+        valores: clientesDoCTR.map((c) => c?.nome || 'Cliente'),
       });
     }
 
@@ -358,20 +358,20 @@ export class CTRService {
         bairro: '',
         cidade,
         uf: ufPadrao,
-        responsavel: cliente.nome,
-        telefone: cliente.telefone || '',
+        responsavel: cliente?.nome || '',
+        telefone: cliente?.telefone || '',
         observacao: '',
       },
       gerador: {
-        nome: cliente.nome,
-        cpfCnpj: cliente.cpfCnpj,
+        nome: cliente?.nome || '',
+        cpfCnpj: cliente?.cpfCnpj || '',
         cep: enderecoPrincipal?.cep || '',
         endereco,
         bairro: '',
         cidade,
         uf: ufPadrao,
-        responsavel: cliente.nome,
-        telefone: cliente.telefone || '',
+        responsavel: cliente?.nome || '',
+        telefone: cliente?.telefone || '',
       },
       transportador: {
         nome: perfil.nomeEmpresa || '',

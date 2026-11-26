@@ -317,10 +317,10 @@ export default function AlugueisPage() {
                       <span
                         className={cn(
                           'text-xs font-semibold px-2 py-0.5 rounded-full border',
-                          badgeMetodo[locacao.metodoPagamento]
+                          badgeMetodo[locacao.metodoPagamento] || 'bg-muted text-muted-foreground border-border'
                         )}
                       >
-                        {labelMetodo[locacao.metodoPagamento]}
+                        {labelMetodo[locacao.metodoPagamento] || locacao.metodoPagamento}
                       </span>
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>

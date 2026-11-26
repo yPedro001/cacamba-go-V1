@@ -38,7 +38,7 @@ export function CustomerTable({ clientes, onEdit, onDelete }: CustomerTableProps
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="font-display font-bold text-base text-foreground truncate">
-                    {c.nome}
+                    {c?.nome || "Cliente"}
                   </h3>
                   <p className="text-xs font-mono text-muted-foreground tabular-nums mt-0.5">
                     {c.cpfCnpj || "CPF/CNPJ não informado"}
@@ -112,7 +112,7 @@ export function CustomerTable({ clientes, onEdit, onDelete }: CustomerTableProps
               return (
                 <TableRow key={c.id}>
                   <TableCell>
-                    <div className="font-semibold text-foreground">{c.nome}</div>
+                    <div className="font-semibold text-foreground">{c?.nome || "Cliente"}</div>
                     <div className="text-xs font-mono text-muted-foreground tabular-nums">
                       {c.cpfCnpj || "Sem documento"}
                     </div>
@@ -135,10 +135,10 @@ export function CustomerTable({ clientes, onEdit, onDelete }: CustomerTableProps
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      {(c.enderecos || []).map((e) => (
+                      {(c.enderecos || []).filter(Boolean).map((e) => (
                         <div key={e.id} className="text-xs flex items-center gap-1.5 text-foreground/90">
                           <MapPin className="h-3 w-3 text-primary shrink-0" aria-hidden="true" />
-                          <span className="font-semibold">{e.nome}:</span>
+                          <span className="font-semibold">{e.nome || "Local"}:</span>
                           <span className="truncate max-w-[260px]">
                             {e.rua}, {e.numero} · {e.cidade}
                           </span>

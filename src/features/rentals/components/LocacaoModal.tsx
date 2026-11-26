@@ -500,9 +500,9 @@ export function LocacaoModal({
                 className={selectBase}
               >
                 <option value="">Selecione um cliente...</option>
-                {clientes.map((c) => (
+                {(clientes || []).filter(Boolean).map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.nome} {c.cpfCnpj ? `(${c.cpfCnpj})` : ""}
+                    {c.nome || "Cliente"} {c.cpfCnpj ? `(${c.cpfCnpj})` : ""}
                   </option>
                 ))}
               </select>
@@ -523,9 +523,9 @@ export function LocacaoModal({
                   onChange={(e) => setSelectedEnderecoId(e.target.value)}
                 >
                   <option value="manual">Digitar endereço manual</option>
-                  {selectedClient.enderecos?.map((e) => (
+                  {(selectedClient.enderecos || []).filter(Boolean).map((e) => (
                     <option key={e.id} value={e.id}>
-                      {e.nome} — {e.rua}, {e.numero}
+                      {e.nome || "Obra"} — {e.rua || ""}, {e.numero || "S/N"}
                     </option>
                   ))}
                 </select>
@@ -860,12 +860,14 @@ export function LocacaoModal({
         </form>
       </ModalBase>
 
-      <DuplicateClientDialog
-        isOpen={duplicateCheck.isOpen}
-        existingClient={duplicateCheck.client!}
-        onClose={() => setDuplicateCheck({ isOpen: false })}
-        onOptionSelected={handleDuplicateOption}
-      />
+      {duplicateCheck.isOpen && duplicateCheck.client && (
+        <DuplicateClientDialog
+          isOpen={duplicateCheck.isOpen}
+          existingClient={duplicateCheck.client}
+          onClose={() => setDuplicateCheck({ isOpen: false })}
+          onOptionSelected={handleDuplicateOption}
+        />
+      )}
 
       <UnsavedChangesConfirmDialog
         isOpen={showCloseConfirm}

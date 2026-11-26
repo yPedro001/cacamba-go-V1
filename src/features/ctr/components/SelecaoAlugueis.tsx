@@ -46,20 +46,22 @@ export function SelecaoAlugueis({
   const filteredClientes = useMemo(
     () =>
       clientes.filter((cliente) => {
+        if (!cliente) return false;
         const enderecos =
-          cliente.enderecos
-            ?.map(
+          (cliente.enderecos || [])
+            .filter(Boolean)
+            .map(
               (endereco) =>
-                `${endereco.nome} ${endereco.rua} ${endereco.numero} ${endereco.cidade} ${endereco.cep || ""}`
+                `${endereco.nome || ""} ${endereco.rua || ""} ${endereco.numero || ""} ${endereco.cidade || ""} ${endereco.cep || ""}`
             )
             .join(" ") || "";
         const searchable = normalizeSearch(
           [
-            cliente.nome,
-            cliente.cpfCnpj,
-            cliente.telefone,
-            cliente.email,
-            cliente.endereco,
+            cliente.nome || "",
+            cliente.cpfCnpj || "",
+            cliente.telefone || "",
+            cliente.email || "",
+            cliente.endereco || "",
             enderecos,
           ]
             .filter(Boolean)
@@ -201,10 +203,10 @@ export function SelecaoAlugueis({
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-sm text-foreground truncate">
-                        {cliente.nome}
+                        {cliente?.nome || "Cliente Desconhecido"}
                       </p>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        <span className="font-mono">{cliente.cpfCnpj || "Sem CPF/CNPJ"}</span> ·{" "}
+                        <span className="font-mono">{cliente?.cpfCnpj || "Sem CPF/CNPJ"}</span> ·{" "}
                         {enderecoResumo}
                       </p>
                     </div>

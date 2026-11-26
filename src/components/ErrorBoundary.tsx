@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -28,24 +28,27 @@ export class ErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-background px-6 py-12 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-status-danger-bg border border-destructive/30 flex items-center justify-center mb-4">
-            <AlertTriangle className="h-7 w-7 text-status-danger-ink" aria-hidden="true" />
+        <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-background text-foreground px-6 py-12 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mb-4 text-amber-500">
+            <AlertTriangle className="h-7 w-7" aria-hidden="true" />
           </div>
           <h1 className="font-display text-xl font-bold tracking-tight text-foreground">
             Algo inesperado aconteceu
           </h1>
           <p className="text-sm text-muted-foreground mt-2 max-w-md leading-relaxed">
-            Ocorreu uma falha ao exibir esta tela. Seus dados na nuvem permanecem preservados. Tente recarregar ou voltar para o login.
+            Ocorreu uma falha ao exibir esta tela. Seus dados na nuvem permanecem preservados com segurança. Tente recarregar ou voltar para o login.
           </p>
           {this.state.error && (
-            <pre className="mt-4 text-xs font-mono bg-muted p-3 rounded-lg border border-border max-w-lg overflow-auto text-left w-full">
+            <pre className="mt-4 text-xs font-mono bg-card text-muted-foreground p-3.5 rounded-xl border border-border max-w-lg overflow-auto text-left w-full shadow-lg">
               {this.state.error.message}
             </pre>
           )}
-          <div className="flex flex-col sm:flex-row gap-2.5 mt-6 w-full max-w-sm">
-            <Button onClick={() => window.location.reload()} className="flex-1">
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+          <div className="flex flex-col sm:flex-row gap-3 mt-6 w-full max-w-sm">
+            <Button
+              onClick={() => window.location.reload()}
+              className="flex-1 min-h-[44px]"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
               Recarregar
             </Button>
             <Button
@@ -54,8 +57,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 localStorage.removeItem("cacambago-storage-v2");
                 window.location.href = "/login";
               }}
-              className="flex-1"
+              className="flex-1 min-h-[44px]"
             >
+              <LogIn className="h-4 w-4 mr-2" aria-hidden="true" />
               Ir para login
             </Button>
           </div>

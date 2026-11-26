@@ -14,49 +14,71 @@
     --z-confirm: 450;
     --z-toast: 500;
 
-    /* Light Mode — Lyvox Clean & Professional */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* Padrão Absoluto: Lyvox Dark Premium Oficial (Azul Noturno Profundo & Dourado/Âmbar Nobre) */
+    --background: 222 20% 7%;
+    --foreground: 215 20% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 222 18% 11%;
+    --card-foreground: 215 20% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 222 18% 11%;
+    --popover-foreground: 215 20% 95%;
 
-    --primary: 38 92% 48%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 214 16% 93%;
-    --secondary-foreground: 222 47% 14%;
+    --secondary: 222 15% 16%;
+    --secondary-foreground: 215 20% 90%;
 
-    --muted: 214 16% 93%;
-    --muted-foreground: 217 15% 42%;
+    --muted: 222 15% 15%;
+    --muted-foreground: 217 15% 65%;
 
-    --accent: 38 92% 48%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 84% 55%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
+    --border: 222 14% 19%;
+    --input: 222 14% 24%;
+    --ring: 38 92% 50%;
+    --radius: 0.75rem;
+
+    /* Semânticos operacionais Dark */
+    --status-success-bg: 151 40% 14%;
+    --status-success-ink: 151 60% 64%;
+    --status-info-bg: 213 46% 16%;
+    --status-info-ink: 212 95% 72%;
+    --status-warning-bg: 37 49% 14%;
+    --status-warning-ink: 40 92% 64%;
+    --status-danger-bg: 0 45% 16%;
+    --status-danger-ink: 0 92% 70%;
+  }
+
+  .light {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 38 92% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 16% 93%;
+    --secondary-foreground: 222 47% 14%;
+    --muted: 214 16% 93%;
+    --muted-foreground: 217 15% 42%;
+    --accent: 38 92% 48%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
     --border: 214 20% 86%;
     --input: 214 20% 80%;
     --ring: 38 92% 48%;
-    --radius: 0.75rem;
-
-    /* Semânticos operacionais */
-    --status-success-bg: 149 52% 93%;
-    --status-success-ink: 151 68% 26%;
-    --status-info-bg: 213 78% 95%;
-    --status-info-ink: 214 72% 38%;
-    --status-warning-bg: 41 88% 92%;
-    --status-warning-ink: 35 100% 27%;
-    --status-danger-bg: 4 82% 95%;
-    --status-danger-ink: 3 72% 42%;
   }
 
   .dark {
-    /* Dark Mode — Lyvox Dark Premium Oficial (Azul Noturno Profundo & Dourado/Âmbar Nobre) */
+    /* Dark Mode — Lyvox Dark Premium Oficial */
     --background: 222 20% 7%;
     --foreground: 215 20% 95%;
 

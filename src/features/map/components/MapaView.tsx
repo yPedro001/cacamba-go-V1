@@ -165,7 +165,7 @@ export default function MapaView() {
   const selectedWhatsApp = selectedCliente?.telefone
     ? buildWhatsAppUrl(
         selectedCliente.telefone,
-        `Olá ${selectedCliente.nome}, tudo bem? Sobre a caçamba ${selectedCacamba?.codigo || ''}.`
+        `Olá ${selectedCliente?.nome || 'Cliente'}, tudo bem? Sobre a caçamba ${selectedCacamba?.codigo || ''}.`
       )
     : null;
   const advanceMeta = selectedLoc ? getAdvanceActionMeta(selectedLoc.status) : null;

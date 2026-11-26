@@ -5,8 +5,9 @@ import { escapeRegExp } from '@/lib/domain-helpers'
  * Retorna o nome de um cliente pelo ID.
  * Centralizado aqui para evitar duplicação entre páginas.
  */
-export function getClientName(clienteId: string, clientes: Cliente[]): string {
-  return clientes.find(c => c.id === clienteId)?.nome || 'Cliente Desconhecido'
+export function getClientName(clienteId: string, clientes: Cliente[] = []): string {
+  if (!clienteId || !Array.isArray(clientes)) return 'Cliente Desconhecido';
+  return (clientes || []).find((c) => c && c.id === clienteId)?.nome || 'Cliente Desconhecido';
 }
 
 /**
